@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Lab Sessions</h1>
+<h2>Available Sessions</h2>
+<ul>
+    {% for session in available_sessions %}
+    <li>
+        <a href="{{ url_for('register_lab_session', session_id=session.id) }}">{{ session.title }}</a>
+        - {{ session.date }} from {{ session.start_time }} to {{ session.end_time }}
+    </li>
+    {% endfor %}
+</ul>
+<h2>Registered Sessions</h2>
+<ul>
+    {% for session in registered_sessions %}
+    <li>
+        {{ session.title }} - {{ session.date }} from {{ session.start_time }} to {{ session.end_time }}
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

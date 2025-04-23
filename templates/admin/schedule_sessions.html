@@ -1,0 +1,148 @@
+{% extends "index.html" %}
+
+{% block title %}Schedule Lab Sessions{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h2><i class="fas fa-calendar-check"></i> Lab Session Scheduling</h2>
+                    <p class="lead">Manage and schedule lab sessions based on registration counts</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Valid Sessions Section -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4><i class="fas fa-check-circle"></i> Sessions Ready for Scheduling (5+ Students)</h4>
+                </div>
+                <div class="card-body">
+                    {% if valid_sessions %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Location</th>
+                                    <th>Students</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session, student_count in valid_sessions %}
+                                <tr>
+                                    <td>{{ session.title }}</td>
+                                    <td>{{ session.date }}</td>
+                                    <td>{{ session.start_time.strftime('%H:%M') }} - {{ session.end_time.strftime('%H:%M') }}</td>
+                                    <td>{{ session.location }}</td>
+                                    <td>
+                                        <span class="badge badge-success">{{ student_count }}/{{ session.max_students }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('lab_session_attendees', session_id=session.id) }}" class="btn btn-info btn-sm">
+                                            <i class="fas fa-users"></i> View Students
+                                        </a>
+                                        <a href="{{ url_for('edit_lab_session', session_id=session.id) }}" class="btn btn-warning btn-sm">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No sessions with 5 or more registered students found.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Sessions Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Sessions Pending (Less Than 5 Students)</h4>
+                </div>
+                <div class="card-body">
+                    {% if pending_sessions %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Location</th>
+                                    <th>Students</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session, student_count in pending_sessions %}
+                                <tr>
+                                    <td>{{ session.title }}</td>
+                                    <td>{{ session.date }}</td>
+                                    <td>{{ session.start_time.strftime('%H:%M') }} - {{ session.end_time.strftime('%H:%M') }}</td>
+                                    <td>{{ session.location }}</td>
+                                    <td>
+                                        <span class="badge badge-warning">{{ student_count }}/{{ session.max_students }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('lab_session_attendees', session_id=session.id) }}" class="btn btn-info btn-sm">
+                                            <i class="fas fa-users"></i> View Students
+                                        </a>
+                                        <a href="{{ url_for('edit_lab_session', session_id=session.id) }}" class="btn btn-warning btn-sm">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No sessions with fewer than 5 registered students found.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <a href="{{ url_for('admin_lab_sessions') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Lab Sessions
+                            </a>
+                        </div>
+                        <div>
+                            <a href="{{ url_for('schedule_lab_rooms') }}" class="btn btn-primary">
+                                <i class="fas fa-door-open"></i> Assign Rooms
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

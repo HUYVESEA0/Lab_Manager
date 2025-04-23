@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Verify Lab Session</h1>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.verification_code.label }}<br>
+        {{ form.verification_code(size=32) }}
+    </p>
+    <p>{{ form.submit() }}</p>
+</form>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "errors/error.html" %}
+
+{% block title %}Authentication Required - Python Manager{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h3><i class="fas fa-user-lock"></i> Authentication Required</h3>
+                </div>
+                <div class="card-body text-center">
+                    <div class="error-code display-1 text-info font-weight-bold mb-4">401</div>
+                    <h4 class="mb-4">You need to be logged in to access this page.</h4>
+                    <p class="text-muted mb-4">Please sign in with your credentials to continue.</p>
+                    <div class="mt-5">
+                        <a href="{{ url_for('login') }}" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt"></i> Sign In
+                        </a>
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary ml-2">
+                            <i class="fas fa-home"></i> Return to Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

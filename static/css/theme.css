@@ -1,0 +1,176 @@
+:root {
+    /* Light theme (default) */
+    --primary-color: #3a86ff;
+    --secondary-color: #8338ec;
+    --accent-color: #3a0ca3;
+    --success-color: #38b000;
+    --warning-color: #ffbe0b;
+    --danger-color: #ff006e;
+    --light-bg: #f8f9fa;
+    --dark-bg: #121212;
+    --text-color: #343a40;
+    --text-light: #f8f9fa;
+    --card-bg: #ffffff;
+    --border-color: #e9ecef;
+    --input-bg: #f9f9f9;
+    --input-border: #ced4da;
+    --code-bg: #f5f5f5;
+    --table-header-bg: linear-gradient(45deg, var(--dark-bg), #2c3e50);
+    --table-stripe: rgba(0, 0, 0, 0.02);
+    --table-border: #e9ecef;
+    --border-radius: 8px;
+    --box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Dark theme */
+body.dark-theme {
+    --primary-color: #4e9eff;
+    --secondary-color: #9b5de5;
+    --accent-color: #6f42c1;
+    --success-color: #4cd964;
+    --warning-color: #ffcc00;
+    --danger-color: #ff3b5c;
+    --light-bg: #212529;
+    --dark-bg: #0b0b0b;
+    --text-color: #e9ecef;
+    --text-light: #f8f9fa;
+    --card-bg: #2a2d3a;
+    --border-color: #444a54;
+    --input-bg: #1e2228;
+    --input-border: #444a54;
+    --code-bg: #1e1e1e;
+    --table-header-bg: linear-gradient(45deg, #1a1a22, #2c3e50);
+    --table-stripe: rgba(255, 255, 255, 0.03);
+    --table-border: #444a54;
+}
+
+/* Base styling with theme variables */
+body {
+    color: var(--text-color);
+    background-color: var(--light-bg);
+}
+
+.card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+.navbar {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+}
+
+.table thead th {
+    background: var(--table-header-bg);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--table-stripe);
+}
+
+.table td {
+    border-top: 1px solid var(--table-border);
+}
+
+input, select, textarea, .form-control {
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--text-color);
+}
+
+input:focus, select:focus, textarea:focus, .form-control:focus {
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+
+pre, code {
+    background-color: var(--code-bg);
+}
+
+.terminal {
+    background-color: var(--dark-bg);
+}
+
+/* Theme toggle button styling */
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.theme-toggle i {
+    font-size: 1.2rem;
+    color: var(--text-light);
+    transition: var(--transition);
+}
+
+.theme-toggle:hover i {
+    transform: scale(1.2);
+}
+
+/* Theme buttons styling */
+.theme-buttons {
+    margin-right: 10px;
+    display: flex;
+    gap: 5px;
+}
+
+.theme-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    background-color: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: var(--text-light);
+}
+
+.light-mode-btn {
+    background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+    color: #ff9e00;
+}
+
+.dark-mode-btn {
+    background: linear-gradient(145deg, #343a40, #212529);
+    color: #adb5bd;
+}
+
+.light-mode-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.dark-mode-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Active state for theme buttons */
+body:not(.dark-theme) .light-mode-btn,
+body.dark-theme .dark-mode-btn {
+    border: 2px solid var(--primary-color);
+    transform: scale(1.05);
+}
+
+/* Dark theme adjustments for specific components */
+body.dark-theme .modal-content {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+}
+
+body.dark-theme .dropdown-menu {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .dropdown-item {
+    color: var(--text-color);
+}
+
+body.dark-theme .dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}

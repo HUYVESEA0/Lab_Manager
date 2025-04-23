@@ -1,0 +1,139 @@
+{% extends "index.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_tables.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Admin Dashboard</h4>
+                </div>
+                <div class="card-body">
+                    <h2>System Overview</h2>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card mb-4">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Users</h5>
+                                    <p class="display-4">{{ stats.user_count }}</p>
+                                    <a href="{{ url_for('admin_users') }}" class="btn btn-primary">Manage Users</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card mb-4">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Lab Sessions</h5>
+                                    <p class="display-4">{{ stats.lab_session_count }}</p>
+                                    <a href="{{ url_for('admin_lab_sessions') }}" class="btn btn-primary">Manage Lab Sessions</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card mb-4">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">System Settings</h5>
+                                    <a href="{{ url_for('system_settings') }}" class="btn btn-primary">Manage Settings</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2>Recent Users</h2>
+                    <div class="table-responsive">
+                        <table class="table admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users[:5] %}
+                                <tr>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if user.role == 'admin_manager' %}badge-danger
+                                            {% elif user.role == 'admin' %}badge-warning
+                                            {% else %}badge-info{% endif %}">
+                                            {{ user.role }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-primary">View All Users</a>
+
+                    <h2 class="mt-5">Recent Activity Logs</h2>
+                    <div class="table-responsive">
+                        <table class="table admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in recent_logs %}
+                                <tr>
+                                    <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>{{ log.user.username if log.user else 'Anonymous' }}</td>
+                                    <td>{{ log.action }}</td>
+                                    <td>{{ log.details }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('activity_logs') }}" class="btn btn-primary">View All Logs</a>
+
+                    <h2 class="mt-5">Lab Session Overview</h2>
+                    <div class="table-responsive">
+                        <table class="table admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Session</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Registrations</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in recent_lab_sessions %}
+                                <tr>
+                                    <td>{{ session.title }}</td>
+                                    <td>{{ session.date }}</td>
+                                    <td>{{ 'Active' if session.is_active else 'Inactive' }}</td>
+                                    <td>{{ session.registrations|length }}/{{ session.max_students }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('admin_lab_sessions') }}" class="btn btn-primary">View All Lab Sessions</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

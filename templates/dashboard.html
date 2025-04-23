@@ -1,0 +1,72 @@
+{% extends "index.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Dashboard</h4>
+                </div>
+                <div class="card-body">
+                    <h2>Welcome {{ current_user.username }}!</h2>
+                    <p>This is your personal dashboard. You can manage your Python projects here.</p>
+                    
+                    <div class="alert alert-info">
+                        <h5>Session Information</h5>
+                        <p><strong>Number of visits to home page:</strong> {{ session_data.visits }}</p>
+                        <p><strong>Last visit:</strong> {{ session_data.last_visit }}</p>
+                        <p><strong>Login time:</strong> {{ session_data.login_time }}</p>
+                        <a href="{{ url_for('session_manager') }}" class="btn btn-sm btn-primary">Manage Sessions</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not current_user.is_admin_manager() %}
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5>Projects</h5>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Manage Projects</h5>
+                    <p class="card-text">Create and manage your Python projects.</p>
+                    <a href="#" class="btn btn-primary">View Projects</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5>Tasks</h5>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Project Tasks</h5>
+                    <p class="card-text">Track and manage tasks for your projects.</p>
+                    <a href="#" class="btn btn-primary">View Tasks</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5>Profile</h5>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Account Settings</h5>
+                    <p class="card-text">Manage your account settings and profile.</p>
+                    <a href="#" class="btn btn-primary">Edit Profile</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

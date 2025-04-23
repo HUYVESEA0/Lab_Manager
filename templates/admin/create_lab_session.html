@@ -1,0 +1,787 @@
+{% extends "index.html" %}
+
+{% block title %}Create Lab Session{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.39.0/css/tempusdominus-bootstrap-4.min.css">
+<style>
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .form-section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        color: #2c3e50;
+    }
+    
+    .verification-code-container {
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .time-range-container {
+        display: flex;
+        flex-wrap: wrap;
+    }
+    
+    .time-picker-container {
+        flex: 1;
+        min-width: 200px;
+        margin-right: 1rem;
+    }
+    
+    .field-help {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    
+    .auto-generate-btn {
+        cursor: pointer;
+        color: #007bff;
+    }
+    
+    .required-field::after {
+        content: " *";
+        color: #dc3545;
+    }
+    
+    @media (max-width: 768px) {
+        .time-picker-container {
+            flex: 100%;
+            margin-right: 0;
+            margin-bottom: 1rem;
+        }
+    }
+    
+    .qr-code-container {
+        text-align: center;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        padding: 1.5rem;
+        margin: 1rem auto;
+        max-width: 300px;
+        display: none; /* Hidden by default, shown when code is generated */
+    }
+    
+    .qr-code-container canvas {
+        margin: 0 auto;
+        display: block;
+    }
+    
+    #qrcode {
+        display: flex;
+        justify-content: center;
+        margin: 15px 0;
+    }
+    
+    .verification-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 1rem;
+        text-align: center;
+    }
+    
+    .verification-info-text {
+        margin-bottom: 1rem;
+        width: 100%;
+    }
+    
+    .verification-info-qr {
+        margin-bottom: 1rem;
+        width: 100%;
+    }
+    
+    .calendar-picker-dropdown {
+        z-index: 1060 !important; /* Ensure calendar appears above other elements */
+    }
+    
+    .date-picker-container {
+        max-width: 50%;
+        min-width: 300px;
+    }
+    
+    @media (max-width: 768px) {
+        .date-picker-container {
+            max-width: 100%;
+            min-width: 100%;
+        }
+    }
+    
+    .bootstrap-datetimepicker-widget.dropdown-menu {
+        width: auto !important;
+    }
+
+    /* Enhanced Calendar Widget Styles */
+    .bootstrap-datetimepicker-widget {
+        border-radius: 8px !important;
+        border: none !important;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.15) !important;
+        font-family: 'Roboto', sans-serif;
+        padding: 10px !important;
+        background: #fff !important;
+        width: auto !important;
+        max-width: 300px !important;
+    }
+    
+    .bootstrap-datetimepicker-widget table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 2px;
+    }
+    
+    .bootstrap-datetimepicker-widget .table-sm th, 
+    .bootstrap-datetimepicker-widget .table-sm td {
+        text-align: center;
+        border-radius: 4px;
+        padding: 8px 6px;
+        width: 32px;
+        height: 32px;
+        line-height: 1;
+        transition: all 0.2s ease;
+    }
+    
+    /* Header styling */
+    .bootstrap-datetimepicker-widget .picker-switch {
+        color: #000000 !important;
+        font-weight: 700 !important;
+        font-size: 1.1rem !important;
+        background-color: rgba(58, 134, 255, 0.1);
+        border-radius: 4px;
+        padding: 5px 0 !important;
+    }
+    
+    /* Navigation buttons */
+    .bootstrap-datetimepicker-widget .prev,
+    .bootstrap-datetimepicker-widget .next {
+        background: rgba(8, 94, 231, 0.1);
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    
+    .bootstrap-datetimepicker-widget .prev:hover,
+    .bootstrap-datetimepicker-widget .next:hover {
+        background: rgba(58, 134, 255, 0.2);
+    }
+    
+    /* Day of week headers */
+    .bootstrap-datetimepicker-widget .dow {
+        font-weight: 600;
+        color: #212529 !important; /* Darker color for better visibility */
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+    }
+    
+    /* Day cells */
+    .bootstrap-datetimepicker-widget .day {
+        font-weight: 400;
+        color: #495057;
+        cursor: pointer;
+    }
+    
+    .bootstrap-datetimepicker-widget .day:hover {
+        background-color: rgba(58, 134, 255, 0.1);
+        color: #212529;
+    }
+    
+    /* Today cell */
+    .bootstrap-datetimepicker-widget .day.today {
+        position: relative;
+        color: #000 !important;
+        font-weight: 700 !important;
+        background-color: rgba(58, 134, 255, 0.15);
+    }
+    
+    .bootstrap-datetimepicker-widget .day.today:before {
+        content: '';
+        position: absolute;
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background-color: #3a86ff;
+    }
+    
+    /* Active (selected) day */
+    .bootstrap-datetimepicker-widget .day.active {
+        background-color: #3a86ff;
+        color: #fff;
+        font-weight: 500;
+    }
+    
+    /* Weekend days */
+    .bootstrap-datetimepicker-widget .day.weekend {
+        color: #e74c3c !important; /* Brighter red for weekend days */
+        font-weight: 500;
+    }
+    
+    /* Days from other months */
+    .bootstrap-datetimepicker-widget .day.old,
+    .bootstrap-datetimepicker-widget .day.new {
+        color: #adb5bd;
+    }
+    
+    /* Disabled days */
+    .bootstrap-datetimepicker-widget .day.disabled {
+        color: #dee2e6;
+        cursor: not-allowed;
+        text-decoration: line-through;
+    }
+    
+    .bootstrap-datetimepicker-widget .day.disabled:hover {
+        background-color: transparent;
+    }
+    
+    /* Month and Year selectors */
+    .bootstrap-datetimepicker-widget .month,
+    .bootstrap-datetimepicker-widget .year,
+    .bootstrap-datetimepicker-widget .decade {
+        display: inline-block;
+        width: 30%;
+        height: 54px;
+        line-height: 54px;
+        margin: 2px;
+        cursor: pointer;
+        border-radius: 4px;
+        text-align: center;
+        color: #212529 !important; /* Darker color */
+        font-weight: 500 !important;
+        border: 1px solid #f0f0f0;
+    }
+    
+    .bootstrap-datetimepicker-widget .month:hover,
+    .bootstrap-datetimepicker-widget .year:hover,
+    .bootstrap-datetimepicker-widget .decade:hover {
+        background-color: rgba(58, 134, 255, 0.1);
+    }
+    
+    .bootstrap-datetimepicker-widget .month.active,
+    .bootstrap-datetimepicker-widget .year.active,
+    .bootstrap-datetimepicker-widget .decade.active {
+        background-color: #3a86ff !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+    
+    .bootstrap-datetimepicker-widget .month.disabled,
+    .bootstrap-datetimepicker-widget .year.disabled,
+    .bootstrap-datetimepicker-widget .decade.disabled {
+        color: #dee2e6;
+        cursor: not-allowed;
+    }
+    
+    /* Bottom toolbar */
+    .bootstrap-datetimepicker-widget .picker-switch.accordion-toggle {
+        border-top: 1px solid #eee;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    
+    .bootstrap-datetimepicker-widget .picker-switch a {
+        color: #6c757d;
+        width: 36px;
+        height: 36px;
+        line-height: 36px;
+        display: inline-block;
+        border-radius: 50%;
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+    
+    .bootstrap-datetimepicker-widget .picker-switch a:hover {
+        background-color: rgba(108, 117, 125, 0.1);
+        color: #495057;
+    }
+    
+    /* Time picker sections - hide for our date-only picker */
+    .bootstrap-datetimepicker-widget .timepicker {
+        font-family: 'Roboto', sans-serif;
+    }
+    
+    /* Fix positioning */
+    .bootstrap-datetimepicker-widget.dropdown-menu {
+        padding: 0;
+        display: block;
+        position: absolute;
+        z-index: 9999 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4><i class="fas fa-calendar-plus"></i> Tạo ca thực hành mới</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('create_lab_session') }}" id="labSessionForm">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- Basic Information Section -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-info-circle"></i> Thông tin cơ bản</h5>
+                            
+                            <div class="form-group">
+                                <label for="title" class="required-field">{{ form.title.label }}</label>
+                                {% if form.title.errors %}
+                                    {{ form.title(class="form-control is-invalid") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.title.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.title(class="form-control", placeholder="e.g. Python Basics Workshop") }}
+                                {% endif %}
+                                <small class="field-help">Enter a descriptive title for the lab session</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="description" class="required-field">{{ form.description.label }}</label>
+                                {% if form.description.errors %}
+                                    {{ form.description(class="form-control is-invalid", rows=4) }}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.description.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.description(class="form-control", rows=4, placeholder="Describe the lab session, objectives, requirements, etc.") }}
+                                {% endif %}
+                                <small class="field-help">Provide details about what will be covered in this lab session</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Schedule Section -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-clock"></i> Schedule</h5>
+                            
+                            <div class="form-group">
+                                <label for="date" class="required-field">{{ form.date.label }} (Chọn lịch)</label>
+                                <div class="date-picker-container">
+                                    <div class="input-group date" id="datePicker" data-target-input="nearest">
+                                        {% if form.date.errors %}
+                                            <input type="text" class="form-control datetimepicker-input is-invalid" 
+                                                   data-target="#datePicker" id="date" name="date">
+                                            <div class="input-group-append" data-target="#datePicker" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fas fa-calendar"></i></div>
+                                            </div>
+                                            <div class="invalid-feedback">
+                                                {% for error in form.date.errors %}
+                                                    <span>{{ error }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <input type="text" class="form-control datetimepicker-input" 
+                                                   data-target="#datePicker" id="date" name="date">
+                                            <div class="input-group-append" data-target="#datePicker" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fas fa-calendar"></i></div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <small class="field-help">Chọn ngày cho buổi thực hành</small>
+                            </div>
+                            
+                            <div class="time-range-container">
+                                <div class="form-group time-picker-container">
+                                    <label for="start_time" class="required-field">{{ form.start_time.label }}</label>
+                                    <div class="input-group date" id="startTimePicker" data-target-input="nearest">
+                                        {% if form.start_time.errors %}
+                                            <input type="text" class="form-control datetimepicker-input is-invalid" 
+                                                   data-target="#startTimePicker" id="start_time" name="start_time">
+                                            <div class="input-group-append" data-target="#startTimePicker" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fas fa-clock"></i></div>
+                                            </div>
+                                            <div class="invalid-feedback">
+                                                {% for error in form.start_time.errors %}
+                                                    <span>{{ error }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <input type="text" class="form-control datetimepicker-input" 
+                                                   data-target="#startTimePicker" id="start_time" name="start_time">
+                                            <div class="input-group-append" data-target="#startTimePicker" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fas fa-clock"></i></div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <small class="field-help">Chọn thời gian bắt đầu</small>
+                                </div>
+                                
+                                <div class="form-group time-picker-container">
+                                    <label for="end_time" class="required-field">{{ form.end_time.label }}</label>
+                                    <div class="input-group date" id="endTimePicker" data-target-input="nearest">
+                                        {% if form.end_time.errors %}
+                                            <input type="text" class="form-control datetimepicker-input is-invalid" 
+                                                   data-target="#endTimePicker" id="end_time" name="end_time">
+                                            <div class="input-group-append" data-target="#endTimePicker" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fas fa-clock"></i></div>
+                                            </div>
+                                            <div class="invalid-feedback">
+                                                {% for error in form.end_time.errors %}
+                                                    <span>{{ error }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <input type="text" class="form-control datetimepicker-input" 
+                                                   data-target="#endTimePicker" id="end_time" name="end_time">
+                                            <div class="input-group-append" data-target="#endTimePicker" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fas fa-clock"></i></div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <small class="field-help">Select end time</small>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info mt-3" id="durationAlert">
+                                <i class="fas fa-info-circle"></i> Duration: <span id="sessionDuration">Please select start and end times</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Location & Capacity Section -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-map-marker-alt"></i> Location & Capacity</h5>
+                            
+                            <div class="form-group">
+                                <label for="location" class="required-field">{{ form.location.label }}</label>
+                                {% if form.location.errors %}
+                                    {{ form.location(class="form-control is-invalid") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.location.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.location(class="form-control", placeholder="e.g. Room 101, CS Building") }}
+                                {% endif %}
+                                <small class="field-help">Enter the location where the lab session will be held</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="max_students" class="required-field">{{ form.max_students.label }}</label>
+                                {% if form.max_students.errors %}
+                                    {{ form.max_students(class="form-control is-invalid", type="number", min="1", max="100") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.max_students.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.max_students(class="form-control", type="number", min="1", max="100", value="20") }}
+                                {% endif %}
+                                <small class="field-help">Maximum number of students that can register for this session</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Additional Settings Section -->
+                        <div class="form-section">
+                            <h5 class="form-section-title"><i class="fas fa-cog"></i> Additional Settings</h5>
+                            
+                            <div class="form-group">
+                                <div class="custom-control custom-switch">
+                                    {{ form.is_active(class="custom-control-input", checked=true) }}
+                                    <label class="custom-control-label" for="is_active">
+                                        {{ form.is_active.label }}
+                                    </label>
+                                </div>
+                                <small class="field-help">If checked, students will be able to register for this session</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="verification_code">{{ form.verification_code.label }}</label>
+                                <div class="input-group">
+                                    {% if form.verification_code.errors %}
+                                        {{ form.verification_code(class="form-control is-invalid", placeholder="Để trống để tự động tạo") }}
+                                        <div class="input-group-append">
+                                            <button class="btn btn-outline-secondary" type="button" id="generateCode">
+                                                <i class="fas fa-random"></i> Tạo mã
+                                            </button>
+                                        </div>
+                                        <div class="invalid-feedback">
+                                            {% for error in form.verification_code.errors %}
+                                                <span>{{ error }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        {{ form.verification_code(class="form-control", placeholder="Để trống để tự động tạo") }}
+                                        <div class="input-group-append">
+                                            <button class="btn btn-outline-secondary" type="button" id="generateCode">
+                                                <i class="fas fa-random"></i> Tạo mã
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <small class="field-help">Mã sinh viên sẽ sử dụng để check-in vào buổi thực hành. Nếu để trống, mã ngẫu nhiên sẽ được tạo.</small>
+                                
+                                <div class="verification-code-container mt-3">
+                                    <div class="verification-info">
+                                        <div class="verification-info-text">
+                                            <p><strong>Lưu ý:</strong> Mã này sẽ được hiển thị cho bạn sau khi tạo buổi thực hành. Hãy đảm bảo chỉ chia sẻ với những người tham dự được ủy quyền.</p>
+                                            <p class="mb-2"><strong>Verification Code:</strong> <span id="displayVerificationCode">-</span></p>
+                                        </div>
+                                        <div class="verification-info-qr">
+                                            <button type="button" class="btn btn-primary" id="generateQR">
+                                                <i class="fas fa-qrcode"></i> Tạo mã QR
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="qr-code-container">
+                                        <h5>Mã QR cho Verification Code</h5>
+                                        <div id="qrcode"></div>
+                                        <p class="mt-2 mb-0">Sinh viên có thể quét mã QR này để check-in</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group text-center mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save"></i> Create Lab Session
+                            </button>
+                            <a href="{{ url_for('admin_lab_sessions') }}" class="btn btn-secondary btn-lg ml-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.39.0/js/tempusdominus-bootstrap-4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Initialize date picker with enhanced configuration
+        $('#datePicker').datetimepicker({
+            format: 'YYYY-MM-DD',
+            minDate: moment().subtract(1, 'days'),
+            defaultDate: moment(),
+            locale: 'vi',
+            icons: {
+                time: 'fas fa-clock',
+                date: 'fas fa-calendar',
+                up: 'fas fa-arrow-up',
+                down: 'fas fa-arrow-down',
+                previous: 'fas fa-chevron-left',
+                next: 'fas fa-chevron-right',
+                today: 'fas fa-calendar-check',
+                clear: 'fas fa-trash',
+                close: 'fas fa-times'
+            },
+            buttons: {
+                showToday: true,
+                showClear: true,
+                showClose: true
+            },
+            keepOpen: false,
+            allowInputToggle: true,
+            widgetPositioning: {
+                horizontal: 'auto',
+                vertical: 'bottom'
+            },
+            // Improve animation
+            calendarWeeks: false,
+            showTodayButton: true,
+            showClear: true,
+            showClose: true,
+            toolbarPlacement: 'bottom',
+            // Add week names in Vietnamese
+            daysOfWeekShort: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
+            // Localize month names in Vietnamese for better context
+            monthsShort: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 
+                         'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'],
+            // Enhance tooltip texts
+            tooltips: {
+                today: 'Hôm nay',
+                clear: 'Xóa lựa chọn',
+                close: 'Đóng',
+                selectMonth: 'Chọn tháng',
+                prevMonth: 'Tháng trước',
+                nextMonth: 'Tháng sau',
+                selectYear: 'Chọn năm',
+                prevYear: 'Năm trước',
+                nextYear: 'Năm sau',
+                selectDecade: 'Chọn thập kỷ',
+                prevDecade: 'Thập kỷ trước',
+                nextDecade: 'Thập kỷ sau'
+            }
+        });
+        
+        // Fix positioning issues by adding a class after initialization
+        $('.bootstrap-datetimepicker-widget').addClass('calendar-picker-dropdown');
+        
+        // Handle the calendar closing event to ensure proper UI state
+        $('#datePicker').on('hide.datetimepicker', function() {
+            // Force redraw on next open to ensure proper positioning
+            setTimeout(function() {
+                $(window).trigger('resize');
+            }, 10);
+        });
+        
+        // Ensure calendar dropdown is properly sized and positioned when opened
+        $('#datePicker').on('show.datetimepicker', function() {
+            // Adjust z-index to make sure it appears on top of all other elements
+            $('.bootstrap-datetimepicker-widget').css('z-index', '9999');
+            
+            // Adjust the width to match content
+            let containerWidth = $('.date-picker-container').width();
+            let calendarWidth = Math.min(containerWidth, 300);
+            $('.bootstrap-datetimepicker-widget').css('max-width', calendarWidth + 'px');
+        });
+        
+        // Initialize time pickers
+        $('#startTimePicker').datetimepicker({
+            format: 'HH:mm',
+            stepping: 15,
+            defaultDate: moment().hours(9).minutes(0).seconds(0),
+            locale: 'vi'
+        });
+        
+        $('#endTimePicker').datetimepicker({
+            format: 'HH:mm',
+            stepping: 15,
+            defaultDate: moment().hours(11).minutes(0).seconds(0),
+            locale: 'vi'
+        });
+        
+        // Calculate and display session duration
+        function updateDuration() {
+            const startTime = $('#startTimePicker').datetimepicker('viewDate');
+            const endTime = $('#endTimePicker').datetimepicker('viewDate');
+            
+            if (startTime && endTime) {
+                const duration = moment.duration(endTime.diff(startTime));
+                const hours = Math.floor(duration.asHours());
+                const minutes = duration.minutes();
+                
+                let durationText = '';
+                if (hours > 0) {
+                    durationText += hours + ' hour' + (hours !== 1 ? 's' : '');
+                }
+                if (minutes > 0) {
+                    if (hours > 0) durationText += ' and ';
+                    durationText += minutes + ' minute' + (minutes !== 1 ? 's' : '');
+                }
+                
+                if (duration.asMinutes() <= 0) {
+                    $('#durationAlert').removeClass('alert-info').addClass('alert-danger');
+                    $('#sessionDuration').text('Invalid duration: End time must be after start time');
+                } else {
+                    $('#durationAlert').removeClass('alert-danger').addClass('alert-info');
+                    $('#sessionDuration').text(durationText);
+                }
+            }
+        }
+        
+        $('#startTimePicker, #endTimePicker').on('change.datetimepicker', function(e) {
+            updateDuration();
+        });
+        
+        // Initialize duration on page load
+        setTimeout(updateDuration, 500);
+        
+        // QR code object to store reference
+        let qrcode = null;
+        
+        // Generate random verification code
+        $('#generateCode').click(function() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluded similar-looking characters
+            let code = '';
+            for (let i = 0; i < 6; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            $('#verification_code').val(code);
+            $('#displayVerificationCode').text(code);
+            
+            // Update QR code if it exists
+            if (qrcode) {
+                qrcode.clear();
+                qrcode.makeCode(code);
+            }
+        });
+        
+        // Generate QR code for verification code
+        $('#generateQR').click(function() {
+            const verificationCode = $('#verification_code').val();
+            
+            if (!verificationCode) {
+                alert('Vui lòng tạo hoặc nhập mã xác minh trước.');
+                return;
+            }
+            
+            $('#displayVerificationCode').text(verificationCode);
+            $('.qr-code-container').show();
+            
+            // Clear previous QR code if it exists
+            if (qrcode) {
+                qrcode.clear();
+            } else {
+                // Initialize QR code
+                qrcode = new QRCode(document.getElementById("qrcode"), {
+                    text: verificationCode,
+                    width: 128,
+                    height: 128,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+            
+            // Update with current code
+            qrcode.makeCode(verificationCode);
+        });
+        
+        // Update QR when verification code changes manually
+        $('#verification_code').on('input', function() {
+            const code = $(this).val();
+            $('#displayVerificationCode').text(code || '-');
+            
+            // Update QR code if it exists and is visible
+            if (qrcode && $('.qr-code-container').is(':visible')) {
+                qrcode.clear();
+                qrcode.makeCode(code);
+            }
+        });
+        
+        // Form validation
+        $('#labSessionForm').submit(function(e) {
+            const startTime = $('#startTimePicker').datetimepicker('viewDate');
+            const endTime = $('#endTimePicker').datetimepicker('viewDate');
+            
+            if (startTime && endTime && endTime <= startTime) {
+                e.preventDefault();
+                alert('End time must be after start time');
+                $('#endTimePicker').focus();
+            }
+        });
+    });
+</script>
+{% endblock %}

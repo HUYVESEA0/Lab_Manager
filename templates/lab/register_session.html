@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Register for Lab Session</h1>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.notes.label }}<br>
+        {{ form.notes(rows=4, cols=32) }}
+    </p>
+    <p>{{ form.submit() }}</p>
+</form>
+{% endblock %}
