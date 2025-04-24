@@ -1,20 +1,23 @@
-# sqlalchemy/naming.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# sql/naming.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: allow-untyped-defs, allow-untyped-calls
 
 """Establish constraint and index naming conventions.
 
 
 """
 
+from __future__ import annotations
+
 import re
 
 from . import events  # noqa
-from .elements import _NONE_NAME
-from .elements import conv
+from .base import _NONE_NAME
+from .elements import conv as conv
 from .schema import CheckConstraint
 from .schema import Column
 from .schema import Constraint
@@ -27,7 +30,7 @@ from .. import event
 from .. import exc
 
 
-class ConventionDict(object):
+class ConventionDict:
     def __init__(self, const, table, convention):
         self.const = const
         self._is_fk = isinstance(const, ForeignKeyConstraint)
@@ -137,7 +140,6 @@ _prefix_dict = {
 
 
 def _get_convention(dict_, key):
-
     for super_ in key.__mro__:
         if super_ in _prefix_dict and _prefix_dict[super_] in dict_:
             return dict_[_prefix_dict[super_]]

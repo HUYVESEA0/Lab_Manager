@@ -1,20 +1,40 @@
 # sql/functions.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""SQL function API, factories, and built-in functions.
 
-"""
+"""SQL function API, factories, and built-in functions."""
+
+from __future__ import annotations
+
+import datetime
+import decimal
+from typing import Any
+from typing import cast
+from typing import Dict
+from typing import List
+from typing import Mapping
+from typing import Optional
+from typing import overload
+from typing import Sequence
+from typing import Tuple
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
+
 from . import annotation
 from . import coercions
 from . import operators
 from . import roles
 from . import schema
 from . import sqltypes
+from . import type_api
 from . import util as sqlutil
+from ._typing import is_table_value_type
 from .base import _entity_namespace
 from .base import ColumnCollection
 from .base import Executable
@@ -36,18 +56,44 @@ from .elements import WithinGroup
 from .selectable import FromClause
 from .selectable import Select
 from .selectable import TableValuedAlias
+from .sqltypes import TableValueType
+from .type_api import TypeEngine
 from .visitors import InternalTraversal
-from .visitors import TraversibleType
 from .. import util
 
 
-_registry = util.defaultdict(dict)
+if TYPE_CHECKING:
+    from ._typing import _ByArgument
+    from ._typing import _ColumnExpressionArgument
+    from ._typing import _ColumnExpressionOrLiteralArgument
+    from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _StarOrOne
+    from ._typing import _TypeEngineArgument
+    from .base import _EntityNamespace
+    from .elements import ClauseElement
+    from .elements import KeyedColumnElement
+    from .elements import TableValuedColumn
+    from .operators import OperatorType
+    from ..engine.base import Connection
+    from ..engine.cursor import CursorResult
+    from ..engine.interfaces import _CoreMultiExecuteParams
+    from ..engine.interfaces import CoreExecuteOptionsParameter
+    from ..util.typing import Self
+
+_T = TypeVar("_T", bound=Any)
+_S = TypeVar("_S", bound=Any)
+
+_registry: util.defaultdict[str, Dict[str, Type[Function[Any]]]] = (
+    util.defaultdict(dict)
+)
 
 
-def register_function(identifier, fn, package="_default"):
+def register_function(
+    identifier: str, fn: Type[Function[Any]], package: str = "_default"
+) -> None:
     """Associate a callable with a particular func. name.
 
-    This is normally called by _GenericMeta, but is also
+    This is normally called by GenericFunction, but is also
     available by itself so that a non-Function construct
     can be associated with the :data:`.func` accessor (i.e.
     CAST, EXTRACT).
@@ -55,7 +101,7 @@ def register_function(identifier, fn, package="_default"):
     """
     reg = _registry[package]
 
-    identifier = util.text_type(identifier).lower()
+    identifier = str(identifier).lower()
 
     # Check if a function with the same identifier is registered.
     if identifier in reg:
@@ -66,8 +112,13 @@ def register_function(identifier, fn, package="_default"):
     reg[identifier] = fn
 
 
-class FunctionElement(Executable, ColumnElement, FromClause, Generative):
+class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
     """Base for SQL function-oriented constructs.
+
+    This is a `generic type <https://peps.python.org/pep-0484/#generics>`_,
+    meaning that type checkers and IDEs can be instructed on the types to
+    expect in a :class:`_engine.Result` for this function. See
+    :class:`.GenericFunction` for an example of how this is done.
 
     .. seealso::
 
@@ -89,13 +140,20 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         ("_table_value_type", InternalTraversal.dp_has_cache_key),
     ]
 
-    packagenames = ()
+    packagenames: Tuple[str, ...] = ()
 
     _has_args = False
     _with_ordinality = False
-    _table_value_type = None
+    _table_value_type: Optional[TableValueType] = None
 
-    def __init__(self, *clauses, **kwargs):
+    # some attributes that are defined between both ColumnElement and
+    # FromClause are set to Any here to avoid typing errors
+    primary_key: Any
+    _is_clone_of: Any
+
+    clause_expr: Grouping[Any]
+
+    def __init__(self, *clauses: _ColumnExpressionOrLiteralArgument[Any]):
         r"""Construct a :class:`.FunctionElement`.
 
         :param \*clauses: list of column expressions that form the arguments
@@ -111,7 +169,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             :class:`.Function`
 
         """
-        args = [
+        args: Sequence[_ColumnExpressionArgument[Any]] = [
             coercions.expect(
                 roles.ExpressionElementRole,
                 c,
@@ -121,26 +179,29 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             for c in clauses
         ]
         self._has_args = self._has_args or bool(args)
-        self.clause_expr = ClauseList(
-            operator=operators.comma_op, group_contents=True, *args
-        ).self_group()
+        self.clause_expr = Grouping(
+            ClauseList(operator=operators.comma_op, group_contents=True, *args)
+        )
 
     _non_anon_label = None
 
     @property
-    def _proxy_key(self):
-        return super(FunctionElement, self)._proxy_key or getattr(
-            self, "name", None
-        )
+    def _proxy_key(self) -> Any:
+        return super()._proxy_key or getattr(self, "name", None)
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options
-    ):
+        self,
+        connection: Connection,
+        distilled_params: _CoreMultiExecuteParams,
+        execution_options: CoreExecuteOptionsParameter,
+    ) -> CursorResult[Any]:
         return connection._execute_function(
-            self, multiparams, params, execution_options
+            self, distilled_params, execution_options
         )
 
-    def scalar_table_valued(self, name, type_=None):
+    def scalar_table_valued(
+        self, name: str, type_: Optional[_TypeEngineArgument[_T]] = None
+    ) -> ScalarFunctionColumn[_T]:
         """Return a column expression that's against this
         :class:`_functions.FunctionElement` as a scalar
         table-valued expression.
@@ -150,12 +211,14 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         construct, except no FROM clause is generated; the function is rendered
         in the similar way as a scalar subquery.
 
-        E.g.::
+        E.g.:
+
+        .. sourcecode:: pycon+sql
 
             >>> from sqlalchemy import func, select
             >>> fn = func.jsonb_each("{'k', 'v'}").scalar_table_valued("key")
             >>> print(select(fn))
-            SELECT (jsonb_each(:jsonb_each_1)).key
+            {printsql}SELECT (jsonb_each(:jsonb_each_1)).key
 
         .. versionadded:: 1.4.0b2
 
@@ -171,32 +234,39 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
 
         return ScalarFunctionColumn(self, name, type_)
 
-    def table_valued(self, *expr, **kw):
+    def table_valued(
+        self, *expr: _ColumnExpressionOrStrLabelArgument[Any], **kw: Any
+    ) -> TableValuedAlias:
         r"""Return a :class:`_sql.TableValuedAlias` representation of this
         :class:`_functions.FunctionElement` with table-valued expressions added.
 
-        e.g.::
+        e.g.:
 
-            >>> fn = (
-            ...     func.generate_series(1, 5).
-            ...     table_valued("value", "start", "stop", "step")
+        .. sourcecode:: pycon+sql
+
+            >>> fn = func.generate_series(1, 5).table_valued(
+            ...     "value", "start", "stop", "step"
             ... )
 
             >>> print(select(fn))
-            SELECT anon_1.value, anon_1.start, anon_1.stop, anon_1.step
-            FROM generate_series(:generate_series_1, :generate_series_2) AS anon_1
+            {printsql}SELECT anon_1.value, anon_1.start, anon_1.stop, anon_1.step
+            FROM generate_series(:generate_series_1, :generate_series_2) AS anon_1{stop}
 
             >>> print(select(fn.c.value, fn.c.stop).where(fn.c.value > 2))
-            SELECT anon_1.value, anon_1.stop
+            {printsql}SELECT anon_1.value, anon_1.stop
             FROM generate_series(:generate_series_1, :generate_series_2) AS anon_1
-            WHERE anon_1.value > :value_1
+            WHERE anon_1.value > :value_1{stop}
 
         A WITH ORDINALITY expression may be generated by passing the keyword
-        argument "with_ordinality"::
+        argument "with_ordinality":
 
-            >>> fn = func.generate_series(4, 1, -1).table_valued("gen", with_ordinality="ordinality")
+        .. sourcecode:: pycon+sql
+
+            >>> fn = func.generate_series(4, 1, -1).table_valued(
+            ...     "gen", with_ordinality="ordinality"
+            ... )
             >>> print(select(fn))
-            SELECT anon_1.gen, anon_1.ordinality
+            {printsql}SELECT anon_1.gen, anon_1.ordinality
             FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3) WITH ORDINALITY AS anon_1
 
         :param \*expr: A series of string column names that will be added to the
@@ -249,22 +319,24 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             expr += (with_ordinality,)
             new_func._with_ordinality = True
 
-        new_func.type = new_func._table_value_type = sqltypes.TableValueType(
-            *expr
-        )
+        new_func.type = new_func._table_value_type = TableValueType(*expr)
 
         return new_func.alias(name=name, joins_implicitly=joins_implicitly)
 
-    def column_valued(self, name=None, joins_implicitly=False):
+    def column_valued(
+        self, name: Optional[str] = None, joins_implicitly: bool = False
+    ) -> TableValuedColumn[_T]:
         """Return this :class:`_functions.FunctionElement` as a column expression that
         selects from itself as a FROM clause.
 
-        E.g.::
+        E.g.:
+
+        .. sourcecode:: pycon+sql
 
             >>> from sqlalchemy import select, func
             >>> gs = func.generate_series(1, 5, -1).column_valued()
             >>> print(select(gs))
-            SELECT anon_1
+            {printsql}SELECT anon_1
             FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3) AS anon_1
 
         This is shorthand for::
@@ -294,17 +366,19 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
 
         return self.alias(name=name, joins_implicitly=joins_implicitly).column
 
-    @property
-    def columns(self):
+    @util.ro_non_memoized_property
+    def columns(self) -> ColumnCollection[str, KeyedColumnElement[Any]]:  # type: ignore[override]  # noqa: E501
         r"""The set of columns exported by this :class:`.FunctionElement`.
 
         This is a placeholder collection that allows the function to be
-        placed in the FROM clause of a statement::
+        placed in the FROM clause of a statement:
+
+        .. sourcecode:: pycon+sql
 
             >>> from sqlalchemy import column, select, func
-            >>> stmt = select(column('x'), column('y')).select_from(func.myfunction())
+            >>> stmt = select(column("x"), column("y")).select_from(func.myfunction())
             >>> print(stmt)
-            SELECT x, y FROM myfunction()
+            {printsql}SELECT x, y FROM myfunction()
 
         The above form is a legacy feature that is now superseded by the
         fully capable :meth:`_functions.FunctionElement.table_valued`
@@ -316,33 +390,51 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             SQL function expressions.
 
         """  # noqa: E501
+        return self.c
+
+    @util.ro_memoized_property
+    def c(self) -> ColumnCollection[str, KeyedColumnElement[Any]]:  # type: ignore[override]  # noqa: E501
+        """synonym for :attr:`.FunctionElement.columns`."""
 
         return ColumnCollection(
             columns=[(col.key, col) for col in self._all_selected_columns]
         )
 
     @property
-    def _all_selected_columns(self):
-        if self.type._is_table_value:
-            cols = self.type._elements
+    def _all_selected_columns(self) -> Sequence[KeyedColumnElement[Any]]:
+        if is_table_value_type(self.type):
+            # TODO: this might not be fully accurate
+            cols = cast(
+                "Sequence[KeyedColumnElement[Any]]", self.type._elements
+            )
         else:
             cols = [self.label(None)]
 
         return cols
 
     @property
-    def exported_columns(self):
+    def exported_columns(  # type: ignore[override]
+        self,
+    ) -> ColumnCollection[str, KeyedColumnElement[Any]]:
         return self.columns
 
     @HasMemoized.memoized_attribute
-    def clauses(self):
+    def clauses(self) -> ClauseList:
         """Return the underlying :class:`.ClauseList` which contains
         the arguments for this :class:`.FunctionElement`.
 
         """
-        return self.clause_expr.element
+        return cast(ClauseList, self.clause_expr.element)
 
-    def over(self, partition_by=None, order_by=None, rows=None, range_=None):
+    def over(
+        self,
+        *,
+        partition_by: Optional[_ByArgument] = None,
+        order_by: Optional[_ByArgument] = None,
+        rows: Optional[Tuple[Optional[int], Optional[int]]] = None,
+        range_: Optional[Tuple[Optional[int], Optional[int]]] = None,
+        groups: Optional[Tuple[Optional[int], Optional[int]]] = None,
+    ) -> Over[_T]:
         """Produce an OVER clause against this function.
 
         Used against aggregate or so-called "window" functions,
@@ -350,12 +442,13 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
 
         The expression::
 
-            func.row_number().over(order_by='x')
+            func.row_number().over(order_by="x")
 
         is shorthand for::
 
             from sqlalchemy import over
-            over(func.row_number(), order_by='x')
+
+            over(func.row_number(), order_by="x")
 
         See :func:`_expression.over` for a full description.
 
@@ -372,9 +465,12 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             order_by=order_by,
             rows=rows,
             range_=range_,
+            groups=groups,
         )
 
-    def within_group(self, *order_by):
+    def within_group(
+        self, *order_by: _ColumnExpressionArgument[Any]
+    ) -> WithinGroup[_T]:
         """Produce a WITHIN GROUP (ORDER BY expr) clause against this function.
 
         Used against so-called "ordered set aggregate" and "hypothetical
@@ -382,9 +478,6 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         :class:`.rank`, :class:`.dense_rank`, etc.
 
         See :func:`_expression.within_group` for a full description.
-
-        .. versionadded:: 1.1
-
 
         .. seealso::
 
@@ -395,7 +488,19 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         """
         return WithinGroup(self, *order_by)
 
-    def filter(self, *criterion):
+    @overload
+    def filter(self) -> Self: ...
+
+    @overload
+    def filter(
+        self,
+        __criterion0: _ColumnExpressionArgument[bool],
+        *criterion: _ColumnExpressionArgument[bool],
+    ) -> FunctionFilter[_T]: ...
+
+    def filter(
+        self, *criterion: _ColumnExpressionArgument[bool]
+    ) -> Union[Self, FunctionFilter[_T]]:
         """Produce a FILTER clause against this function.
 
         Used against aggregate and window functions,
@@ -408,9 +513,8 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         is shorthand for::
 
             from sqlalchemy import funcfilter
-            funcfilter(func.count(1), True)
 
-        .. versionadded:: 1.0.0
+            funcfilter(func.count(1), True)
 
         .. seealso::
 
@@ -427,7 +531,9 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             return self
         return FunctionFilter(self, *criterion)
 
-    def as_comparison(self, left_index, right_index):
+    def as_comparison(
+        self, left_index: int, right_index: int
+    ) -> FunctionAsBinary:
         """Interpret this expression as a boolean comparison between two
         values.
 
@@ -464,7 +570,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         An ORM example is as follows::
 
             class Venue(Base):
-                __tablename__ = 'venue'
+                __tablename__ = "venue"
                 id = Column(Integer, primary_key=True)
                 name = Column(String)
 
@@ -472,9 +578,10 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
                     "Venue",
                     primaryjoin=func.instr(
                         remote(foreign(name)), name + "/"
-                    ).as_comparison(1, 2) == 1,
+                    ).as_comparison(1, 2)
+                    == 1,
                     viewonly=True,
-                    order_by=name
+                    order_by=name,
                 )
 
         Above, the "Venue" class can load descendant "Venue" objects by
@@ -502,10 +609,12 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         return FunctionAsBinary(self, left_index, right_index)
 
     @property
-    def _from_objects(self):
+    def _from_objects(self) -> Any:
         return self.clauses._from_objects
 
-    def within_group_type(self, within_group):
+    def within_group_type(
+        self, within_group: WithinGroup[_S]
+    ) -> Optional[TypeEngine[_S]]:
         """For types that define their return type as based on the criteria
         within a WITHIN GROUP (ORDER BY) expression, called by the
         :class:`.WithinGroup` construct.
@@ -517,7 +626,9 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
 
         return None
 
-    def alias(self, name=None, joins_implicitly=False):
+    def alias(
+        self, name: Optional[str] = None, joins_implicitly: bool = False
+    ) -> TableValuedAlias:
         r"""Produce a :class:`_expression.Alias` construct against this
         :class:`.FunctionElement`.
 
@@ -541,20 +652,24 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         :meth:`_functions.FunctionElement.table_valued` method first to
         establish named columns.
 
-        e.g.::
+        e.g.:
+
+        .. sourcecode:: pycon+sql
 
             >>> from sqlalchemy import func, select, column
             >>> data_view = func.unnest([1, 2, 3]).alias("data_view")
             >>> print(select(data_view.column))
-            SELECT data_view
+            {printsql}SELECT data_view
             FROM unnest(:unnest_1) AS data_view
 
         The :meth:`_functions.FunctionElement.column_valued` method provides
-        a shortcut for the above pattern::
+        a shortcut for the above pattern:
+
+        .. sourcecode:: pycon+sql
 
             >>> data_view = func.unnest([1, 2, 3]).column_valued("data_view")
             >>> print(select(data_view))
-            SELECT data_view
+            {printsql}SELECT data_view
             FROM unnest(:unnest_1) AS data_view
 
         .. versionadded:: 1.4.0b2  Added the ``.column`` accessor
@@ -586,12 +701,12 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
 
         return TableValuedAlias._construct(
             self,
-            name,
+            name=name,
             table_value_type=self.type,
             joins_implicitly=joins_implicitly,
         )
 
-    def select(self):
+    def select(self) -> Select[Tuple[_T]]:
         """Produce a :func:`_expression.select` construct
         against this :class:`.FunctionElement`.
 
@@ -600,56 +715,19 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             s = select(function_element)
 
         """
-        s = Select._create_select(self)
+        s: Select[Any] = Select(self)
         if self._execution_options:
             s = s.execution_options(**self._execution_options)
         return s
 
-    @util.deprecated_20(
-        ":meth:`.FunctionElement.scalar`",
-        alternative="Scalar execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.scalar` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.scalar` method of "
-        ":class:`.Session`.",
-    )
-    def scalar(self):
-        """Execute this :class:`.FunctionElement` against an embedded
-        'bind' and return a scalar value.
-
-        This first calls :meth:`~.FunctionElement.select` to
-        produce a SELECT construct.
-
-        Note that :class:`.FunctionElement` can be passed to
-        the :meth:`.Connectable.scalar` method of :class:`_engine.Connection`
-        or :class:`_engine.Engine`.
-
-        """
-        return self.select().execute().scalar()
-
-    @util.deprecated_20(
-        ":meth:`.FunctionElement.execute`",
-        alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.execute` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`.",
-    )
-    def execute(self):
-        """Execute this :class:`.FunctionElement` against an embedded
-        'bind'.
-
-        This first calls :meth:`~.FunctionElement.select` to
-        produce a SELECT construct.
-
-        Note that :class:`.FunctionElement` can be passed to
-        the :meth:`.Connectable.execute` method of :class:`_engine.Connection`
-        or :class:`_engine.Engine`.
-
-        """
-        return self.select().execute()
-
-    def _bind_param(self, operator, obj, type_=None, **kw):
+    def _bind_param(
+        self,
+        operator: OperatorType,
+        obj: Any,
+        type_: Optional[TypeEngine[_T]] = None,
+        expanding: bool = False,
+        **kw: Any,
+    ) -> BindParameter[_T]:
         return BindParameter(
             None,
             obj,
@@ -657,10 +735,11 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             _compared_to_type=self.type,
             unique=True,
             type_=type_,
-            **kw
+            expanding=expanding,
+            **kw,
         )
 
-    def self_group(self, against=None):
+    def self_group(self, against: Optional[OperatorType] = None) -> ClauseElement:  # type: ignore[override]  # noqa E501
         # for the moment, we are parenthesizing all array-returning
         # expressions against getitem.  This may need to be made
         # more portable if in the future we support other DBs
@@ -670,10 +749,10 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         ):
             return Grouping(self)
         else:
-            return super(FunctionElement, self).self_group(against=against)
+            return super().self_group(against=against)
 
     @property
-    def entity_namespace(self):
+    def entity_namespace(self) -> _EntityNamespace:
         """overrides FromClause.entity_namespace as functions are generally
         column expressions and not FromClauses.
 
@@ -683,7 +762,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         return _entity_namespace(self.clause_expr)
 
 
-class FunctionAsBinary(BinaryExpression):
+class FunctionAsBinary(BinaryExpression[Any]):
     _traverse_internals = [
         ("sql_function", InternalTraversal.dp_clauseelement),
         ("left_index", InternalTraversal.dp_plain_obj),
@@ -691,10 +770,16 @@ class FunctionAsBinary(BinaryExpression):
         ("modifiers", InternalTraversal.dp_plain_dict),
     ]
 
-    def _gen_cache_key(self, anon_map, bindparams):
+    sql_function: FunctionElement[Any]
+    left_index: int
+    right_index: int
+
+    def _gen_cache_key(self, anon_map: Any, bindparams: Any) -> Any:
         return ColumnElement._gen_cache_key(self, anon_map, bindparams)
 
-    def __init__(self, fn, left_index, right_index):
+    def __init__(
+        self, fn: FunctionElement[Any], left_index: int, right_index: int
+    ):
         self.sql_function = fn
         self.left_index = left_index
         self.right_index = right_index
@@ -706,23 +791,30 @@ class FunctionAsBinary(BinaryExpression):
         self.modifiers = {}
 
     @property
-    def left(self):
+    def left_expr(self) -> ColumnElement[Any]:
         return self.sql_function.clauses.clauses[self.left_index - 1]
 
-    @left.setter
-    def left(self, value):
+    @left_expr.setter
+    def left_expr(self, value: ColumnElement[Any]) -> None:
         self.sql_function.clauses.clauses[self.left_index - 1] = value
 
     @property
-    def right(self):
+    def right_expr(self) -> ColumnElement[Any]:
         return self.sql_function.clauses.clauses[self.right_index - 1]
 
-    @right.setter
-    def right(self, value):
+    @right_expr.setter
+    def right_expr(self, value: ColumnElement[Any]) -> None:
         self.sql_function.clauses.clauses[self.right_index - 1] = value
 
+    if not TYPE_CHECKING:
+        # mypy can't accommodate @property to replace an instance
+        # variable
 
-class ScalarFunctionColumn(NamedColumn):
+        left = left_expr
+        right = right_expr
+
+
+class ScalarFunctionColumn(NamedColumn[_T]):
     __visit_name__ = "scalar_function_column"
 
     _traverse_internals = [
@@ -734,40 +826,56 @@ class ScalarFunctionColumn(NamedColumn):
     is_literal = False
     table = None
 
-    def __init__(self, fn, name, type_=None):
+    def __init__(
+        self,
+        fn: FunctionElement[_T],
+        name: str,
+        type_: Optional[_TypeEngineArgument[_T]] = None,
+    ):
         self.fn = fn
         self.name = name
-        self.type = sqltypes.to_instance(type_)
+
+        # if type is None, we get NULLTYPE, which is our _T.  But I don't
+        # know how to get the overloads to express that correctly
+        self.type = type_api.to_instance(type_)  # type: ignore
 
 
-class _FunctionGenerator(object):
+class _FunctionGenerator:
     """Generate SQL function expressions.
 
     :data:`.func` is a special object instance which generates SQL
-    functions based on name-based attributes, e.g.::
+    functions based on name-based attributes, e.g.:
+
+    .. sourcecode:: pycon+sql
 
         >>> print(func.count(1))
-        count(:param_1)
+        {printsql}count(:param_1)
 
     The returned object is an instance of :class:`.Function`, and  is a
-    column-oriented SQL element like any other, and is used in that way::
+    column-oriented SQL element like any other, and is used in that way:
+
+    .. sourcecode:: pycon+sql
 
         >>> print(select(func.count(table.c.id)))
-        SELECT count(sometable.id) FROM sometable
+        {printsql}SELECT count(sometable.id) FROM sometable
 
     Any name can be given to :data:`.func`. If the function name is unknown to
     SQLAlchemy, it will be rendered exactly as is. For common SQL functions
     which SQLAlchemy is aware of, the name may be interpreted as a *generic
-    function* which will be compiled appropriately to the target database::
+    function* which will be compiled appropriately to the target database:
+
+    .. sourcecode:: pycon+sql
 
         >>> print(func.current_timestamp())
-        CURRENT_TIMESTAMP
+        {printsql}CURRENT_TIMESTAMP
 
     To call functions which are present in dot-separated packages,
-    specify them in the same manner::
+    specify them in the same manner:
+
+    .. sourcecode:: pycon+sql
 
         >>> print(func.stats.yield_curve(5, 10))
-        stats.yield_curve(:yield_curve_1, :yield_curve_2)
+        {printsql}stats.yield_curve(:yield_curve_1, :yield_curve_2)
 
     SQLAlchemy can be made aware of the return type of functions to enable
     type-specific lexical and result-based behavior. For example, to ensure
@@ -775,9 +883,14 @@ class _FunctionGenerator(object):
     treated as a string in expressions, specify
     :class:`~sqlalchemy.types.Unicode` as the type:
 
-        >>> print(func.my_string(u'hi', type_=Unicode) + ' ' +
-        ...       func.my_string(u'there', type_=Unicode))
-        my_string(:my_string_1) || :my_string_2 || my_string(:my_string_3)
+    .. sourcecode:: pycon+sql
+
+        >>> print(
+        ...     func.my_string("hi", type_=Unicode)
+        ...     + " "
+        ...     + func.my_string("there", type_=Unicode)
+        ... )
+        {printsql}my_string(:my_string_1) || :my_string_2 || my_string(:my_string_3)
 
     The object returned by a :data:`.func` call is usually an instance of
     :class:`.Function`.
@@ -815,17 +928,17 @@ class _FunctionGenerator(object):
 
         :class:`.Function`
 
-    """
+    """  # noqa
 
-    def __init__(self, **opts):
-        self.__names = []
+    def __init__(self, **opts: Any):
+        self.__names: List[str] = []
         self.opts = opts
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> _FunctionGenerator:
         # passthru __ attributes; fixes pydoc
         if name.startswith("__"):
             try:
-                return self.__dict__[name]
+                return self.__dict__[name]  # type: ignore
             except KeyError:
                 raise AttributeError(name)
 
@@ -835,7 +948,15 @@ class _FunctionGenerator(object):
         f.__names = list(self.__names) + [name]
         return f
 
-    def __call__(self, *c, **kwargs):
+    @overload
+    def __call__(
+        self, *c: Any, type_: _TypeEngineArgument[_T], **kwargs: Any
+    ) -> Function[_T]: ...
+
+    @overload
+    def __call__(self, *c: Any, **kwargs: Any) -> Function[Any]: ...
+
+    def __call__(self, *c: Any, **kwargs: Any) -> Function[Any]:
         o = self.opts.copy()
         o.update(kwargs)
 
@@ -857,6 +978,284 @@ class _FunctionGenerator(object):
             self.__names[-1], packagenames=tuple(self.__names[0:-1]), *c, **o
         )
 
+    if TYPE_CHECKING:
+        # START GENERATED FUNCTION ACCESSORS
+
+        # code within this block is **programmatically,
+        # statically generated** by tools/generate_sql_functions.py
+
+        @property
+        def aggregate_strings(self) -> Type[aggregate_strings]: ...
+
+        @property
+        def ansifunction(self) -> Type[AnsiFunction[Any]]: ...
+
+        # set ColumnElement[_T] as a separate overload, to appease mypy
+        # which seems to not want to accept _T from _ColumnExpressionArgument.
+        # this is even if all non-generic types are removed from it, so
+        # reasons remain unclear for why this does not work
+
+        @overload
+        def array_agg(
+            self,
+            col: ColumnElement[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> array_agg[_T]: ...
+
+        @overload
+        def array_agg(
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> array_agg[_T]: ...
+
+        @overload
+        def array_agg(
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> array_agg[_T]: ...
+
+        def array_agg(
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> array_agg[_T]: ...
+
+        @property
+        def cast(self) -> Type[Cast[Any]]: ...
+
+        @property
+        def char_length(self) -> Type[char_length]: ...
+
+        # set ColumnElement[_T] as a separate overload, to appease mypy
+        # which seems to not want to accept _T from _ColumnExpressionArgument.
+        # this is even if all non-generic types are removed from it, so
+        # reasons remain unclear for why this does not work
+
+        @overload
+        def coalesce(
+            self,
+            col: ColumnElement[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> coalesce[_T]: ...
+
+        @overload
+        def coalesce(
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> coalesce[_T]: ...
+
+        @overload
+        def coalesce(
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> coalesce[_T]: ...
+
+        def coalesce(
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> coalesce[_T]: ...
+
+        @property
+        def concat(self) -> Type[concat]: ...
+
+        @property
+        def count(self) -> Type[count]: ...
+
+        @property
+        def cube(self) -> Type[cube[Any]]: ...
+
+        @property
+        def cume_dist(self) -> Type[cume_dist]: ...
+
+        @property
+        def current_date(self) -> Type[current_date]: ...
+
+        @property
+        def current_time(self) -> Type[current_time]: ...
+
+        @property
+        def current_timestamp(self) -> Type[current_timestamp]: ...
+
+        @property
+        def current_user(self) -> Type[current_user]: ...
+
+        @property
+        def dense_rank(self) -> Type[dense_rank]: ...
+
+        @property
+        def extract(self) -> Type[Extract]: ...
+
+        @property
+        def grouping_sets(self) -> Type[grouping_sets[Any]]: ...
+
+        @property
+        def localtime(self) -> Type[localtime]: ...
+
+        @property
+        def localtimestamp(self) -> Type[localtimestamp]: ...
+
+        # set ColumnElement[_T] as a separate overload, to appease mypy
+        # which seems to not want to accept _T from _ColumnExpressionArgument.
+        # this is even if all non-generic types are removed from it, so
+        # reasons remain unclear for why this does not work
+
+        @overload
+        def max(  # noqa: A001
+            self,
+            col: ColumnElement[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> max[_T]: ...
+
+        @overload
+        def max(  # noqa: A001
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> max[_T]: ...
+
+        @overload
+        def max(  # noqa: A001
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> max[_T]: ...
+
+        def max(  # noqa: A001
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> max[_T]: ...
+
+        # set ColumnElement[_T] as a separate overload, to appease mypy
+        # which seems to not want to accept _T from _ColumnExpressionArgument.
+        # this is even if all non-generic types are removed from it, so
+        # reasons remain unclear for why this does not work
+
+        @overload
+        def min(  # noqa: A001
+            self,
+            col: ColumnElement[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> min[_T]: ...
+
+        @overload
+        def min(  # noqa: A001
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> min[_T]: ...
+
+        @overload
+        def min(  # noqa: A001
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> min[_T]: ...
+
+        def min(  # noqa: A001
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> min[_T]: ...
+
+        @property
+        def mode(self) -> Type[mode[Any]]: ...
+
+        @property
+        def next_value(self) -> Type[next_value]: ...
+
+        @property
+        def now(self) -> Type[now]: ...
+
+        @property
+        def orderedsetagg(self) -> Type[OrderedSetAgg[Any]]: ...
+
+        @property
+        def percent_rank(self) -> Type[percent_rank]: ...
+
+        @property
+        def percentile_cont(self) -> Type[percentile_cont[Any]]: ...
+
+        @property
+        def percentile_disc(self) -> Type[percentile_disc[Any]]: ...
+
+        @property
+        def random(self) -> Type[random]: ...
+
+        @property
+        def rank(self) -> Type[rank]: ...
+
+        @property
+        def rollup(self) -> Type[rollup[Any]]: ...
+
+        @property
+        def session_user(self) -> Type[session_user]: ...
+
+        # set ColumnElement[_T] as a separate overload, to appease mypy
+        # which seems to not want to accept _T from _ColumnExpressionArgument.
+        # this is even if all non-generic types are removed from it, so
+        # reasons remain unclear for why this does not work
+
+        @overload
+        def sum(  # noqa: A001
+            self,
+            col: ColumnElement[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> sum[_T]: ...
+
+        @overload
+        def sum(  # noqa: A001
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> sum[_T]: ...
+
+        @overload
+        def sum(  # noqa: A001
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> sum[_T]: ...
+
+        def sum(  # noqa: A001
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> sum[_T]: ...
+
+        @property
+        def sysdate(self) -> Type[sysdate]: ...
+
+        @property
+        def user(self) -> Type[user]: ...
+
+        # END GENERATED FUNCTION ACCESSORS
+
 
 func = _FunctionGenerator()
 func.__doc__ = _FunctionGenerator.__doc__
@@ -864,7 +1263,7 @@ func.__doc__ = _FunctionGenerator.__doc__
 modifier = _FunctionGenerator(group=False)
 
 
-class Function(FunctionElement):
+class Function(FunctionElement[_T]):
     r"""Describe a named SQL function.
 
     The :class:`.Function` object is typically generated from the
@@ -905,7 +1304,11 @@ class Function(FunctionElement):
         ("type", InternalTraversal.dp_type),
     ]
 
-    type = sqltypes.NULLTYPE
+    name: str
+
+    identifier: str
+
+    type: TypeEngine[_T]
     """A :class:`_types.TypeEngine` object which refers to the SQL return
     type represented by this SQL function.
 
@@ -922,37 +1325,54 @@ class Function(FunctionElement):
 
     """
 
-    @util.deprecated_params(
-        bind=(
-            "2.0",
-            "The :paramref:`_sql.text.bind` argument is deprecated and "
-            "will be removed in SQLAlchemy 2.0.",
-        ),
-    )
-    def __init__(self, name, *clauses, **kw):
+    @overload
+    def __init__(
+        self,
+        name: str,
+        *clauses: _ColumnExpressionOrLiteralArgument[_T],
+        type_: None = ...,
+        packagenames: Optional[Tuple[str, ...]] = ...,
+    ): ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        *clauses: _ColumnExpressionOrLiteralArgument[Any],
+        type_: _TypeEngineArgument[_T] = ...,
+        packagenames: Optional[Tuple[str, ...]] = ...,
+    ): ...
+
+    def __init__(
+        self,
+        name: str,
+        *clauses: _ColumnExpressionOrLiteralArgument[Any],
+        type_: Optional[_TypeEngineArgument[_T]] = None,
+        packagenames: Optional[Tuple[str, ...]] = None,
+    ):
         """Construct a :class:`.Function`.
 
         The :data:`.func` construct is normally used to construct
         new :class:`.Function` instances.
 
         """
-        self.packagenames = kw.pop("packagenames", None) or ()
+        self.packagenames = packagenames or ()
         self.name = name
 
-        self._bind = self._get_bind(kw)
-        self.type = sqltypes.to_instance(kw.get("type_", None))
+        # if type is None, we get NULLTYPE, which is our _T.  But I don't
+        # know how to get the overloads to express that correctly
+        self.type = type_api.to_instance(type_)  # type: ignore
 
-        FunctionElement.__init__(self, *clauses, **kw)
+        FunctionElement.__init__(self, *clauses)
 
-    def _get_bind(self, kw):
-        if "bind" in kw:
-            util.warn_deprecated_20(
-                "The Function.bind argument is deprecated and "
-                "will be removed in SQLAlchemy 2.0.",
-            )
-            return kw["bind"]
-
-    def _bind_param(self, operator, obj, type_=None, **kw):
+    def _bind_param(
+        self,
+        operator: OperatorType,
+        obj: Any,
+        type_: Optional[TypeEngine[_T]] = None,
+        expanding: bool = False,
+        **kw: Any,
+    ) -> BindParameter[_T]:
         return BindParameter(
             self.name,
             obj,
@@ -960,34 +1380,12 @@ class Function(FunctionElement):
             _compared_to_type=self.type,
             type_=type_,
             unique=True,
-            **kw
+            expanding=expanding,
+            **kw,
         )
 
 
-class _GenericMeta(TraversibleType):
-    def __init__(cls, clsname, bases, clsdict):
-        if annotation.Annotated not in cls.__mro__:
-            cls.name = name = clsdict.get("name", clsname)
-            cls.identifier = identifier = clsdict.get("identifier", name)
-            package = clsdict.pop("package", "_default")
-            # legacy
-            if "__return_type__" in clsdict:
-                cls.type = clsdict["__return_type__"]
-
-            # Check _register attribute status
-            cls._register = getattr(cls, "_register", True)
-
-            # Register the function if required
-            if cls._register:
-                register_function(identifier, cls, package)
-            else:
-                # Set _register to True to register child classes by default
-                cls._register = True
-
-        super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
-
-
-class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
+class GenericFunction(Function[_T]):
     """Define a 'generic' function.
 
     A generic function is a pre-established :class:`.Function`
@@ -1009,9 +1407,11 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
         from sqlalchemy.sql.functions import GenericFunction
         from sqlalchemy.types import DateTime
 
+
         class as_utc(GenericFunction):
-            type = DateTime
+            type = DateTime()
             inherit_cache = True
+
 
         print(select(func.as_utc()))
 
@@ -1024,7 +1424,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     "time"::
 
         class as_utc(GenericFunction):
-            type = DateTime
+            type = DateTime()
             package = "time"
             inherit_cache = True
 
@@ -1040,16 +1440,18 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     the usage of ``name`` as the rendered name::
 
         class GeoBuffer(GenericFunction):
-            type = Geometry
+            type = Geometry()
             package = "geo"
             name = "ST_Buffer"
             identifier = "buffer"
             inherit_cache = True
 
-    The above function will render as follows::
+    The above function will render as follows:
+
+    .. sourcecode:: pycon+sql
 
         >>> print(func.geo.buffer())
-        ST_Buffer()
+        {printsql}ST_Buffer()
 
     The name will be rendered as is, however without quoting unless the name
     contains special characters that require quoting.  To force quoting
@@ -1058,17 +1460,33 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
 
         from sqlalchemy.sql import quoted_name
 
+
         class GeoBuffer(GenericFunction):
-            type = Geometry
+            type = Geometry()
             package = "geo"
             name = quoted_name("ST_Buffer", True)
             identifier = "buffer"
             inherit_cache = True
 
-    The above function will render as::
+    The above function will render as:
+
+    .. sourcecode:: pycon+sql
 
         >>> print(func.geo.buffer())
-        "ST_Buffer"()
+        {printsql}"ST_Buffer"()
+
+    Type parameters for this class as a
+    `generic type <https://peps.python.org/pep-0484/#generics>`_ can be passed
+    and should match the type seen in a :class:`_engine.Result`. For example::
+
+        class as_utc(GenericFunction[datetime.datetime]):
+            type = DateTime()
+            inherit_cache = True
+
+    The above indicates that the following expression returns a ``datetime``
+    object::
+
+        connection.scalar(select(func.as_utc()))
 
     .. versionadded:: 1.3.13  The :class:`.quoted_name` construct is now
        recognized for quoting when used with the "name" attribute of the
@@ -1079,10 +1497,41 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     """
 
     coerce_arguments = True
-    _register = False
     inherit_cache = True
 
-    def __init__(self, *args, **kwargs):
+    _register: bool
+
+    name = "GenericFunction"
+
+    def __init_subclass__(cls) -> None:
+        if annotation.Annotated not in cls.__mro__:
+            cls._register_generic_function(cls.__name__, cls.__dict__)
+        super().__init_subclass__()
+
+    @classmethod
+    def _register_generic_function(
+        cls, clsname: str, clsdict: Mapping[str, Any]
+    ) -> None:
+        cls.name = name = clsdict.get("name", clsname)
+        cls.identifier = identifier = clsdict.get("identifier", name)
+        package = clsdict.get("package", "_default")
+        # legacy
+        if "__return_type__" in clsdict:
+            cls.type = clsdict["__return_type__"]
+
+        # Check _register attribute status
+        cls._register = getattr(cls, "_register", True)
+
+        # Register the function if required
+        if cls._register:
+            register_function(identifier, cls, package)
+        else:
+            # Set _register to True to register child classes by default
+            cls._register = True
+
+    def __init__(
+        self, *args: _ColumnExpressionOrLiteralArgument[Any], **kwargs: Any
+    ):
         parsed_args = kwargs.pop("_parsed_args", None)
         if parsed_args is None:
             parsed_args = [
@@ -1096,20 +1545,23 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
             ]
         self._has_args = self._has_args or bool(parsed_args)
         self.packagenames = ()
-        self._bind = self._get_bind(kwargs)
-        self.clause_expr = ClauseList(
-            operator=operators.comma_op, group_contents=True, *parsed_args
-        ).self_group()
-        self.type = sqltypes.to_instance(
+
+        self.clause_expr = Grouping(
+            ClauseList(
+                operator=operators.comma_op, group_contents=True, *parsed_args
+            )
+        )
+
+        self.type = type_api.to_instance(  # type: ignore
             kwargs.pop("type_", None) or getattr(self, "type", None)
         )
 
 
-register_function("cast", Cast)
-register_function("extract", Extract)
+register_function("cast", Cast)  # type: ignore
+register_function("extract", Extract)  # type: ignore
 
 
-class next_value(GenericFunction):
+class next_value(GenericFunction[int]):
     """Represent the 'next value', given a :class:`.Sequence`
     as its single argument.
 
@@ -1126,43 +1578,75 @@ class next_value(GenericFunction):
         ("sequence", InternalTraversal.dp_named_ddl_element)
     ]
 
-    def __init__(self, seq, **kw):
+    def __init__(self, seq: schema.Sequence, **kw: Any):
         assert isinstance(
             seq, schema.Sequence
         ), "next_value() accepts a Sequence object as input."
-        self._bind = self._get_bind(kw)
         self.sequence = seq
-        self.type = sqltypes.to_instance(
+        self.type = sqltypes.to_instance(  # type: ignore
             seq.data_type or getattr(self, "type", None)
         )
 
-    def compare(self, other, **kw):
+    def compare(self, other: Any, **kw: Any) -> bool:
         return (
             isinstance(other, next_value)
             and self.sequence.name == other.sequence.name
         )
 
     @property
-    def _from_objects(self):
+    def _from_objects(self) -> Any:
         return []
 
 
-class AnsiFunction(GenericFunction):
+class AnsiFunction(GenericFunction[_T]):
     """Define a function in "ansi" format, which doesn't render parenthesis."""
 
     inherit_cache = True
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: _ColumnExpressionArgument[Any], **kwargs: Any):
         GenericFunction.__init__(self, *args, **kwargs)
 
 
-class ReturnTypeFromArgs(GenericFunction):
-    """Define a function whose return type is the same as its arguments."""
+class ReturnTypeFromArgs(GenericFunction[_T]):
+    """Define a function whose return type is bound to the type of its
+    arguments.
+    """
 
     inherit_cache = True
 
-    def __init__(self, *args, **kwargs):
-        args = [
+    # set ColumnElement[_T] as a separate overload, to appease mypy which seems
+    # to not want to accept _T from _ColumnExpressionArgument.  this is even if
+    # all non-generic types are removed from it, so reasons remain unclear for
+    # why this does not work
+
+    @overload
+    def __init__(
+        self,
+        col: ColumnElement[_T],
+        *args: _ColumnExpressionOrLiteralArgument[Any],
+        **kwargs: Any,
+    ): ...
+
+    @overload
+    def __init__(
+        self,
+        col: _ColumnExpressionArgument[_T],
+        *args: _ColumnExpressionOrLiteralArgument[Any],
+        **kwargs: Any,
+    ): ...
+
+    @overload
+    def __init__(
+        self,
+        col: _ColumnExpressionOrLiteralArgument[_T],
+        *args: _ColumnExpressionOrLiteralArgument[Any],
+        **kwargs: Any,
+    ): ...
+
+    def __init__(
+        self, *args: _ColumnExpressionOrLiteralArgument[Any], **kwargs: Any
+    ):
+        fn_args: Sequence[ColumnElement[Any]] = [
             coercions.expect(
                 roles.ExpressionElementRole,
                 c,
@@ -1171,35 +1655,35 @@ class ReturnTypeFromArgs(GenericFunction):
             )
             for c in args
         ]
-        kwargs.setdefault("type_", _type_from_args(args))
-        kwargs["_parsed_args"] = args
-        super(ReturnTypeFromArgs, self).__init__(*args, **kwargs)
+        kwargs.setdefault("type_", _type_from_args(fn_args))
+        kwargs["_parsed_args"] = fn_args
+        super().__init__(*fn_args, **kwargs)
 
 
-class coalesce(ReturnTypeFromArgs):
+class coalesce(ReturnTypeFromArgs[_T]):
     _has_args = True
     inherit_cache = True
 
 
-class max(ReturnTypeFromArgs):  # noqa:  A001
+class max(ReturnTypeFromArgs[_T]):  # noqa:  A001
     """The SQL MAX() aggregate function."""
 
     inherit_cache = True
 
 
-class min(ReturnTypeFromArgs):  # noqa: A001
+class min(ReturnTypeFromArgs[_T]):  # noqa: A001
     """The SQL MIN() aggregate function."""
 
     inherit_cache = True
 
 
-class sum(ReturnTypeFromArgs):  # noqa: A001
+class sum(ReturnTypeFromArgs[_T]):  # noqa: A001
     """The SQL SUM() aggregate function."""
 
     inherit_cache = True
 
 
-class now(GenericFunction):
+class now(GenericFunction[datetime.datetime]):
     """The SQL now() datetime function.
 
     SQLAlchemy dialects will usually render this particular function
@@ -1207,50 +1691,56 @@ class now(GenericFunction):
 
     """
 
-    type = sqltypes.DateTime
+    type = sqltypes.DateTime()
     inherit_cache = True
 
 
-class concat(GenericFunction):
+class concat(GenericFunction[str]):
     """The SQL CONCAT() function, which concatenates strings.
 
-    E.g.::
+    E.g.:
 
-        >>> print(select(func.concat('a', 'b')))
-        SELECT concat(:concat_2, :concat_3) AS concat_1
+    .. sourcecode:: pycon+sql
+
+        >>> print(select(func.concat("a", "b")))
+        {printsql}SELECT concat(:concat_2, :concat_3) AS concat_1
 
     String concatenation in SQLAlchemy is more commonly available using the
     Python ``+`` operator with string datatypes, which will render a
-    backend-specific concatenation operator, such as ::
+    backend-specific concatenation operator, such as :
+
+    .. sourcecode:: pycon+sql
 
         >>> print(select(literal("a") + "b"))
-        SELECT :param_1 || :param_2 AS anon_1
+        {printsql}SELECT :param_1 || :param_2 AS anon_1
 
 
     """
 
-    type = sqltypes.String
+    type = sqltypes.String()
     inherit_cache = True
 
 
-class char_length(GenericFunction):
+class char_length(GenericFunction[int]):
     """The CHAR_LENGTH() SQL function."""
 
-    type = sqltypes.Integer
+    type = sqltypes.Integer()
     inherit_cache = True
 
-    def __init__(self, arg, **kwargs):
-        GenericFunction.__init__(self, arg, **kwargs)
+    def __init__(self, arg: _ColumnExpressionArgument[str], **kw: Any):
+        # slight hack to limit to just one positional argument
+        # not sure why this one function has this special treatment
+        super().__init__(arg, **kw)
 
 
-class random(GenericFunction):
+class random(GenericFunction[float]):
     """The RANDOM() SQL function."""
 
     _has_args = True
     inherit_cache = True
 
 
-class count(GenericFunction):
+class count(GenericFunction[int]):
     r"""The ANSI COUNT aggregate function.  With no arguments,
     emits COUNT \*.
 
@@ -1260,90 +1750,99 @@ class count(GenericFunction):
         from sqlalchemy import select
         from sqlalchemy import table, column
 
-        my_table = table('some_table', column('id'))
+        my_table = table("some_table", column("id"))
 
         stmt = select(func.count()).select_from(my_table)
 
-    Executing ``stmt`` would emit::
+    Executing ``stmt`` would emit:
+
+    .. sourcecode:: sql
 
         SELECT count(*) AS count_1
         FROM some_table
 
 
     """
-    type = sqltypes.Integer
+
+    type = sqltypes.Integer()
     inherit_cache = True
 
-    def __init__(self, expression=None, **kwargs):
+    def __init__(
+        self,
+        expression: Union[
+            _ColumnExpressionArgument[Any], _StarOrOne, None
+        ] = None,
+        **kwargs: Any,
+    ):
         if expression is None:
             expression = literal_column("*")
-        super(count, self).__init__(expression, **kwargs)
+        super().__init__(expression, **kwargs)
 
 
-class current_date(AnsiFunction):
+class current_date(AnsiFunction[datetime.date]):
     """The CURRENT_DATE() SQL function."""
 
-    type = sqltypes.Date
+    type = sqltypes.Date()
     inherit_cache = True
 
 
-class current_time(AnsiFunction):
+class current_time(AnsiFunction[datetime.time]):
     """The CURRENT_TIME() SQL function."""
 
-    type = sqltypes.Time
+    type = sqltypes.Time()
     inherit_cache = True
 
 
-class current_timestamp(AnsiFunction):
+class current_timestamp(AnsiFunction[datetime.datetime]):
     """The CURRENT_TIMESTAMP() SQL function."""
 
-    type = sqltypes.DateTime
+    type = sqltypes.DateTime()
     inherit_cache = True
 
 
-class current_user(AnsiFunction):
+class current_user(AnsiFunction[str]):
     """The CURRENT_USER() SQL function."""
 
-    type = sqltypes.String
+    type = sqltypes.String()
     inherit_cache = True
 
 
-class localtime(AnsiFunction):
+class localtime(AnsiFunction[datetime.datetime]):
     """The localtime() SQL function."""
 
-    type = sqltypes.DateTime
+    type = sqltypes.DateTime()
     inherit_cache = True
 
 
-class localtimestamp(AnsiFunction):
+class localtimestamp(AnsiFunction[datetime.datetime]):
     """The localtimestamp() SQL function."""
 
-    type = sqltypes.DateTime
+    type = sqltypes.DateTime()
     inherit_cache = True
 
 
-class session_user(AnsiFunction):
+class session_user(AnsiFunction[str]):
     """The SESSION_USER() SQL function."""
 
-    type = sqltypes.String
+    type = sqltypes.String()
     inherit_cache = True
 
 
-class sysdate(AnsiFunction):
+class sysdate(AnsiFunction[datetime.datetime]):
     """The SYSDATE() SQL function."""
 
-    type = sqltypes.DateTime
+    type = sqltypes.DateTime()
     inherit_cache = True
 
 
-class user(AnsiFunction):
+class user(AnsiFunction[str]):
     """The USER() SQL function."""
 
-    type = sqltypes.String
+    type = sqltypes.String()
     inherit_cache = True
 
 
-class array_agg(GenericFunction):
+class array_agg(ReturnTypeFromArgs[Sequence[_T]]):
     """Support for the ARRAY_AGG function.
 
     The ``func.array_agg(expr)`` construct returns an expression of
@@ -1353,8 +1852,6 @@ class array_agg(GenericFunction):
 
         stmt = select(func.array_agg(table.c.values)[2:5])
 
-    .. versionadded:: 1.1
-
     .. seealso::
 
         :func:`_postgresql.array_agg` - PostgreSQL-specific version that
@@ -1363,11 +1860,10 @@ class array_agg(GenericFunction):
 
     """
 
-    type = sqltypes.ARRAY
     inherit_cache = True
 
-    def __init__(self, *args, **kwargs):
-        args = [
+    def __init__(self, *args: _ColumnExpressionArgument[Any], **kwargs: Any):
+        fn_args: Sequence[ColumnElement[Any]] = [
             coercions.expect(
                 roles.ExpressionElementRole, c, apply_propagate_attrs=self
             )
@@ -1376,17 +1872,18 @@ class array_agg(GenericFunction):
 
         default_array_type = kwargs.pop("_default_array_type", sqltypes.ARRAY)
         if "type_" not in kwargs:
-
-            type_from_args = _type_from_args(args)
+            type_from_args = _type_from_args(fn_args)
             if isinstance(type_from_args, sqltypes.ARRAY):
                 kwargs["type_"] = type_from_args
             else:
-                kwargs["type_"] = default_array_type(type_from_args)
-        kwargs["_parsed_args"] = args
-        super(array_agg, self).__init__(*args, **kwargs)
+                kwargs["type_"] = default_array_type(
+                    type_from_args, dimensions=1
+                )
+        kwargs["_parsed_args"] = fn_args
+        super().__init__(*fn_args, **kwargs)
 
 
-class OrderedSetAgg(GenericFunction):
+class OrderedSetAgg(GenericFunction[_T]):
     """Define a function where the return type is based on the sort
     expression type as defined by the expression passed to the
     :meth:`.FunctionElement.within_group` method."""
@@ -1394,16 +1891,20 @@ class OrderedSetAgg(GenericFunction):
     array_for_multi_clause = False
     inherit_cache = True
 
-    def within_group_type(self, within_group):
-        func_clauses = self.clause_expr.element
-        order_by = sqlutil.unwrap_order_by(within_group.order_by)
+    def within_group_type(
+        self, within_group: WithinGroup[Any]
+    ) -> TypeEngine[Any]:
+        func_clauses = cast(ClauseList, self.clause_expr.element)
+        order_by: Sequence[ColumnElement[Any]] = sqlutil.unwrap_order_by(
+            within_group.order_by
+        )
         if self.array_for_multi_clause and len(func_clauses.clauses) > 1:
             return sqltypes.ARRAY(order_by[0].type)
         else:
             return order_by[0].type
 
 
-class mode(OrderedSetAgg):
+class mode(OrderedSetAgg[_T]):
     """Implement the ``mode`` ordered-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
@@ -1411,14 +1912,12 @@ class mode(OrderedSetAgg):
 
     The return type of this function is the same as the sort expression.
 
-    .. versionadded:: 1.1
-
     """
 
     inherit_cache = True
 
 
-class percentile_cont(OrderedSetAgg):
+class percentile_cont(OrderedSetAgg[_T]):
     """Implement the ``percentile_cont`` ordered-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
@@ -1428,15 +1927,13 @@ class percentile_cont(OrderedSetAgg):
     or if the arguments are an array, an :class:`_types.ARRAY` of the sort
     expression's type.
 
-    .. versionadded:: 1.1
-
     """
 
     array_for_multi_clause = True
     inherit_cache = True
 
 
-class percentile_disc(OrderedSetAgg):
+class percentile_disc(OrderedSetAgg[_T]):
     """Implement the ``percentile_disc`` ordered-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
@@ -1446,15 +1943,13 @@ class percentile_disc(OrderedSetAgg):
     or if the arguments are an array, an :class:`_types.ARRAY` of the sort
     expression's type.
 
-    .. versionadded:: 1.1
-
     """
 
     array_for_multi_clause = True
     inherit_cache = True
 
 
-class rank(GenericFunction):
+class rank(GenericFunction[int]):
     """Implement the ``rank`` hypothetical-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
@@ -1462,15 +1957,13 @@ class rank(GenericFunction):
 
     The return type of this function is :class:`.Integer`.
 
-    .. versionadded:: 1.1
-
     """
 
     type = sqltypes.Integer()
     inherit_cache = True
 
 
-class dense_rank(GenericFunction):
+class dense_rank(GenericFunction[int]):
     """Implement the ``dense_rank`` hypothetical-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
@@ -1478,15 +1971,13 @@ class dense_rank(GenericFunction):
 
     The return type of this function is :class:`.Integer`.
 
-    .. versionadded:: 1.1
-
     """
 
     type = sqltypes.Integer()
     inherit_cache = True
 
 
-class percent_rank(GenericFunction):
+class percent_rank(GenericFunction[decimal.Decimal]):
     """Implement the ``percent_rank`` hypothetical-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
@@ -1494,15 +1985,13 @@ class percent_rank(GenericFunction):
 
     The return type of this function is :class:`.Numeric`.
 
-    .. versionadded:: 1.1
-
     """
 
-    type = sqltypes.Numeric()
+    type: sqltypes.Numeric[decimal.Decimal] = sqltypes.Numeric()
     inherit_cache = True
 
 
-class cume_dist(GenericFunction):
+class cume_dist(GenericFunction[decimal.Decimal]):
     """Implement the ``cume_dist`` hypothetical-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
@@ -1510,15 +1999,13 @@ class cume_dist(GenericFunction):
 
     The return type of this function is :class:`.Numeric`.
 
-    .. versionadded:: 1.1
-
     """
 
-    type = sqltypes.Numeric()
+    type: sqltypes.Numeric[decimal.Decimal] = sqltypes.Numeric()
     inherit_cache = True
 
 
-class cube(GenericFunction):
+class cube(GenericFunction[_T]):
     r"""Implement the ``CUBE`` grouping operation.
 
     This function is used as part of the GROUP BY of a statement,
@@ -1531,11 +2018,12 @@ class cube(GenericFunction):
     .. versionadded:: 1.2
 
     """
+
     _has_args = True
     inherit_cache = True
 
 
-class rollup(GenericFunction):
+class rollup(GenericFunction[_T]):
     r"""Implement the ``ROLLUP`` grouping operation.
 
     This function is used as part of the GROUP BY of a statement,
@@ -1548,11 +2036,12 @@ class rollup(GenericFunction):
     .. versionadded:: 1.2
 
     """
+
     _has_args = True
     inherit_cache = True
 
 
-class grouping_sets(GenericFunction):
+class grouping_sets(GenericFunction[_T]):
     r"""Implement the ``GROUPING SETS`` grouping operation.
 
     This function is used as part of the GROUP BY of a statement,
@@ -1567,9 +2056,7 @@ class grouping_sets(GenericFunction):
         from sqlalchemy import tuple_
 
         stmt = select(
-            func.sum(table.c.value),
-            table.c.col_1, table.c.col_2,
-            table.c.col_3
+            func.sum(table.c.value), table.c.col_1, table.c.col_2, table.c.col_3
         ).group_by(
             func.grouping_sets(
                 tuple_(table.c.col_1, table.c.col_2),
@@ -1577,9 +2064,36 @@ class grouping_sets(GenericFunction):
             )
         )
 
-
     .. versionadded:: 1.2
 
-    """
+    """  # noqa: E501
+
     _has_args = True
     inherit_cache = True
+
+
+class aggregate_strings(GenericFunction[str]):
+    """Implement a generic string aggregation function.
+
+    This function will concatenate non-null values into a string and
+    separate the values by a delimiter.
+
+    This function is compiled on a per-backend basis, into functions
+    such as ``group_concat()``, ``string_agg()``, or ``LISTAGG()``.
+
+    e.g. Example usage with delimiter '.'::
+
+        stmt = select(func.aggregate_strings(table.c.str_col, "."))
+
+    The return type of this function is :class:`.String`.
+
+    .. versionadded: 2.0.21
+
+    """
+
+    type = sqltypes.String()
+    _has_args = True
+    inherit_cache = True
+
+    def __init__(self, clause: _ColumnExpressionArgument[Any], separator: str):
+        super().__init__(clause, separator)

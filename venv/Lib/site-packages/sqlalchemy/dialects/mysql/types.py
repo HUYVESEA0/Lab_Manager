@@ -1,18 +1,20 @@
-# mysql/types.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/types.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 import datetime
 
 from ... import exc
-from ... import types as sqltypes
 from ... import util
+from ...sql import sqltypes
 
 
-class _NumericType(object):
+class _NumericType:
     """Base for MySQL numeric types.
 
     This is the base both for NUMERIC as well as INTEGER, hence
@@ -23,7 +25,7 @@ class _NumericType(object):
     def __init__(self, unsigned=False, zerofill=False, **kw):
         self.unsigned = unsigned
         self.zerofill = zerofill
-        super(_NumericType, self).__init__(**kw)
+        super().__init__(**kw)
 
     def __repr__(self):
         return util.generic_repr(
@@ -41,9 +43,7 @@ class _FloatType(_NumericType, sqltypes.Float):
                 "You must specify both precision and scale or omit "
                 "both altogether."
             )
-        super(_FloatType, self).__init__(
-            precision=precision, asdecimal=asdecimal, **kw
-        )
+        super().__init__(precision=precision, asdecimal=asdecimal, **kw)
         self.scale = scale
 
     def __repr__(self):
@@ -55,7 +55,7 @@ class _FloatType(_NumericType, sqltypes.Float):
 class _IntegerType(_NumericType, sqltypes.Integer):
     def __init__(self, display_width=None, **kw):
         self.display_width = display_width
-        super(_IntegerType, self).__init__(**kw)
+        super().__init__(**kw)
 
     def __repr__(self):
         return util.generic_repr(
@@ -74,7 +74,7 @@ class _StringType(sqltypes.String):
         binary=False,
         unicode=False,
         national=False,
-        **kw
+        **kw,
     ):
         self.charset = charset
 
@@ -85,7 +85,7 @@ class _StringType(sqltypes.String):
         self.unicode = unicode
         self.binary = binary
         self.national = national
-        super(_StringType, self).__init__(**kw)
+        super().__init__(**kw)
 
     def __repr__(self):
         return util.generic_repr(
@@ -121,7 +121,7 @@ class NUMERIC(_NumericType, sqltypes.NUMERIC):
           numeric.
 
         """
-        super(NUMERIC, self).__init__(
+        super().__init__(
             precision=precision, scale=scale, asdecimal=asdecimal, **kw
         )
 
@@ -147,12 +147,12 @@ class DECIMAL(_NumericType, sqltypes.DECIMAL):
           numeric.
 
         """
-        super(DECIMAL, self).__init__(
+        super().__init__(
             precision=precision, scale=scale, asdecimal=asdecimal, **kw
         )
 
 
-class DOUBLE(_FloatType):
+class DOUBLE(_FloatType, sqltypes.DOUBLE):
     """MySQL DOUBLE type."""
 
     __visit_name__ = "DOUBLE"
@@ -181,7 +181,7 @@ class DOUBLE(_FloatType):
           numeric.
 
         """
-        super(DOUBLE, self).__init__(
+        super().__init__(
             precision=precision, scale=scale, asdecimal=asdecimal, **kw
         )
 
@@ -215,7 +215,7 @@ class REAL(_FloatType, sqltypes.REAL):
           numeric.
 
         """
-        super(REAL, self).__init__(
+        super().__init__(
             precision=precision, scale=scale, asdecimal=asdecimal, **kw
         )
 
@@ -241,7 +241,7 @@ class FLOAT(_FloatType, sqltypes.FLOAT):
           numeric.
 
         """
-        super(FLOAT, self).__init__(
+        super().__init__(
             precision=precision, scale=scale, asdecimal=asdecimal, **kw
         )
 
@@ -267,7 +267,7 @@ class INTEGER(_IntegerType, sqltypes.INTEGER):
           numeric.
 
         """
-        super(INTEGER, self).__init__(display_width=display_width, **kw)
+        super().__init__(display_width=display_width, **kw)
 
 
 class BIGINT(_IntegerType, sqltypes.BIGINT):
@@ -288,7 +288,7 @@ class BIGINT(_IntegerType, sqltypes.BIGINT):
           numeric.
 
         """
-        super(BIGINT, self).__init__(display_width=display_width, **kw)
+        super().__init__(display_width=display_width, **kw)
 
 
 class MEDIUMINT(_IntegerType):
@@ -309,7 +309,7 @@ class MEDIUMINT(_IntegerType):
           numeric.
 
         """
-        super(MEDIUMINT, self).__init__(display_width=display_width, **kw)
+        super().__init__(display_width=display_width, **kw)
 
 
 class TINYINT(_IntegerType):
@@ -330,7 +330,7 @@ class TINYINT(_IntegerType):
           numeric.
 
         """
-        super(TINYINT, self).__init__(display_width=display_width, **kw)
+        super().__init__(display_width=display_width, **kw)
 
 
 class SMALLINT(_IntegerType, sqltypes.SMALLINT):
@@ -351,7 +351,7 @@ class SMALLINT(_IntegerType, sqltypes.SMALLINT):
           numeric.
 
         """
-        super(SMALLINT, self).__init__(display_width=display_width, **kw)
+        super().__init__(display_width=display_width, **kw)
 
 
 class BIT(sqltypes.TypeEngine):
@@ -374,12 +374,11 @@ class BIT(sqltypes.TypeEngine):
         self.length = length
 
     def result_processor(self, dialect, coltype):
-        """Convert a MySQL's 64 bit, variable length binary string to a long.
+        """Convert a MySQL's 64 bit, variable length binary string to a
+        long."""
 
-        TODO: this is MySQL-db, pyodbc specific.  OurSQL and mysqlconnector
-        already do this, so this logic should be moved to those dialects.
-
-        """
+        if dialect.supports_native_bit:
+            return None
 
         def process(value):
             if value is not None:
@@ -415,7 +414,7 @@ class TIME(sqltypes.TIME):
             MySQL Connector/Python.
 
         """
-        super(TIME, self).__init__(timezone=timezone)
+        super().__init__(timezone=timezone)
         self.fsp = fsp
 
     def result_processor(self, dialect, coltype):
@@ -460,7 +459,7 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
             MySQL Connector/Python.
 
         """
-        super(TIMESTAMP, self).__init__(timezone=timezone)
+        super().__init__(timezone=timezone)
         self.fsp = fsp
 
 
@@ -485,7 +484,7 @@ class DATETIME(sqltypes.DATETIME):
             MySQL Connector/Python.
 
         """
-        super(DATETIME, self).__init__(timezone=timezone)
+        super().__init__(timezone=timezone)
         self.fsp = fsp
 
 
@@ -499,7 +498,7 @@ class YEAR(sqltypes.TypeEngine):
 
 
 class TEXT(_StringType, sqltypes.TEXT):
-    """MySQL TEXT type, for text up to 2^16 characters."""
+    """MySQL TEXT type, for character storage encoded up to 2^16 bytes."""
 
     __visit_name__ = "TEXT"
 
@@ -508,7 +507,7 @@ class TEXT(_StringType, sqltypes.TEXT):
 
         :param length: Optional, if provided the server may optimize storage
           by substituting the smallest TEXT type sufficient to store
-          ``length`` characters.
+          ``length`` bytes of characters.
 
         :param charset: Optional, a column-level character set for this string
           value.  Takes precedence to 'ascii' or 'unicode' short-hand.
@@ -531,11 +530,11 @@ class TEXT(_StringType, sqltypes.TEXT):
           only the collation of character data.
 
         """
-        super(TEXT, self).__init__(length=length, **kw)
+        super().__init__(length=length, **kw)
 
 
 class TINYTEXT(_StringType):
-    """MySQL TINYTEXT type, for text up to 2^8 characters."""
+    """MySQL TINYTEXT type, for character storage encoded up to 2^8 bytes."""
 
     __visit_name__ = "TINYTEXT"
 
@@ -563,11 +562,12 @@ class TINYTEXT(_StringType):
           only the collation of character data.
 
         """
-        super(TINYTEXT, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
 
 class MEDIUMTEXT(_StringType):
-    """MySQL MEDIUMTEXT type, for text up to 2^24 characters."""
+    """MySQL MEDIUMTEXT type, for character storage encoded up
+    to 2^24 bytes."""
 
     __visit_name__ = "MEDIUMTEXT"
 
@@ -595,11 +595,11 @@ class MEDIUMTEXT(_StringType):
           only the collation of character data.
 
         """
-        super(MEDIUMTEXT, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
 
 class LONGTEXT(_StringType):
-    """MySQL LONGTEXT type, for text up to 2^32 characters."""
+    """MySQL LONGTEXT type, for character storage encoded up to 2^32 bytes."""
 
     __visit_name__ = "LONGTEXT"
 
@@ -627,7 +627,7 @@ class LONGTEXT(_StringType):
           only the collation of character data.
 
         """
-        super(LONGTEXT, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
 
 class VARCHAR(_StringType, sqltypes.VARCHAR):
@@ -659,7 +659,7 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
           only the collation of character data.
 
         """
-        super(VARCHAR, self).__init__(length=length, **kwargs)
+        super().__init__(length=length, **kwargs)
 
 
 class CHAR(_StringType, sqltypes.CHAR):
@@ -680,10 +680,10 @@ class CHAR(_StringType, sqltypes.CHAR):
           compatible with the national character set.
 
         """
-        super(CHAR, self).__init__(length=length, **kwargs)
+        super().__init__(length=length, **kwargs)
 
     @classmethod
-    def _adapt_string_for_cast(self, type_):
+    def _adapt_string_for_cast(cls, type_):
         # copy the given string type into a CHAR
         # for the purposes of rendering a CAST expression
         type_ = sqltypes.to_instance(type_)
@@ -726,7 +726,7 @@ class NVARCHAR(_StringType, sqltypes.NVARCHAR):
 
         """
         kwargs["national"] = True
-        super(NVARCHAR, self).__init__(length=length, **kwargs)
+        super().__init__(length=length, **kwargs)
 
 
 class NCHAR(_StringType, sqltypes.NCHAR):
@@ -752,7 +752,7 @@ class NCHAR(_StringType, sqltypes.NCHAR):
 
         """
         kwargs["national"] = True
-        super(NCHAR, self).__init__(length=length, **kwargs)
+        super().__init__(length=length, **kwargs)
 
 
 class TINYBLOB(sqltypes._Binary):

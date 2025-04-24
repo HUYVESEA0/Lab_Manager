@@ -1,4 +1,13 @@
+# testing/suite/test_results.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 import datetime
+import re
 
 from .. import engines
 from .. import fixtures
@@ -14,7 +23,6 @@ from ... import sql
 from ... import String
 from ... import testing
 from ... import text
-from ... import util
 
 
 class RowFetchTest(fixtures.TablesTest):
@@ -163,6 +171,26 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
         )
         self._assert_table(connection)
 
+    @requirements.insert_executemany_returning
+    def test_executemany_returning_roundtrip(self, connection):
+        percent_table = self.tables.percent_table
+        connection.execute(
+            percent_table.insert(), {"percent%": 5, "spaces % more spaces": 12}
+        )
+        result = connection.execute(
+            percent_table.insert().returning(
+                percent_table.c["percent%"],
+                percent_table.c["spaces % more spaces"],
+            ),
+            [
+                {"percent%": 7, "spaces % more spaces": 11},
+                {"percent%": 9, "spaces % more spaces": 10},
+                {"percent%": 11, "spaces % more spaces": 9},
+            ],
+        )
+        eq_(result.all(), [(7, 11), (9, 10), (11, 9)])
+        self._assert_table(connection)
+
     def _assert_table(self, conn):
         percent_table = self.tables.percent_table
         lightweight_percent_table = self.tables.lightweight_percent_table
@@ -221,7 +249,6 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
 class ServerSideCursorsTest(
     fixtures.TestBase, testing.AssertsExecutionResults
 ):
-
     __requires__ = ("server_side_cursors",)
 
     __backend__ = True
@@ -234,16 +261,22 @@ class ServerSideCursorsTest(
         elif self.engine.dialect.driver == "pymysql":
             sscursor = __import__("pymysql.cursors").cursors.SSCursor
             return isinstance(cursor, sscursor)
-        elif self.engine.dialect.driver in ("aiomysql", "asyncmy"):
+        elif self.engine.dialect.driver in ("aiomysql", "asyncmy", "aioodbc"):
             return cursor.server_side
         elif self.engine.dialect.driver == "mysqldb":
             sscursor = __import__("MySQLdb.cursors").cursors.SSCursor
             return isinstance(cursor, sscursor)
         elif self.engine.dialect.driver == "mariadbconnector":
             return not cursor.buffered
+        elif self.engine.dialect.driver == "mysqlconnector":
+            return "buffered" not in type(cursor).__name__.lower()
         elif self.engine.dialect.driver in ("asyncpg", "aiosqlite"):
             return cursor.server_side
         elif self.engine.dialect.driver == "pg8000":
+            return getattr(cursor, "server_side", False)
+        elif self.engine.dialect.driver == "psycopg":
+            return bool(getattr(cursor, "name", False))
+        elif self.engine.dialect.driver == "oracledb":
             return getattr(cursor, "server_side", False)
         else:
             return False
@@ -265,11 +298,26 @@ class ServerSideCursorsTest(
             )
         return self.engine
 
+    def stringify(self, str_):
+        return re.compile(r"SELECT (\d+)", re.I).sub(
+            lambda m: str(select(int(m.group(1))).compile(testing.db)), str_
+        )
+
     @testing.combinations(
-        ("global_string", True, "select 1", True),
-        ("global_text", True, text("select 1"), True),
+        ("global_string", True, lambda stringify: stringify("select 1"), True),
+        (
+            "global_text",
+            True,
+            lambda stringify: text(stringify("select 1")),
+            True,
+        ),
         ("global_expr", True, select(1), True),
-        ("global_off_explicit", False, text("select 1"), False),
+        (
+            "global_off_explicit",
+            False,
+            lambda stringify: text(stringify("select 1")),
+            False,
+        ),
         (
             "stmt_option",
             False,
@@ -287,15 +335,22 @@ class ServerSideCursorsTest(
         (
             "for_update_string",
             True,
-            "SELECT 1 FOR UPDATE",
+            lambda stringify: stringify("SELECT 1 FOR UPDATE"),
             True,
-            testing.skip_if("sqlite"),
+            testing.skip_if(["sqlite", "mssql"]),
         ),
-        ("text_no_ss", False, text("select 42"), False),
+        (
+            "text_no_ss",
+            False,
+            lambda stringify: text(stringify("select 42")),
+            False,
+        ),
         (
             "text_ss_option",
             False,
-            text("select 42").execution_options(stream_results=True),
+            lambda stringify: text(stringify("select 42")).execution_options(
+                stream_results=True
+            ),
             True,
         ),
         id_="iaaa",
@@ -306,7 +361,12 @@ class ServerSideCursorsTest(
     ):
         engine = self._fixture(engine_ss_arg)
         with engine.begin() as conn:
-            if isinstance(statement, util.string_types):
+            if callable(statement):
+                statement = testing.resolve_lambda(
+                    statement, stringify=self.stringify
+                )
+
+            if isinstance(statement, str):
                 result = conn.exec_driver_sql(statement)
             else:
                 result = conn.execute(statement)
@@ -320,8 +380,22 @@ class ServerSideCursorsTest(
             # should be enabled for this one
             result = conn.execution_options(
                 stream_results=True
-            ).exec_driver_sql("select 1")
+            ).exec_driver_sql(self.stringify("select 1"))
             assert self._is_server_side(result.cursor)
+
+            # the connection has autobegun, which means at the end of the
+            # block, we will roll back, which on MySQL at least will fail
+            # with "Commands out of sync" if the result set
+            # is not closed, so we close it first.
+            #
+            # fun fact!  why did we not have this result.close() in this test
+            # before 2.0? don't we roll back in the connection pool
+            # unconditionally? yes!  and in fact if you run this test in 1.4
+            # with stdout shown, there is in fact "Exception during reset or
+            # similar" with "Commands out sync" emitted a warning!  2.0's
+            # architecture finds and fixes what was previously an expensive
+            # silent error condition.
+            result.close()
 
     def test_stmt_enabled_conn_option_disabled(self):
         engine = self._fixture(False)
@@ -360,7 +434,9 @@ class ServerSideCursorsTest(
         test_table = Table(
             "test_table",
             md,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("data", String(50)),
         )
 
@@ -400,7 +476,9 @@ class ServerSideCursorsTest(
         test_table = Table(
             "test_table",
             md,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("data", String(50)),
         )
 

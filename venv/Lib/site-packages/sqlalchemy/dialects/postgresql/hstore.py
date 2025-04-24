@@ -1,64 +1,26 @@
-# postgresql/hstore.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/postgresql/hstore.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 import re
 
 from .array import ARRAY
+from .operators import CONTAINED_BY
+from .operators import CONTAINS
+from .operators import GETITEM
+from .operators import HAS_ALL
+from .operators import HAS_ANY
+from .operators import HAS_KEY
 from ... import types as sqltypes
-from ... import util
 from ...sql import functions as sqlfunc
-from ...sql import operators
 
 
 __all__ = ("HSTORE", "hstore")
-
-idx_precedence = operators._PRECEDENCE[operators.json_getitem_op]
-
-GETITEM = operators.custom_op(
-    "->",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-HAS_KEY = operators.custom_op(
-    "?",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-HAS_ALL = operators.custom_op(
-    "?&",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-HAS_ANY = operators.custom_op(
-    "?|",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-CONTAINS = operators.custom_op(
-    "@>",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-CONTAINED_BY = operators.custom_op(
-    "<@",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
 
 
 class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
@@ -66,28 +28,29 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
 
     The :class:`.HSTORE` type stores dictionaries containing strings, e.g.::
 
-        data_table = Table('data_table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', HSTORE)
+        data_table = Table(
+            "data_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", HSTORE),
         )
 
         with engine.connect() as conn:
             conn.execute(
-                data_table.insert(),
-                data = {"key1": "value1", "key2": "value2"}
+                data_table.insert(), data={"key1": "value1", "key2": "value2"}
             )
 
     :class:`.HSTORE` provides for a wide range of operations, including:
 
     * Index operations::
 
-        data_table.c.data['some key'] == 'some value'
+        data_table.c.data["some key"] == "some value"
 
     * Containment operations::
 
-        data_table.c.data.has_key('some key')
+        data_table.c.data.has_key("some key")
 
-        data_table.c.data.has_all(['one', 'two', 'three'])
+        data_table.c.data.has_all(["one", "two", "three"])
 
     * Concatenation::
 
@@ -110,17 +73,19 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
 
             from sqlalchemy.ext.mutable import MutableDict
 
+
             class MyClass(Base):
-                __tablename__ = 'data_table'
+                __tablename__ = "data_table"
 
                 id = Column(Integer, primary_key=True)
                 data = Column(MutableDict.as_mutable(HSTORE))
+
 
             my_object = session.query(MyClass).one()
 
             # in-place mutation, requires Mutable extension
             # in order for the ORM to detect
-            my_object.data['some_key'] = 'some value'
+            my_object.data["some_key"] = "some value"
 
             session.commit()
 
@@ -134,7 +99,7 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
         :class:`.hstore` - render the PostgreSQL ``hstore()`` function.
 
 
-    """
+    """  # noqa: E501
 
     __visit_name__ = "HSTORE"
     hashable = False
@@ -145,8 +110,6 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
 
         :param text_type: the type that should be used for indexed values.
          Defaults to :class:`_types.Text`.
-
-         .. versionadded:: 1.1.0
 
         """
         if text_type is not None:
@@ -232,42 +195,26 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
     comparator_factory = Comparator
 
     def bind_processor(self, dialect):
-        if util.py2k:
-            encoding = dialect.encoding
-
-            def process(value):
-                if isinstance(value, dict):
-                    return _serialize_hstore(value).encode(encoding)
-                else:
-                    return value
-
-        else:
-
-            def process(value):
-                if isinstance(value, dict):
-                    return _serialize_hstore(value)
-                else:
-                    return value
+        # note that dialect-specific types like that of psycopg and
+        # psycopg2 will override this method to allow driver-level conversion
+        # instead, see _PsycopgHStore
+        def process(value):
+            if isinstance(value, dict):
+                return _serialize_hstore(value)
+            else:
+                return value
 
         return process
 
     def result_processor(self, dialect, coltype):
-        if util.py2k:
-            encoding = dialect.encoding
-
-            def process(value):
-                if value is not None:
-                    return _parse_hstore(value.decode(encoding))
-                else:
-                    return value
-
-        else:
-
-            def process(value):
-                if value is not None:
-                    return _parse_hstore(value)
-                else:
-                    return value
+        # note that dialect-specific types like that of psycopg and
+        # psycopg2 will override this method to allow driver-level conversion
+        # instead, see _PsycopgHStore
+        def process(value):
+            if value is not None:
+                return _parse_hstore(value)
+            else:
+                return value
 
         return process
 
@@ -283,12 +230,12 @@ class hstore(sqlfunc.GenericFunction):
 
         from sqlalchemy.dialects.postgresql import array, hstore
 
-        select(hstore('key1', 'value1'))
+        select(hstore("key1", "value1"))
 
         select(
             hstore(
-                array(['key1', 'key2', 'key3']),
-                array(['value1', 'value2', 'value3'])
+                array(["key1", "key2", "key3"]),
+                array(["value1", "value2", "value3"]),
             )
         )
 
@@ -447,7 +394,7 @@ def _serialize_hstore(val):
     def esc(s, position):
         if position == "value" and s is None:
             return "NULL"
-        elif isinstance(s, util.string_types):
+        elif isinstance(s, str):
             return '"%s"' % s.replace("\\", "\\\\").replace('"', r"\"")
         else:
             raise ValueError(

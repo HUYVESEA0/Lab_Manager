@@ -1,22 +1,59 @@
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/sqlite/dml.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from __future__ import annotations
 
+from typing import Any
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
+
+from .._typing import _OnConflictIndexElementsT
+from .._typing import _OnConflictIndexWhereT
+from .._typing import _OnConflictSetT
+from .._typing import _OnConflictWhereT
 from ... import util
 from ...sql import coercions
 from ...sql import roles
+from ...sql import schema
+from ...sql._typing import _DMLTableArgument
 from ...sql.base import _exclusive_against
 from ...sql.base import _generative
 from ...sql.base import ColumnCollection
+from ...sql.base import ReadOnlyColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
+from ...sql.elements import ColumnElement
+from ...sql.elements import KeyedColumnElement
+from ...sql.elements import TextClause
 from ...sql.expression import alias
-from ...util.langhelpers import public_factory
-
+from ...util.typing import Self
 
 __all__ = ("Insert", "insert")
+
+
+def insert(table: _DMLTableArgument) -> Insert:
+    """Construct a sqlite-specific variant :class:`_sqlite.Insert`
+    construct.
+
+    .. container:: inherited_member
+
+        The :func:`sqlalchemy.dialects.sqlite.insert` function creates
+        a :class:`sqlalchemy.dialects.sqlite.Insert`.  This class is based
+        on the dialect-agnostic :class:`_sql.Insert` construct which may
+        be constructed using the :func:`_sql.insert` function in
+        SQLAlchemy Core.
+
+    The :class:`_sqlite.Insert` construct includes additional methods
+    :meth:`_sqlite.Insert.on_conflict_do_update`,
+    :meth:`_sqlite.Insert.on_conflict_do_nothing`.
+
+    """
+    return Insert(table)
 
 
 class Insert(StandardInsert):
@@ -39,7 +76,9 @@ class Insert(StandardInsert):
     inherit_cache = False
 
     @util.memoized_property
-    def excluded(self):
+    def excluded(
+        self,
+    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
         """Provide the ``excluded`` namespace for an ON CONFLICT statement
 
         SQLite's ON CONFLICT clause allows reference to the row that would
@@ -72,11 +111,11 @@ class Insert(StandardInsert):
     @_on_conflict_exclusive
     def on_conflict_do_update(
         self,
-        index_elements=None,
-        index_where=None,
-        set_=None,
-        where=None,
-    ):
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+        set_: _OnConflictSetT = None,
+        where: _OnConflictWhereT = None,
+    ) -> Self:
         r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
 
@@ -109,21 +148,25 @@ class Insert(StandardInsert):
             :paramref:`.Insert.on_conflict_do_update.set_` dictionary.
 
         :param where:
-         Optional argument. If present, can be a literal SQL
-         string or an acceptable expression for a ``WHERE`` clause
-         that restricts the rows affected by ``DO UPDATE SET``. Rows
-         not meeting the ``WHERE`` condition will not be updated
-         (effectively a ``DO NOTHING`` for those rows).
+         Optional argument. An expression object representing a ``WHERE``
+         clause that restricts the rows affected by ``DO UPDATE SET``. Rows not
+         meeting the ``WHERE`` condition will not be updated (effectively a
+         ``DO NOTHING`` for those rows).
 
         """
 
         self._post_values_clause = OnConflictDoUpdate(
             index_elements, index_where, set_, where
         )
+        return self
 
     @_generative
     @_on_conflict_exclusive
-    def on_conflict_do_nothing(self, index_elements=None, index_where=None):
+    def on_conflict_do_nothing(
+        self,
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+    ) -> Self:
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.
 
@@ -141,26 +184,39 @@ class Insert(StandardInsert):
         self._post_values_clause = OnConflictDoNothing(
             index_elements, index_where
         )
-
-
-insert = public_factory(
-    Insert, ".dialects.sqlite.insert", ".dialects.sqlite.Insert"
-)
+        return self
 
 
 class OnConflictClause(ClauseElement):
     stringify_dialect = "sqlite"
 
-    def __init__(self, index_elements=None, index_where=None):
+    inferred_target_elements: Optional[List[Union[str, schema.Column[Any]]]]
+    inferred_target_whereclause: Optional[
+        Union[ColumnElement[Any], TextClause]
+    ]
 
+    def __init__(
+        self,
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+    ):
         if index_elements is not None:
-            self.constraint_target = None
-            self.inferred_target_elements = index_elements
-            self.inferred_target_whereclause = index_where
+            self.inferred_target_elements = [
+                coercions.expect(roles.DDLConstraintColumnRole, column)
+                for column in index_elements
+            ]
+            self.inferred_target_whereclause = (
+                coercions.expect(
+                    roles.WhereHavingRole,
+                    index_where,
+                )
+                if index_where is not None
+                else None
+            )
         else:
-            self.constraint_target = (
-                self.inferred_target_elements
-            ) = self.inferred_target_whereclause = None
+            self.inferred_target_elements = (
+                self.inferred_target_whereclause
+            ) = None
 
 
 class OnConflictDoNothing(OnConflictClause):
@@ -170,14 +226,17 @@ class OnConflictDoNothing(OnConflictClause):
 class OnConflictDoUpdate(OnConflictClause):
     __visit_name__ = "on_conflict_do_update"
 
+    update_values_to_set: List[Tuple[Union[schema.Column[Any], str], Any]]
+    update_whereclause: Optional[ColumnElement[Any]]
+
     def __init__(
         self,
-        index_elements=None,
-        index_where=None,
-        set_=None,
-        where=None,
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+        set_: _OnConflictSetT = None,
+        where: _OnConflictWhereT = None,
     ):
-        super(OnConflictDoUpdate, self).__init__(
+        super().__init__(
             index_elements=index_elements,
             index_where=index_where,
         )
@@ -197,4 +256,8 @@ class OnConflictDoUpdate(OnConflictClause):
             (coercions.expect(roles.DMLColumnRole, key), value)
             for key, value in set_.items()
         ]
-        self.update_whereclause = where
+        self.update_whereclause = (
+            coercions.expect(roles.WhereHavingRole, where)
+            if where is not None
+            else None
+        )

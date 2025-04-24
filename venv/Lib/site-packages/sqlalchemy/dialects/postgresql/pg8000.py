@@ -1,9 +1,11 @@
-# postgresql/pg8000.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors <see AUTHORS
+# dialects/postgresql/pg8000.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors <see AUTHORS
 # file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 r"""
 .. dialect:: postgresql+pg8000
     :name: pg8000
@@ -25,19 +27,21 @@ PostgreSQL ``client_encoding`` parameter; by default this is the value in
 the ``postgresql.conf`` file, which often defaults to ``SQL_ASCII``.
 Typically, this can be changed to ``utf-8``, as a more useful default::
 
-    #client_encoding = sql_ascii # actually, defaults to database
-                                 # encoding
+    # client_encoding = sql_ascii # actually, defaults to database encoding
     client_encoding = utf8
 
 The ``client_encoding`` can be overridden for a session by executing the SQL:
 
-SET CLIENT_ENCODING TO 'utf8';
+.. sourcecode:: sql
+
+    SET CLIENT_ENCODING TO 'utf8';
 
 SQLAlchemy will execute this SQL on all new connections based on the value
 passed to :func:`_sa.create_engine` using the ``client_encoding`` parameter::
 
     engine = create_engine(
-        "postgresql+pg8000://user:pass@host/dbname", client_encoding='utf8')
+        "postgresql+pg8000://user:pass@host/dbname", client_encoding="utf8"
+    )
 
 .. _pg8000_ssl:
 
@@ -48,6 +52,7 @@ pg8000 accepts a Python ``SSLContext`` object which may be specified using the
 :paramref:`_sa.create_engine.connect_args` dictionary::
 
     import ssl
+
     ssl_context = ssl.create_default_context()
     engine = sa.create_engine(
         "postgresql+pg8000://scott:tiger@192.168.0.199/test",
@@ -59,6 +64,7 @@ or does not match the host name (as seen from the client), it may also be
 necessary to disable hostname checking::
 
     import ssl
+
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
@@ -91,10 +97,9 @@ of the :ref:`psycopg2 <psycopg2_isolation_level>` dialect:
 """  # noqa
 import decimal
 import re
-from uuid import UUID as _python_UUID
 
+from . import ranges
 from .array import ARRAY as PGARRAY
-from .base import _ColonCast
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
@@ -104,18 +109,26 @@ from .base import PGCompiler
 from .base import PGDialect
 from .base import PGExecutionContext
 from .base import PGIdentifierPreparer
-from .base import UUID
 from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
+from .pg_catalog import _SpaceVector
+from .pg_catalog import OIDVECTOR
+from .types import CITEXT
 from ... import exc
-from ... import processors
-from ... import types as sqltypes
 from ... import util
+from ...engine import processors
+from ...sql import sqltypes
 from ...sql.elements import quoted_name
 
 
+class _PGString(sqltypes.String):
+    render_bind_cast = True
+
+
 class _PGNumeric(sqltypes.Numeric):
+    render_bind_cast = True
+
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
             if coltype in _FLOAT_TYPES:
@@ -141,25 +154,28 @@ class _PGNumeric(sqltypes.Numeric):
                 )
 
 
+class _PGFloat(_PGNumeric, sqltypes.Float):
+    __visit_name__ = "float"
+    render_bind_cast = True
+
+
 class _PGNumericNoBind(_PGNumeric):
     def bind_processor(self, dialect):
         return None
 
 
 class _PGJSON(JSON):
+    render_bind_cast = True
+
     def result_processor(self, dialect, coltype):
         return None
-
-    def get_dbapi_type(self, dbapi):
-        return dbapi.JSON
 
 
 class _PGJSONB(JSONB):
+    render_bind_cast = True
+
     def result_processor(self, dialect, coltype):
         return None
-
-    def get_dbapi_type(self, dbapi):
-        return dbapi.JSONB
 
 
 class _PGJSONIndexType(sqltypes.JSON.JSONIndexType):
@@ -168,40 +184,21 @@ class _PGJSONIndexType(sqltypes.JSON.JSONIndexType):
 
 
 class _PGJSONIntIndexType(sqltypes.JSON.JSONIntIndexType):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.INTEGER
+    __visit_name__ = "json_int_index"
+
+    render_bind_cast = True
 
 
 class _PGJSONStrIndexType(sqltypes.JSON.JSONStrIndexType):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.STRING
+    __visit_name__ = "json_str_index"
+
+    render_bind_cast = True
 
 
 class _PGJSONPathType(JSONPathType):
-    def get_dbapi_type(self, dbapi):
-        return 1009
+    pass
 
-
-class _PGUUID(UUID):
-    def bind_processor(self, dialect):
-        if not self.as_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = _python_UUID(value)
-                return value
-
-            return process
-
-    def result_processor(self, dialect, coltype):
-        if not self.as_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = str(value)
-                return value
-
-            return process
+    # DBAPI type 1009
 
 
 class _PGEnum(ENUM):
@@ -210,6 +207,8 @@ class _PGEnum(ENUM):
 
 
 class _PGInterval(INTERVAL):
+    render_bind_cast = True
+
     def get_dbapi_type(self, dbapi):
         return dbapi.INTERVAL
 
@@ -219,48 +218,105 @@ class _PGInterval(INTERVAL):
 
 
 class _PGTimeStamp(sqltypes.DateTime):
-    def get_dbapi_type(self, dbapi):
-        if self.timezone:
-            # TIMESTAMPTZOID
-            return 1184
-        else:
-            # TIMESTAMPOID
-            return 1114
+    render_bind_cast = True
+
+
+class _PGDate(sqltypes.Date):
+    render_bind_cast = True
 
 
 class _PGTime(sqltypes.Time):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.TIME
+    render_bind_cast = True
 
 
 class _PGInteger(sqltypes.Integer):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.INTEGER
+    render_bind_cast = True
 
 
 class _PGSmallInteger(sqltypes.SmallInteger):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.INTEGER
+    render_bind_cast = True
 
 
 class _PGNullType(sqltypes.NullType):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.NULLTYPE
+    pass
 
 
 class _PGBigInteger(sqltypes.BigInteger):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.BIGINTEGER
+    render_bind_cast = True
 
 
 class _PGBoolean(sqltypes.Boolean):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.BOOLEAN
+    render_bind_cast = True
 
 
 class _PGARRAY(PGARRAY):
-    def bind_expression(self, bindvalue):
-        return _ColonCast(bindvalue, self)
+    render_bind_cast = True
+
+
+class _PGOIDVECTOR(_SpaceVector, OIDVECTOR):
+    pass
+
+
+class _Pg8000Range(ranges.AbstractSingleRangeImpl):
+    def bind_processor(self, dialect):
+        pg8000_Range = dialect.dbapi.Range
+
+        def to_range(value):
+            if isinstance(value, ranges.Range):
+                value = pg8000_Range(
+                    value.lower, value.upper, value.bounds, value.empty
+                )
+            return value
+
+        return to_range
+
+    def result_processor(self, dialect, coltype):
+        def to_range(value):
+            if value is not None:
+                value = ranges.Range(
+                    value.lower,
+                    value.upper,
+                    bounds=value.bounds,
+                    empty=value.is_empty,
+                )
+            return value
+
+        return to_range
+
+
+class _Pg8000MultiRange(ranges.AbstractMultiRangeImpl):
+    def bind_processor(self, dialect):
+        pg8000_Range = dialect.dbapi.Range
+
+        def to_multirange(value):
+            if isinstance(value, list):
+                mr = []
+                for v in value:
+                    if isinstance(v, ranges.Range):
+                        mr.append(
+                            pg8000_Range(v.lower, v.upper, v.bounds, v.empty)
+                        )
+                    else:
+                        mr.append(v)
+                return mr
+            else:
+                return value
+
+        return to_multirange
+
+    def result_processor(self, dialect, coltype):
+        def to_multirange(value):
+            if value is None:
+                return None
+            else:
+                return ranges.MultiRange(
+                    ranges.Range(
+                        v.lower, v.upper, bounds=v.bounds, empty=v.is_empty
+                    )
+                    for v in value
+                )
+
+        return to_multirange
 
 
 _server_side_id = util.counter()
@@ -362,7 +418,7 @@ class PGDialect_pg8000(PGDialect):
     preparer = PGIdentifierPreparer_pg8000
     supports_server_side_cursors = True
 
-    use_setinputsizes = True
+    render_bind_cast = True
 
     # reversed as of pg8000 1.16.6.  1.16.5 and lower
     # are no longer compatible
@@ -372,26 +428,42 @@ class PGDialect_pg8000(PGDialect):
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
+            sqltypes.String: _PGString,
             sqltypes.Numeric: _PGNumericNoBind,
-            sqltypes.Float: _PGNumeric,
+            sqltypes.Float: _PGFloat,
             sqltypes.JSON: _PGJSON,
             sqltypes.Boolean: _PGBoolean,
             sqltypes.NullType: _PGNullType,
             JSONB: _PGJSONB,
+            CITEXT: CITEXT,
             sqltypes.JSON.JSONPathType: _PGJSONPathType,
             sqltypes.JSON.JSONIndexType: _PGJSONIndexType,
             sqltypes.JSON.JSONIntIndexType: _PGJSONIntIndexType,
             sqltypes.JSON.JSONStrIndexType: _PGJSONStrIndexType,
-            UUID: _PGUUID,
             sqltypes.Interval: _PGInterval,
             INTERVAL: _PGInterval,
             sqltypes.DateTime: _PGTimeStamp,
+            sqltypes.DateTime: _PGTimeStamp,
+            sqltypes.Date: _PGDate,
             sqltypes.Time: _PGTime,
             sqltypes.Integer: _PGInteger,
             sqltypes.SmallInteger: _PGSmallInteger,
             sqltypes.BigInteger: _PGBigInteger,
             sqltypes.Enum: _PGEnum,
             sqltypes.ARRAY: _PGARRAY,
+            OIDVECTOR: _PGOIDVECTOR,
+            ranges.INT4RANGE: _Pg8000Range,
+            ranges.INT8RANGE: _Pg8000Range,
+            ranges.NUMRANGE: _Pg8000Range,
+            ranges.DATERANGE: _Pg8000Range,
+            ranges.TSRANGE: _Pg8000Range,
+            ranges.TSTZRANGE: _Pg8000Range,
+            ranges.INT4MULTIRANGE: _Pg8000MultiRange,
+            ranges.INT8MULTIRANGE: _Pg8000MultiRange,
+            ranges.NUMMULTIRANGE: _Pg8000MultiRange,
+            ranges.DATEMULTIRANGE: _Pg8000MultiRange,
+            ranges.TSMULTIRANGE: _Pg8000MultiRange,
+            ranges.TSTZMULTIRANGE: _Pg8000MultiRange,
         },
     )
 
@@ -401,6 +473,13 @@ class PGDialect_pg8000(PGDialect):
 
         if self._dbapi_version < (1, 16, 6):
             raise NotImplementedError("pg8000 1.16.6 or greater is required")
+
+        if self._native_inet_types:
+            raise NotImplementedError(
+                "The pg8000 dialect does not fully implement "
+                "ipaddress type handling; INET is supported by default, "
+                "CIDR is not"
+            )
 
     @util.memoized_property
     def _dbapi_version(self):
@@ -417,7 +496,7 @@ class PGDialect_pg8000(PGDialect):
             return (99, 99, 99)
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("pg8000")
 
     def create_connect_args(self, url):
@@ -437,30 +516,29 @@ class PGDialect_pg8000(PGDialect):
         # connection was closed normally
         return "connection is closed" in str(e)
 
-    def set_isolation_level(self, connection, level):
+    def get_isolation_level_values(self, dbapi_connection):
+        return (
+            "AUTOCOMMIT",
+            "READ COMMITTED",
+            "READ UNCOMMITTED",
+            "REPEATABLE READ",
+            "SERIALIZABLE",
+        )
+
+    def set_isolation_level(self, dbapi_connection, level):
         level = level.replace("_", " ")
 
-        # adjust for ConnectionFairy possibly being present
-        if hasattr(connection, "dbapi_connection"):
-            connection = connection.dbapi_connection
-
         if level == "AUTOCOMMIT":
-            connection.autocommit = True
-        elif level in self._isolation_lookup:
-            connection.autocommit = False
-            cursor = connection.cursor()
+            dbapi_connection.autocommit = True
+        else:
+            dbapi_connection.autocommit = False
+            cursor = dbapi_connection.cursor()
             cursor.execute(
                 "SET SESSION CHARACTERISTICS AS TRANSACTION "
-                "ISOLATION LEVEL %s" % level
+                f"ISOLATION LEVEL {level}"
             )
             cursor.execute("COMMIT")
             cursor.close()
-        else:
-            raise exc.ArgumentError(
-                "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s or AUTOCOMMIT"
-                % (level, self.name, ", ".join(self._isolation_lookup))
-            )
 
     def set_readonly(self, connection, value):
         cursor = connection.cursor()
@@ -504,29 +582,15 @@ class PGDialect_pg8000(PGDialect):
 
         return val == "on"
 
-    def set_client_encoding(self, connection, client_encoding):
-        # adjust for ConnectionFairy possibly being present
-        if hasattr(connection, "dbapi_connection"):
-            connection = connection.dbapi_connection
-
-        cursor = connection.cursor()
-        cursor.execute("SET CLIENT_ENCODING TO '" + client_encoding + "'")
+    def _set_client_encoding(self, dbapi_connection, client_encoding):
+        cursor = dbapi_connection.cursor()
+        cursor.execute(
+            f"""SET CLIENT_ENCODING TO '{
+                client_encoding.replace("'", "''")
+            }'"""
+        )
         cursor.execute("COMMIT")
         cursor.close()
-
-    def do_set_input_sizes(self, cursor, list_of_tuples, context):
-        if self.positional:
-            cursor.setinputsizes(
-                *[dbtype for key, dbtype, sqltype in list_of_tuples]
-            )
-        else:
-            cursor.setinputsizes(
-                **{
-                    key: dbtype
-                    for key, dbtype, sqltype in list_of_tuples
-                    if dbtype
-                }
-            )
 
     def do_begin_twophase(self, connection, xid):
         connection.connection.tpc_begin((0, xid, ""))
@@ -551,21 +615,25 @@ class PGDialect_pg8000(PGDialect):
         fns = []
 
         def on_connect(conn):
-            conn.py_types[quoted_name] = conn.py_types[util.text_type]
+            conn.py_types[quoted_name] = conn.py_types[str]
 
         fns.append(on_connect)
 
         if self.client_encoding is not None:
 
             def on_connect(conn):
-                self.set_client_encoding(conn, self.client_encoding)
+                self._set_client_encoding(conn, self.client_encoding)
 
             fns.append(on_connect)
 
-        if self.isolation_level is not None:
+        if self._native_inet_types is False:
 
             def on_connect(conn):
-                self.set_isolation_level(conn, self.isolation_level)
+                # inet
+                conn.register_in_adapter(869, lambda s: s)
+
+                # cidr
+                conn.register_in_adapter(650, lambda s: s)
 
             fns.append(on_connect)
 
@@ -589,6 +657,10 @@ class PGDialect_pg8000(PGDialect):
             return on_connect
         else:
             return None
+
+    @util.memoized_property
+    def _dialect_specific_select_one(self):
+        return ";"
 
 
 dialect = PGDialect_pg8000

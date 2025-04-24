@@ -1,9 +1,11 @@
-# sqlite/aiosqlite.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/sqlite/aiosqlite.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 r"""
 
@@ -29,6 +31,7 @@ This dialect should normally be used only with the
 :func:`_asyncio.create_async_engine` engine creation function::
 
     from sqlalchemy.ext.asyncio import create_async_engine
+
     engine = create_async_engine("sqlite+aiosqlite:///filename")
 
 The URL passes through all arguments to the ``pysqlite`` driver, so all
@@ -42,8 +45,66 @@ User-Defined Functions
 aiosqlite extends pysqlite to support async, so we can create our own user-defined functions (UDFs)
 in Python and use them directly in SQLite queries as described here: :ref:`pysqlite_udfs`.
 
+.. _aiosqlite_serializable:
+
+Serializable isolation / Savepoints / Transactional DDL (asyncio version)
+-------------------------------------------------------------------------
+
+Similarly to pysqlite, aiosqlite does not support SAVEPOINT feature.
+
+The solution is similar to :ref:`pysqlite_serializable`. This is achieved by the event listeners in async::
+
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine("sqlite+aiosqlite:///myfile.db")
+
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def do_connect(dbapi_connection, connection_record):
+        # disable aiosqlite's emitting of the BEGIN statement entirely.
+        # also stops it from emitting COMMIT before any DDL.
+        dbapi_connection.isolation_level = None
+
+
+    @event.listens_for(engine.sync_engine, "begin")
+    def do_begin(conn):
+        # emit our own BEGIN
+        conn.exec_driver_sql("BEGIN")
+
+.. warning:: When using the above recipe, it is advised to not use the
+   :paramref:`.Connection.execution_options.isolation_level` setting on
+   :class:`_engine.Connection` and :func:`_sa.create_engine`
+   with the SQLite driver,
+   as this function necessarily will also alter the ".isolation_level" setting.
+
+.. _aiosqlite_pooling:
+
+Pooling Behavior
+----------------
+
+The SQLAlchemy ``aiosqlite`` DBAPI establishes the connection pool differently
+based on the kind of SQLite database that's requested:
+
+* When a ``:memory:`` SQLite database is specified, the dialect by default
+  will use :class:`.StaticPool`. This pool maintains a single
+  connection, so that all access to the engine
+  use the same ``:memory:`` database.
+* When a file-based database is specified, the dialect will use
+  :class:`.AsyncAdaptedQueuePool` as the source of connections.
+
+  .. versionchanged:: 2.0.38
+
+    SQLite file database engines now use :class:`.AsyncAdaptedQueuePool` by default.
+    Previously, :class:`.NullPool` were used.  The :class:`.NullPool` class
+    may be used by specifying it via the
+    :paramref:`_sa.create_engine.poolclass` parameter.
 
 """  # noqa
+
+import asyncio
+from collections import deque
+from functools import partial
 
 from .base import SQLiteExecutionContext
 from .pysqlite import SQLiteDialect_pysqlite
@@ -55,6 +116,9 @@ from ...util.concurrency import await_only
 
 
 class AsyncAdapt_aiosqlite_cursor:
+    # TODO: base on connectors/asyncio.py
+    # see #10415
+
     __slots__ = (
         "_adapt_connection",
         "_connection",
@@ -75,10 +139,10 @@ class AsyncAdapt_aiosqlite_cursor:
         self.arraysize = 1
         self.rowcount = -1
         self.description = None
-        self._rows = []
+        self._rows = deque()
 
     def close(self):
-        self._rows[:] = []
+        self._rows.clear()
 
     def execute(self, operation, parameters=None):
         try:
@@ -94,7 +158,7 @@ class AsyncAdapt_aiosqlite_cursor:
                 self.lastrowid = self.rowcount = -1
 
                 if not self.server_side:
-                    self._rows = self.await_(_cursor.fetchall())
+                    self._rows = deque(self.await_(_cursor.fetchall()))
             else:
                 self.description = None
                 self.lastrowid = _cursor.lastrowid
@@ -123,11 +187,11 @@ class AsyncAdapt_aiosqlite_cursor:
 
     def __iter__(self):
         while self._rows:
-            yield self._rows.pop(0)
+            yield self._rows.popleft()
 
     def fetchone(self):
         if self._rows:
-            return self._rows.pop(0)
+            return self._rows.popleft()
         else:
             return None
 
@@ -135,17 +199,18 @@ class AsyncAdapt_aiosqlite_cursor:
         if size is None:
             size = self.arraysize
 
-        retval = self._rows[0:size]
-        self._rows[:] = self._rows[size:]
-        return retval
+        rr = self._rows
+        return [rr.popleft() for _ in range(min(size, len(rr)))]
 
     def fetchall(self):
-        retval = self._rows[:]
-        self._rows[:] = []
+        retval = list(self._rows)
+        self._rows.clear()
         return retval
 
 
 class AsyncAdapt_aiosqlite_ss_cursor(AsyncAdapt_aiosqlite_cursor):
+    # TODO: base on connectors/asyncio.py
+    # see #10415
     __slots__ = "_cursor"
 
     server_side = True
@@ -173,7 +238,7 @@ class AsyncAdapt_aiosqlite_ss_cursor(AsyncAdapt_aiosqlite_cursor):
 
 class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
     await_ = staticmethod(await_only)
-    __slots__ = ("dbapi", "_connection")
+    __slots__ = ("dbapi",)
 
     def __init__(self, dbapi, connection):
         self.dbapi = dbapi
@@ -185,8 +250,21 @@ class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
 
     @isolation_level.setter
     def isolation_level(self, value):
+        # aiosqlite's isolation_level setter works outside the Thread
+        # that it's supposed to, necessitating setting check_same_thread=False.
+        # for improved stability, we instead invent our own awaitable version
+        # using aiosqlite's async queue directly.
+
+        def set_iso(connection, value):
+            connection.isolation_level = value
+
+        function = partial(set_iso, self._connection._conn, value)
+        future = asyncio.get_event_loop().create_future()
+
+        self._connection._tx.put_nowait((future, function))
+
         try:
-            self._connection.isolation_level = value
+            return self.await_(future)
         except Exception as error:
             self._handle_exception(error)
 
@@ -220,6 +298,16 @@ class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
     def close(self):
         try:
             self.await_(self._connection.close())
+        except ValueError:
+            # this is undocumented for aiosqlite, that ValueError
+            # was raised if .close() was called more than once, which is
+            # both not customary for DBAPI and is also not a DBAPI.Error
+            # exception. This is now fixed in aiosqlite via my PR
+            # https://github.com/omnilib/aiosqlite/pull/238, so we can be
+            # assured this will not become some other kind of exception,
+            # since it doesn't raise anymore.
+
+            pass
         except Exception as error:
             self._handle_exception(error)
 
@@ -228,10 +316,9 @@ class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
             isinstance(error, ValueError)
             and error.args[0] == "no active connection"
         ):
-            util.raise_(
-                self.dbapi.sqlite.OperationalError("no active connection"),
-                from_=error,
-            )
+            raise self.dbapi.sqlite.OperationalError(
+                "no active connection"
+            ) from error
         else:
             raise error
 
@@ -271,22 +358,13 @@ class AsyncAdapt_aiosqlite_dbapi:
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
 
-        # Q. WHY do we need this?
-        # A. Because there is no way to set connection.isolation_level
-        #    otherwise
-        # Q. BUT HOW do you know it is SAFE ?????
-        # A. The only operation that isn't safe is the isolation level set
-        #    operation which aiosqlite appears to have let slip through even
-        #    though pysqlite appears to do check_same_thread for this.
-        #    All execute operations etc. should be safe because they all
-        #    go through the single executor thread.
-
-        kw["check_same_thread"] = False
-
-        connection = self.aiosqlite.connect(*arg, **kw)
-
-        # it's a Thread.   you'll thank us later
-        connection.daemon = True
+        creator_fn = kw.pop("async_creator_fn", None)
+        if creator_fn:
+            connection = creator_fn(*arg, **kw)
+        else:
+            connection = self.aiosqlite.connect(*arg, **kw)
+            # it's a Thread.   you'll thank us later
+            connection.daemon = True
 
         if util.asbool(async_fallback):
             return AsyncAdaptFallback_aiosqlite_connection(
@@ -316,7 +394,7 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
     execution_ctx_cls = SQLiteExecutionContext_aiosqlite
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return AsyncAdapt_aiosqlite_dbapi(
             __import__("aiosqlite"), __import__("sqlite3")
         )
@@ -324,7 +402,7 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
     @classmethod
     def get_pool_class(cls, url):
         if cls._is_url_file_db(url):
-            return pool.NullPool
+            return pool.AsyncAdaptedQueuePool
         else:
             return pool.StaticPool
 

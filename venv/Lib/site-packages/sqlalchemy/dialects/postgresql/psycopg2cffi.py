@@ -1,9 +1,11 @@
-# testing/engines.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/postgresql/psycopg2cffi.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 r"""
 .. dialect:: postgresql+psycopg2cffi
     :name: psycopg2cffi
@@ -15,14 +17,13 @@ r"""
 layer. This makes it suitable for use in e.g. PyPy. Documentation
 is as per ``psycopg2``.
 
-.. versionadded:: 1.0.0
-
 .. seealso::
 
     :mod:`sqlalchemy.dialects.postgresql.psycopg2`
 
 """  # noqa
 from .psycopg2 import PGDialect_psycopg2
+from ... import util
 
 
 class PGDialect_psycopg2cffi(PGDialect_psycopg2):
@@ -43,15 +44,15 @@ class PGDialect_psycopg2cffi(PGDialect_psycopg2):
     )
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("psycopg2cffi")
 
-    @classmethod
+    @util.memoized_property
     def _psycopg2_extensions(cls):
         root = __import__("psycopg2cffi", fromlist=["extensions"])
         return root.extensions
 
-    @classmethod
+    @util.memoized_property
     def _psycopg2_extras(cls):
         root = __import__("psycopg2cffi", fromlist=["extras"])
         return root.extras

@@ -1,9 +1,11 @@
-# mysql/reflection.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/reflection.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 import re
 
@@ -17,7 +19,7 @@ from ... import types as sqltypes
 from ... import util
 
 
-class ReflectedState(object):
+class ReflectedState:
     """Stores raw information about a SHOW CREATE TABLE statement."""
 
     def __init__(self):
@@ -30,7 +32,7 @@ class ReflectedState(object):
 
 
 @log.class_logger
-class MySQLTableDefinitionParser(object):
+class MySQLTableDefinitionParser:
     """Parses the results of a SHOW CREATE TABLE statement."""
 
     def __init__(self, dialect, preparer):
@@ -52,6 +54,8 @@ class MySQLTableDefinitionParser(object):
                 pass
             elif line.startswith("CREATE "):
                 self._parse_table_name(line, state)
+            elif "PARTITION" in line:
+                self._parse_partition_options(line, state)
             # Not present in real reflection, but may be if
             # loading from a file.
             elif not line:
@@ -70,7 +74,7 @@ class MySQLTableDefinitionParser(object):
                     pass
         return state
 
-    def _check_view(self, sql):
+    def _check_view(self, sql: str) -> bool:
         return bool(self._re_is_view.match(sql))
 
     def _parse_constraints(self, line):
@@ -142,11 +146,8 @@ class MySQLTableDefinitionParser(object):
 
         options = {}
 
-        if not line or line == ")":
-            pass
-
-        else:
-            rest_of_line = line[:]
+        if line and line != ")":
+            rest_of_line = line
             for regex, cleanup in self._pr_options:
                 m = regex.search(rest_of_line)
                 if not m:
@@ -162,6 +163,62 @@ class MySQLTableDefinitionParser(object):
 
         for opt, val in options.items():
             state.table_options["%s_%s" % (self.dialect.name, opt)] = val
+
+    def _parse_partition_options(self, line, state):
+        options = {}
+        new_line = line[:]
+
+        while new_line.startswith("(") or new_line.startswith(" "):
+            new_line = new_line[1:]
+
+        for regex, cleanup in self._pr_options:
+            m = regex.search(new_line)
+            if not m or "PARTITION" not in regex.pattern:
+                continue
+
+            directive = m.group("directive")
+            directive = directive.lower()
+            is_subpartition = directive == "subpartition"
+
+            if directive == "partition" or is_subpartition:
+                new_line = new_line.replace(") */", "")
+                new_line = new_line.replace(",", "")
+                if is_subpartition and new_line.endswith(")"):
+                    new_line = new_line[:-1]
+                if self.dialect.name == "mariadb" and new_line.endswith(")"):
+                    if (
+                        "MAXVALUE" in new_line
+                        or "MINVALUE" in new_line
+                        or "ENGINE" in new_line
+                    ):
+                        # final line of MariaDB partition endswith ")"
+                        new_line = new_line[:-1]
+
+                defs = "%s_%s_definitions" % (self.dialect.name, directive)
+                options[defs] = new_line
+
+            else:
+                directive = directive.replace(" ", "_")
+                value = m.group("val")
+                if cleanup:
+                    value = cleanup(value)
+                options[directive] = value
+            break
+
+        for opt, val in options.items():
+            part_def = "%s_partition_definitions" % (self.dialect.name)
+            subpart_def = "%s_subpartition_definitions" % (self.dialect.name)
+            if opt == part_def or opt == subpart_def:
+                # builds a string of definitions
+                if opt not in state.table_options:
+                    state.table_options[opt] = val
+                else:
+                    state.table_options[opt] = "%s, %s" % (
+                        state.table_options[opt],
+                        val,
+                    )
+            else:
+                state.table_options["%s_%s" % (self.dialect.name, opt)] = val
 
     def _parse_column(self, line, state):
         """Extract column details.
@@ -233,6 +290,9 @@ class MySQLTableDefinitionParser(object):
         # this can be "NULL" in the case of TIMESTAMP
         if spec.get("notnull", False) == "NOT NULL":
             col_kw["nullable"] = False
+        # For generated columns, the nullability is marked in a different place
+        if spec.get("notnull_generated", False) == "NOT NULL":
+            col_kw["nullable"] = False
 
         # AUTO_INCREMENT
         if spec.get("autoincr", False):
@@ -250,7 +310,7 @@ class MySQLTableDefinitionParser(object):
         comment = spec.get("comment", None)
 
         if comment is not None:
-            comment = comment.replace("\\\\", "\\").replace("''", "'")
+            comment = cleanup_text(comment)
 
         sqltext = spec.get("generated")
         if sqltext is not None:
@@ -280,9 +340,9 @@ class MySQLTableDefinitionParser(object):
 
         buffer = []
         for row in columns:
-            (name, col_type, nullable, default, extra) = [
+            (name, col_type, nullable, default, extra) = (
                 row[i] for i in (0, 1, 2, 4, 5)
-            ]
+            )
 
             line = [" "]
             line.append(self.preparer.quote_identifier(name))
@@ -322,7 +382,12 @@ class MySQLTableDefinitionParser(object):
     def _parse_keyexprs(self, identifiers):
         """Unpack '"col"(2),"col" ASC'-ish strings into components."""
 
-        return self._re_keyexprs.findall(identifiers)
+        return [
+            (colname, int(length) if length else None, modifiers)
+            for colname, length, modifiers in self._re_keyexprs.findall(
+                identifiers
+            )
+        ]
 
     def _prep_regexes(self):
         """Pre-compile regular expressions."""
@@ -386,11 +451,13 @@ class MySQLTableDefinitionParser(object):
             r"(?: +COLLATE +(?P<collate>[\w_]+))?"
             r"(?: +(?P<notnull>(?:NOT )?NULL))?"
             r"(?: +DEFAULT +(?P<default>"
-            r"(?:NULL|'(?:''|[^'])*'|[\-\w\.\(\)]+"
+            r"(?:NULL|'(?:''|[^'])*'|\(.+?\)|[\-\w\.\(\)]+"
             r"(?: +ON UPDATE [\-\w\.\(\)]+)?)"
             r"))?"
             r"(?: +(?:GENERATED ALWAYS)? ?AS +(?P<generated>\("
-            r".*\))? ?(?P<persistence>VIRTUAL|STORED)?)?"
+            r".*\))? ?(?P<persistence>VIRTUAL|STORED)?"
+            r"(?: +(?P<notnull_generated>(?:NOT )?NULL))?"
+            r")?"
             r"(?: +(?P<autoincr>AUTO_INCREMENT))?"
             r"(?: +COMMENT +'(?P<comment>(?:''|[^'])*)')?"
             r"(?: +COLUMN_FORMAT +(?P<colfmt>\w+))?"
@@ -438,7 +505,7 @@ class MySQLTableDefinitionParser(object):
         #
         # unique constraints come back as KEYs
         kw = quotes.copy()
-        kw["on"] = "RESTRICT|CASCADE|SET NULL|NO ACTION"
+        kw["on"] = "RESTRICT|CASCADE|SET NULL|NO ACTION|SET DEFAULT"
         self._re_fk_constraint = _re_compile(
             r"  "
             r"CONSTRAINT +"
@@ -447,7 +514,7 @@ class MySQLTableDefinitionParser(object):
             r"\((?P<local>[^\)]+?)\) REFERENCES +"
             r"(?P<table>%(iq)s[^%(fq)s]+%(fq)s"
             r"(?:\.%(iq)s[^%(fq)s]+%(fq)s)?) +"
-            r"\((?P<foreign>[^\)]+?)\)"
+            r"\((?P<foreign>(?:%(iq)s[^%(fq)s]+%(fq)s(?: *, *)?)+)\)"
             r"(?: +(?P<match>MATCH \w+))?"
             r"(?: +ON DELETE (?P<ondelete>%(on)s))?"
             r"(?: +ON UPDATE (?P<onupdate>%(on)s))?" % kw
@@ -492,8 +559,19 @@ class MySQLTableDefinitionParser(object):
             "PACK_KEYS",
             "ROW_FORMAT",
             "KEY_BLOCK_SIZE",
+            "STATS_SAMPLE_PAGES",
         ):
             self._add_option_word(option)
+
+        for option in (
+            "PARTITION BY",
+            "SUBPARTITION BY",
+            "PARTITIONS",
+            "SUBPARTITIONS",
+            "PARTITION",
+            "SUBPARTITION",
+        ):
+            self._add_partition_option_word(option)
 
         self._add_option_regex("UNION", r"\([^\)]+\)")
         self._add_option_regex("TABLESPACE", r".*? STORAGE DISK")
@@ -509,17 +587,28 @@ class MySQLTableDefinitionParser(object):
             re.escape(directive),
             self._optional_equals,
         )
-        self._pr_options.append(
-            _pr_compile(
-                regex, lambda v: v.replace("\\\\", "\\").replace("''", "'")
-            )
-        )
+        self._pr_options.append(_pr_compile(regex, cleanup_text))
 
     def _add_option_word(self, directive):
         regex = r"(?P<directive>%s)%s" r"(?P<val>\w+)" % (
             re.escape(directive),
             self._optional_equals,
         )
+        self._pr_options.append(_pr_compile(regex))
+
+    def _add_partition_option_word(self, directive):
+        if directive == "PARTITION BY" or directive == "SUBPARTITION BY":
+            regex = r"(?<!\S)(?P<directive>%s)%s" r"(?P<val>\w+.*)" % (
+                re.escape(directive),
+                self._optional_equals,
+            )
+        elif directive == "SUBPARTITIONS" or directive == "PARTITIONS":
+            regex = r"(?<!\S)(?P<directive>%s)%s" r"(?P<val>\d+)" % (
+                re.escape(directive),
+                self._optional_equals,
+            )
+        else:
+            regex = r"(?<!\S)(?P<directive>%s)(?!\S)" % (re.escape(directive),)
         self._pr_options.append(_pr_compile(regex))
 
     def _add_option_regex(self, directive, regex):
@@ -561,3 +650,28 @@ def _strip_values(values):
             a = a[1:-1].replace(a[0] * 2, a[0])
         strip_values.append(a)
     return strip_values
+
+
+def cleanup_text(raw_text: str) -> str:
+    if "\\" in raw_text:
+        raw_text = re.sub(
+            _control_char_regexp, lambda s: _control_char_map[s[0]], raw_text
+        )
+    return raw_text.replace("''", "'")
+
+
+_control_char_map = {
+    "\\\\": "\\",
+    "\\0": "\0",
+    "\\a": "\a",
+    "\\b": "\b",
+    "\\t": "\t",
+    "\\n": "\n",
+    "\\v": "\v",
+    "\\f": "\f",
+    "\\r": "\r",
+    # '\\e':'\e',
+}
+_control_char_regexp = re.compile(
+    "|".join(re.escape(k) for k in _control_char_map)
+)

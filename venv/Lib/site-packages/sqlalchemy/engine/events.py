@@ -1,43 +1,77 @@
-# sqlalchemy/engine/events.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# engine/events.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 
+from __future__ import annotations
+
+import typing
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Tuple
+from typing import Type
+from typing import Union
+
+from .base import Connection
 from .base import Engine
-from .interfaces import Connectable
+from .interfaces import ConnectionEventsTarget
+from .interfaces import DBAPIConnection
+from .interfaces import DBAPICursor
 from .interfaces import Dialect
 from .. import event
 from .. import exc
+from ..util.typing import Literal
+
+if typing.TYPE_CHECKING:
+    from .interfaces import _CoreMultiExecuteParams
+    from .interfaces import _CoreSingleExecuteParams
+    from .interfaces import _DBAPIAnyExecuteParams
+    from .interfaces import _DBAPIMultiExecuteParams
+    from .interfaces import _DBAPISingleExecuteParams
+    from .interfaces import _ExecuteOptions
+    from .interfaces import ExceptionContext
+    from .interfaces import ExecutionContext
+    from .result import Result
+    from ..pool import ConnectionPoolEntry
+    from ..sql import Executable
+    from ..sql.elements import BindParameter
 
 
-class ConnectionEvents(event.Events):
-    """Available events for :class:`.Connectable`, which includes
+class ConnectionEvents(event.Events[ConnectionEventsTarget]):
+    """Available events for
     :class:`_engine.Connection` and :class:`_engine.Engine`.
 
     The methods here define the name of an event as well as the names of
     members that are passed to listener functions.
 
-    An event listener can be associated with any :class:`.Connectable`
+    An event listener can be associated with any
+    :class:`_engine.Connection` or :class:`_engine.Engine`
     class or instance, such as an :class:`_engine.Engine`, e.g.::
 
         from sqlalchemy import event, create_engine
 
-        def before_cursor_execute(conn, cursor, statement, parameters, context,
-                                                        executemany):
+
+        def before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
             log.info("Received statement: %s", statement)
 
-        engine = create_engine('postgresql://scott:tiger@localhost/test')
+
+        engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
         event.listen(engine, "before_cursor_execute", before_cursor_execute)
 
     or with a specific :class:`_engine.Connection`::
 
         with engine.begin() as conn:
-            @event.listens_for(conn, 'before_cursor_execute')
-            def before_cursor_execute(conn, cursor, statement, parameters,
-                                            context, executemany):
+
+            @event.listens_for(conn, "before_cursor_execute")
+            def before_cursor_execute(
+                conn, cursor, statement, parameters, context, executemany
+            ):
                 log.info("Received statement: %s", statement)
 
     When the methods are called with a `statement` parameter, such as in
@@ -55,9 +89,11 @@ class ConnectionEvents(event.Events):
         from sqlalchemy.engine import Engine
         from sqlalchemy import event
 
+
         @event.listens_for(Engine, "before_cursor_execute", retval=True)
-        def comment_sql_calls(conn, cursor, statement, parameters,
-                                            context, executemany):
+        def comment_sql_calls(
+            conn, cursor, statement, parameters, context, executemany
+        ):
             statement = statement + " -- some comment"
             return statement, parameters
 
@@ -87,26 +123,45 @@ class ConnectionEvents(event.Events):
       and parameters.  See those methods for a description of
       specific return arguments.
 
-    """
+    """  # noqa
 
     _target_class_doc = "SomeEngine"
-    _dispatch_target = Connectable
+    _dispatch_target = ConnectionEventsTarget
 
     @classmethod
-    def _listen(cls, event_key, retval=False):
+    def _accept_with(
+        cls,
+        target: Union[ConnectionEventsTarget, Type[ConnectionEventsTarget]],
+        identifier: str,
+    ) -> Optional[Union[ConnectionEventsTarget, Type[ConnectionEventsTarget]]]:
+        default_dispatch = super()._accept_with(target, identifier)
+        if default_dispatch is None and hasattr(
+            target, "_no_async_engine_events"
+        ):
+            target._no_async_engine_events()
+
+        return default_dispatch
+
+    @classmethod
+    def _listen(
+        cls,
+        event_key: event._EventKey[ConnectionEventsTarget],
+        *,
+        retval: bool = False,
+        **kw: Any,
+    ) -> None:
         target, identifier, fn = (
             event_key.dispatch_target,
             event_key.identifier,
             event_key._listen_fn,
         )
-
         target._has_events = True
 
         if not retval:
             if identifier == "before_execute":
                 orig_fn = fn
 
-                def wrap_before_execute(
+                def wrap_before_execute(  # type: ignore
                     conn, clauseelement, multiparams, params, execution_options
                 ):
                     orig_fn(
@@ -122,7 +177,7 @@ class ConnectionEvents(event.Events):
             elif identifier == "before_cursor_execute":
                 orig_fn = fn
 
-                def wrap_before_cursor_execute(
+                def wrap_before_cursor_execute(  # type: ignore
                     conn, cursor, statement, parameters, context, executemany
                 ):
                     orig_fn(
@@ -139,7 +194,6 @@ class ConnectionEvents(event.Events):
         elif retval and identifier not in (
             "before_execute",
             "before_cursor_execute",
-            "handle_error",
         ):
             raise exc.ArgumentError(
                 "Only the 'before_execute', "
@@ -160,8 +214,15 @@ class ConnectionEvents(event.Events):
         ),
     )
     def before_execute(
-        self, conn, clauseelement, multiparams, params, execution_options
-    ):
+        self,
+        conn: Connection,
+        clauseelement: Executable,
+        multiparams: _CoreMultiExecuteParams,
+        params: _CoreSingleExecuteParams,
+        execution_options: _ExecuteOptions,
+    ) -> Optional[
+        Tuple[Executable, _CoreMultiExecuteParams, _CoreSingleExecuteParams]
+    ]:
         """Intercept high level execute() events, receiving uncompiled
         SQL constructs and other objects prior to rendering into SQL.
 
@@ -211,13 +272,13 @@ class ConnectionEvents(event.Events):
     )
     def after_execute(
         self,
-        conn,
-        clauseelement,
-        multiparams,
-        params,
-        execution_options,
-        result,
-    ):
+        conn: Connection,
+        clauseelement: Executable,
+        multiparams: _CoreMultiExecuteParams,
+        params: _CoreSingleExecuteParams,
+        execution_options: _ExecuteOptions,
+        result: Result[Any],
+    ) -> None:
         """Intercept high level execute() events after execute.
 
 
@@ -241,8 +302,14 @@ class ConnectionEvents(event.Events):
         """
 
     def before_cursor_execute(
-        self, conn, cursor, statement, parameters, context, executemany
-    ):
+        self,
+        conn: Connection,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPIAnyExecuteParams,
+        context: Optional[ExecutionContext],
+        executemany: bool,
+    ) -> Optional[Tuple[str, _DBAPIAnyExecuteParams]]:
         """Intercept low-level cursor execute() events before execution,
         receiving the string SQL statement and DBAPI-specific parameter list to
         be invoked against a cursor.
@@ -256,8 +323,9 @@ class ConnectionEvents(event.Events):
         returned as a two-tuple in this case::
 
             @event.listens_for(Engine, "before_cursor_execute", retval=True)
-            def before_cursor_execute(conn, cursor, statement,
-                            parameters, context, executemany):
+            def before_cursor_execute(
+                conn, cursor, statement, parameters, context, executemany
+            ):
                 # do something with statement, parameters
                 return statement, parameters
 
@@ -283,8 +351,14 @@ class ConnectionEvents(event.Events):
         """
 
     def after_cursor_execute(
-        self, conn, cursor, statement, parameters, context, executemany
-    ):
+        self,
+        conn: Connection,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPIAnyExecuteParams,
+        context: Optional[ExecutionContext],
+        executemany: bool,
+    ) -> None:
         """Intercept low-level cursor execute() events after execution.
 
         :param conn: :class:`_engine.Connection` object
@@ -302,141 +376,10 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def handle_error(self, exception_context):
-        r"""Intercept all exceptions processed by the
-        :class:`_engine.Connection`.
-
-        This includes all exceptions emitted by the DBAPI as well as
-        within SQLAlchemy's statement invocation process, including
-        encoding errors and other statement validation errors.  Other areas
-        in which the event is invoked include transaction begin and end,
-        result row fetching, cursor creation.
-
-        Note that :meth:`.handle_error` may support new kinds of exceptions
-        and new calling scenarios at *any time*.  Code which uses this
-        event must expect new calling patterns to be present in minor
-        releases.
-
-        To support the wide variety of members that correspond to an exception,
-        as well as to allow extensibility of the event without backwards
-        incompatibility, the sole argument received is an instance of
-        :class:`.ExceptionContext`.   This object contains data members
-        representing detail about the exception.
-
-        Use cases supported by this hook include:
-
-        * read-only, low-level exception handling for logging and
-          debugging purposes
-        * exception re-writing
-        * Establishing or disabling whether a connection or the owning
-          connection pool is invalidated or expired in response to a
-          specific exception [1]_.
-
-        The hook is called while the cursor from the failed operation
-        (if any) is still open and accessible.   Special cleanup operations
-        can be called on this cursor; SQLAlchemy will attempt to close
-        this cursor subsequent to this hook being invoked.  If the connection
-        is in "autocommit" mode, the transaction also remains open within
-        the scope of this hook; the rollback of the per-statement transaction
-        also occurs after the hook is called.
-
-        .. note::
-
-            .. [1] The pool "pre_ping" handler enabled using the
-                :paramref:`_sa.create_engine.pool_pre_ping` parameter does
-                **not** consult this event before deciding if the "ping"
-                returned false, as opposed to receiving an unhandled error.
-                For this use case, the :ref:`legacy recipe based on
-                engine_connect() may be used
-                <pool_disconnects_pessimistic_custom>`.  A future API allow
-                more comprehensive customization of the "disconnect"
-                detection mechanism across all functions.
-
-        A handler function has two options for replacing
-        the SQLAlchemy-constructed exception into one that is user
-        defined.   It can either raise this new exception directly, in
-        which case all further event listeners are bypassed and the
-        exception will be raised, after appropriate cleanup as taken
-        place::
-
-            @event.listens_for(Engine, "handle_error")
-            def handle_exception(context):
-                if isinstance(context.original_exception,
-                    psycopg2.OperationalError) and \
-                    "failed" in str(context.original_exception):
-                    raise MySpecialException("failed operation")
-
-        .. warning::  Because the
-           :meth:`_events.ConnectionEvents.handle_error`
-           event specifically provides for exceptions to be re-thrown as
-           the ultimate exception raised by the failed statement,
-           **stack traces will be misleading** if the user-defined event
-           handler itself fails and throws an unexpected exception;
-           the stack trace may not illustrate the actual code line that
-           failed!  It is advised to code carefully here and use
-           logging and/or inline debugging if unexpected exceptions are
-           occurring.
-
-        Alternatively, a "chained" style of event handling can be
-        used, by configuring the handler with the ``retval=True``
-        modifier and returning the new exception instance from the
-        function.  In this case, event handling will continue onto the
-        next handler.   The "chained" exception is available using
-        :attr:`.ExceptionContext.chained_exception`::
-
-            @event.listens_for(Engine, "handle_error", retval=True)
-            def handle_exception(context):
-                if context.chained_exception is not None and \
-                    "special" in context.chained_exception.message:
-                    return MySpecialException("failed",
-                        cause=context.chained_exception)
-
-        Handlers that return ``None`` may be used within the chain; when
-        a handler returns ``None``, the previous exception instance,
-        if any, is maintained as the current exception that is passed onto the
-        next handler.
-
-        When a custom exception is raised or returned, SQLAlchemy raises
-        this new exception as-is, it is not wrapped by any SQLAlchemy
-        object.  If the exception is not a subclass of
-        :class:`sqlalchemy.exc.StatementError`,
-        certain features may not be available; currently this includes
-        the ORM's feature of adding a detail hint about "autoflush" to
-        exceptions raised within the autoflush process.
-
-        :param context: an :class:`.ExceptionContext` object.  See this
-         class for details on all available members.
-
-        .. versionadded:: 0.9.7 Added the
-            :meth:`_events.ConnectionEvents.handle_error` hook.
-
-        .. versionchanged:: 1.1 The :meth:`.handle_error` event will now
-           receive all exceptions that inherit from ``BaseException``,
-           including ``SystemExit`` and ``KeyboardInterrupt``.  The setting for
-           :attr:`.ExceptionContext.is_disconnect` is ``True`` in this case and
-           the default for
-           :attr:`.ExceptionContext.invalidate_pool_on_disconnect` is
-           ``False``.
-
-        .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is now
-           invoked when an :class:`_engine.Engine` fails during the initial
-           call to :meth:`_engine.Engine.connect`, as well as when a
-           :class:`_engine.Connection` object encounters an error during a
-           reconnect operation.
-
-        .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is
-           not fired off when a dialect makes use of the
-           ``skip_user_error_events`` execution option.   This is used
-           by dialects which intend to catch SQLAlchemy-specific exceptions
-           within specific operations, such as when the MySQL dialect detects
-           a table not present within the ``has_table()`` dialect method.
-           Prior to 1.0.0, code which implements :meth:`.handle_error` needs
-           to ensure that exceptions thrown in these scenarios are re-raised
-           without modification.
-
-        """
-
-    def engine_connect(self, conn, branch):
+    @event._legacy_signature(
+        "2.0", ["conn", "branch"], converter=lambda conn: (conn, False)
+    )
+    def engine_connect(self, conn: Connection) -> None:
         """Intercept the creation of a new :class:`_engine.Connection`.
 
         This event is called typically as the direct result of calling
@@ -460,19 +403,9 @@ class ConnectionEvents(event.Events):
         events within the lifespan
         of a single :class:`_engine.Connection` object, if that
         :class:`_engine.Connection`
-        is invalidated and re-established.  There can also be multiple
-        :class:`_engine.Connection`
-        objects generated for the same already-checked-out
-        DBAPI connection, in the case that a "branch" of a
-        :class:`_engine.Connection`
-        is produced.
+        is invalidated and re-established.
 
         :param conn: :class:`_engine.Connection` object.
-        :param branch: if True, this is a "branch" of an existing
-         :class:`_engine.Connection`.  A branch is generated within the course
-         of a statement execution to invoke supplemental statements, most
-         typically to pre-execute a SELECT of a default value for the purposes
-         of an INSERT statement.
 
         .. seealso::
 
@@ -482,7 +415,9 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def set_connection_execution_options(self, conn, opts):
+    def set_connection_execution_options(
+        self, conn: Connection, opts: Dict[str, Any]
+    ) -> None:
         """Intercept when the :meth:`_engine.Connection.execution_options`
         method is called.
 
@@ -501,8 +436,12 @@ class ConnectionEvents(event.Events):
 
         :param opts: dictionary of options that were passed to the
          :meth:`_engine.Connection.execution_options` method.
+         This dictionary may be modified in place to affect the ultimate
+         options which take effect.
 
-        .. versionadded:: 0.9.0
+         .. versionadded:: 2.0 the ``opts`` dictionary may be modified
+            in place.
+
 
         .. seealso::
 
@@ -514,7 +453,9 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def set_engine_execution_options(self, engine, opts):
+    def set_engine_execution_options(
+        self, engine: Engine, opts: Dict[str, Any]
+    ) -> None:
         """Intercept when the :meth:`_engine.Engine.execution_options`
         method is called.
 
@@ -533,8 +474,11 @@ class ConnectionEvents(event.Events):
 
         :param opts: dictionary of options that were passed to the
          :meth:`_engine.Connection.execution_options` method.
+         This dictionary may be modified in place to affect the ultimate
+         options which take effect.
 
-        .. versionadded:: 0.9.0
+         .. versionadded:: 2.0 the ``opts`` dictionary may be modified
+            in place.
 
         .. seealso::
 
@@ -546,7 +490,7 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def engine_disposed(self, engine):
+    def engine_disposed(self, engine: Engine) -> None:
         """Intercept when the :meth:`_engine.Engine.dispose` method is called.
 
         The :meth:`_engine.Engine.dispose` method instructs the engine to
@@ -562,18 +506,16 @@ class ConnectionEvents(event.Events):
         can still be used for new requests in which case
         it re-acquires connection resources.
 
-        .. versionadded:: 1.0.5
-
         """
 
-    def begin(self, conn):
+    def begin(self, conn: Connection) -> None:
         """Intercept begin() events.
 
         :param conn: :class:`_engine.Connection` object
 
         """
 
-    def rollback(self, conn):
+    def rollback(self, conn: Connection) -> None:
         """Intercept rollback() events, as initiated by a
         :class:`.Transaction`.
 
@@ -591,7 +533,7 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def commit(self, conn):
+    def commit(self, conn: Connection) -> None:
         """Intercept commit() events, as initiated by a
         :class:`.Transaction`.
 
@@ -603,7 +545,7 @@ class ConnectionEvents(event.Events):
         :param conn: :class:`_engine.Connection` object
         """
 
-    def savepoint(self, conn, name):
+    def savepoint(self, conn: Connection, name: str) -> None:
         """Intercept savepoint() events.
 
         :param conn: :class:`_engine.Connection` object
@@ -611,7 +553,9 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def rollback_savepoint(self, conn, name, context):
+    def rollback_savepoint(
+        self, conn: Connection, name: str, context: None
+    ) -> None:
         """Intercept rollback_savepoint() events.
 
         :param conn: :class:`_engine.Connection` object
@@ -621,7 +565,9 @@ class ConnectionEvents(event.Events):
         """
         # TODO: deprecate "context"
 
-    def release_savepoint(self, conn, name, context):
+    def release_savepoint(
+        self, conn: Connection, name: str, context: None
+    ) -> None:
         """Intercept release_savepoint() events.
 
         :param conn: :class:`_engine.Connection` object
@@ -631,7 +577,7 @@ class ConnectionEvents(event.Events):
         """
         # TODO: deprecate "context"
 
-    def begin_twophase(self, conn, xid):
+    def begin_twophase(self, conn: Connection, xid: Any) -> None:
         """Intercept begin_twophase() events.
 
         :param conn: :class:`_engine.Connection` object
@@ -639,14 +585,16 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def prepare_twophase(self, conn, xid):
+    def prepare_twophase(self, conn: Connection, xid: Any) -> None:
         """Intercept prepare_twophase() events.
 
         :param conn: :class:`_engine.Connection` object
         :param xid: two-phase XID identifier
         """
 
-    def rollback_twophase(self, conn, xid, is_prepared):
+    def rollback_twophase(
+        self, conn: Connection, xid: Any, is_prepared: bool
+    ) -> None:
         """Intercept rollback_twophase() events.
 
         :param conn: :class:`_engine.Connection` object
@@ -656,7 +604,9 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def commit_twophase(self, conn, xid, is_prepared):
+    def commit_twophase(
+        self, conn: Connection, xid: Any, is_prepared: bool
+    ) -> None:
         """Intercept commit_twophase() events.
 
         :param conn: :class:`_engine.Connection` object
@@ -667,7 +617,7 @@ class ConnectionEvents(event.Events):
         """
 
 
-class DialectEvents(event.Events):
+class DialectEvents(event.Events[Dialect]):
     """event interface for execution-replacement functions.
 
     These events allow direct instrumentation and replacement
@@ -692,23 +642,30 @@ class DialectEvents(event.Events):
 
         :meth:`_events.ConnectionEvents.after_execute`
 
-
-    .. versionadded:: 0.9.4
-
     """
 
     _target_class_doc = "SomeEngine"
     _dispatch_target = Dialect
 
     @classmethod
-    def _listen(cls, event_key, retval=False):
+    def _listen(
+        cls,
+        event_key: event._EventKey[Dialect],
+        *,
+        retval: bool = False,
+        **kw: Any,
+    ) -> None:
         target = event_key.dispatch_target
 
         target._has_events = True
         event_key.base_listen()
 
     @classmethod
-    def _accept_with(cls, target):
+    def _accept_with(
+        cls,
+        target: Union[Engine, Type[Engine], Dialect, Type[Dialect]],
+        identifier: str,
+    ) -> Optional[Union[Dialect, Type[Dialect]]]:
         if isinstance(target, type):
             if issubclass(target, Engine):
                 return Dialect
@@ -718,14 +675,168 @@ class DialectEvents(event.Events):
             return target.dialect
         elif isinstance(target, Dialect):
             return target
-        elif hasattr(target, "dispatch") and hasattr(
-            target.dispatch._events, "_no_async_engine_events"
-        ):
-            target.dispatch._events._no_async_engine_events()
+        elif isinstance(target, Connection) and identifier == "handle_error":
+            raise exc.InvalidRequestError(
+                "The handle_error() event hook as of SQLAlchemy 2.0 is "
+                "established on the Dialect, and may only be applied to the "
+                "Engine as a whole or to a specific Dialect as a whole, "
+                "not on a per-Connection basis."
+            )
+        elif hasattr(target, "_no_async_engine_events"):
+            target._no_async_engine_events()
         else:
             return None
 
-    def do_connect(self, dialect, conn_rec, cargs, cparams):
+    def handle_error(
+        self, exception_context: ExceptionContext
+    ) -> Optional[BaseException]:
+        r"""Intercept all exceptions processed by the
+        :class:`_engine.Dialect`, typically but not limited to those
+        emitted within the scope of a :class:`_engine.Connection`.
+
+        .. versionchanged:: 2.0 the :meth:`.DialectEvents.handle_error` event
+           is moved to the :class:`.DialectEvents` class, moved from the
+           :class:`.ConnectionEvents` class, so that it may also participate in
+           the "pre ping" operation configured with the
+           :paramref:`_sa.create_engine.pool_pre_ping` parameter. The event
+           remains registered by using the :class:`_engine.Engine` as the event
+           target, however note that using the :class:`_engine.Connection` as
+           an event target for :meth:`.DialectEvents.handle_error` is no longer
+           supported.
+
+        This includes all exceptions emitted by the DBAPI as well as
+        within SQLAlchemy's statement invocation process, including
+        encoding errors and other statement validation errors.  Other areas
+        in which the event is invoked include transaction begin and end,
+        result row fetching, cursor creation.
+
+        Note that :meth:`.handle_error` may support new kinds of exceptions
+        and new calling scenarios at *any time*.  Code which uses this
+        event must expect new calling patterns to be present in minor
+        releases.
+
+        To support the wide variety of members that correspond to an exception,
+        as well as to allow extensibility of the event without backwards
+        incompatibility, the sole argument received is an instance of
+        :class:`.ExceptionContext`.   This object contains data members
+        representing detail about the exception.
+
+        Use cases supported by this hook include:
+
+        * read-only, low-level exception handling for logging and
+          debugging purposes
+        * Establishing whether a DBAPI connection error message indicates
+          that the database connection needs to be reconnected, including
+          for the "pre_ping" handler used by **some** dialects
+        * Establishing or disabling whether a connection or the owning
+          connection pool is invalidated or expired in response to a
+          specific exception
+        * exception re-writing
+
+        The hook is called while the cursor from the failed operation
+        (if any) is still open and accessible.   Special cleanup operations
+        can be called on this cursor; SQLAlchemy will attempt to close
+        this cursor subsequent to this hook being invoked.
+
+        As of SQLAlchemy 2.0, the "pre_ping" handler enabled using the
+        :paramref:`_sa.create_engine.pool_pre_ping` parameter will also
+        participate in the :meth:`.handle_error` process, **for those dialects
+        that rely upon disconnect codes to detect database liveness**. Note
+        that some dialects such as psycopg, psycopg2, and most MySQL dialects
+        make use of a native ``ping()`` method supplied by the DBAPI which does
+        not make use of disconnect codes.
+
+        .. versionchanged:: 2.0.0 The :meth:`.DialectEvents.handle_error`
+           event hook participates in connection pool "pre-ping" operations.
+           Within this usage, the :attr:`.ExceptionContext.engine` attribute
+           will be ``None``, however the :class:`.Dialect` in use is always
+           available via the :attr:`.ExceptionContext.dialect` attribute.
+
+        .. versionchanged:: 2.0.5 Added :attr:`.ExceptionContext.is_pre_ping`
+           attribute which will be set to ``True`` when the
+           :meth:`.DialectEvents.handle_error` event hook is triggered within
+           a connection pool pre-ping operation.
+
+        .. versionchanged:: 2.0.5 An issue was repaired that allows for the
+           PostgreSQL ``psycopg`` and ``psycopg2`` drivers, as well as all
+           MySQL drivers, to properly participate in the
+           :meth:`.DialectEvents.handle_error` event hook during
+           connection pool "pre-ping" operations; previously, the
+           implementation was non-working for these drivers.
+
+
+        A handler function has two options for replacing
+        the SQLAlchemy-constructed exception into one that is user
+        defined.   It can either raise this new exception directly, in
+        which case all further event listeners are bypassed and the
+        exception will be raised, after appropriate cleanup as taken
+        place::
+
+            @event.listens_for(Engine, "handle_error")
+            def handle_exception(context):
+                if isinstance(
+                    context.original_exception, psycopg2.OperationalError
+                ) and "failed" in str(context.original_exception):
+                    raise MySpecialException("failed operation")
+
+        .. warning::  Because the
+           :meth:`_events.DialectEvents.handle_error`
+           event specifically provides for exceptions to be re-thrown as
+           the ultimate exception raised by the failed statement,
+           **stack traces will be misleading** if the user-defined event
+           handler itself fails and throws an unexpected exception;
+           the stack trace may not illustrate the actual code line that
+           failed!  It is advised to code carefully here and use
+           logging and/or inline debugging if unexpected exceptions are
+           occurring.
+
+        Alternatively, a "chained" style of event handling can be
+        used, by configuring the handler with the ``retval=True``
+        modifier and returning the new exception instance from the
+        function.  In this case, event handling will continue onto the
+        next handler.   The "chained" exception is available using
+        :attr:`.ExceptionContext.chained_exception`::
+
+            @event.listens_for(Engine, "handle_error", retval=True)
+            def handle_exception(context):
+                if (
+                    context.chained_exception is not None
+                    and "special" in context.chained_exception.message
+                ):
+                    return MySpecialException(
+                        "failed", cause=context.chained_exception
+                    )
+
+        Handlers that return ``None`` may be used within the chain; when
+        a handler returns ``None``, the previous exception instance,
+        if any, is maintained as the current exception that is passed onto the
+        next handler.
+
+        When a custom exception is raised or returned, SQLAlchemy raises
+        this new exception as-is, it is not wrapped by any SQLAlchemy
+        object.  If the exception is not a subclass of
+        :class:`sqlalchemy.exc.StatementError`,
+        certain features may not be available; currently this includes
+        the ORM's feature of adding a detail hint about "autoflush" to
+        exceptions raised within the autoflush process.
+
+        :param context: an :class:`.ExceptionContext` object.  See this
+         class for details on all available members.
+
+
+        .. seealso::
+
+            :ref:`pool_new_disconnect_codes`
+
+        """
+
+    def do_connect(
+        self,
+        dialect: Dialect,
+        conn_rec: ConnectionPoolEntry,
+        cargs: Tuple[Any, ...],
+        cparams: Dict[str, Any],
+    ) -> Optional[DBAPIConnection]:
         """Receive connection arguments before a connection is made.
 
         This event is useful in that it allows the handler to manipulate the
@@ -736,7 +847,8 @@ class DialectEvents(event.Events):
 
             e = create_engine("postgresql+psycopg2://user@host/dbname")
 
-            @event.listens_for(e, 'do_connect')
+
+            @event.listens_for(e, "do_connect")
             def receive_do_connect(dialect, conn_rec, cargs, cparams):
                 cparams["password"] = "some_password"
 
@@ -745,12 +857,10 @@ class DialectEvents(event.Events):
 
             e = create_engine("postgresql+psycopg2://user@host/dbname")
 
-            @event.listens_for(e, 'do_connect')
+
+            @event.listens_for(e, "do_connect")
             def receive_do_connect(dialect, conn_rec, cargs, cparams):
                 return psycopg2.connect(*cargs, **cparams)
-
-
-        .. versionadded:: 1.0.3
 
         .. seealso::
 
@@ -758,7 +868,13 @@ class DialectEvents(event.Events):
 
         """
 
-    def do_executemany(self, cursor, statement, parameters, context):
+    def do_executemany(
+        self,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPIMultiExecuteParams,
+        context: ExecutionContext,
+    ) -> Optional[Literal[True]]:
         """Receive a cursor to have executemany() called.
 
         Return the value True to halt further events from invoking,
@@ -767,7 +883,9 @@ class DialectEvents(event.Events):
 
         """
 
-    def do_execute_no_params(self, cursor, statement, context):
+    def do_execute_no_params(
+        self, cursor: DBAPICursor, statement: str, context: ExecutionContext
+    ) -> Optional[Literal[True]]:
         """Receive a cursor to have execute() with no parameters called.
 
         Return the value True to halt further events from invoking,
@@ -776,7 +894,13 @@ class DialectEvents(event.Events):
 
         """
 
-    def do_execute(self, cursor, statement, parameters, context):
+    def do_execute(
+        self,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPISingleExecuteParams,
+        context: ExecutionContext,
+    ) -> Optional[Literal[True]]:
         """Receive a cursor to have execute() called.
 
         Return the value True to halt further events from invoking,
@@ -786,8 +910,13 @@ class DialectEvents(event.Events):
         """
 
     def do_setinputsizes(
-        self, inputsizes, cursor, statement, parameters, context
-    ):
+        self,
+        inputsizes: Dict[BindParameter[Any], Any],
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPIAnyExecuteParams,
+        context: ExecutionContext,
+    ) -> None:
         """Receive the setinputsizes dictionary for possible modification.
 
         This event is emitted in the case where the dialect makes use of the
@@ -812,7 +941,8 @@ class DialectEvents(event.Events):
 
         The setinputsizes hook overall is only used for dialects which include
         the flag ``use_setinputsizes=True``.  Dialects which use this
-        include cx_Oracle, pg8000, asyncpg, and pyodbc dialects.
+        include python-oracledb, cx_Oracle, pg8000, asyncpg, and pyodbc
+        dialects.
 
         .. note::
 

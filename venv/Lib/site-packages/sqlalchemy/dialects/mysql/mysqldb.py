@@ -1,9 +1,11 @@
-# mysql/mysqldb.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/mysqldb.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: ignore-errors
+
 
 """
 
@@ -46,9 +48,9 @@ key "ssl", which may be specified using the
             "ssl": {
                 "ca": "/home/gord/client-ssl/ca.pem",
                 "cert": "/home/gord/client-ssl/client-cert.pem",
-                "key": "/home/gord/client-ssl/client-key.pem"
+                "key": "/home/gord/client-ssl/client-key.pem",
             }
-        }
+        },
     )
 
 For convenience, the following keys may also be specified inline within the URL
@@ -63,19 +65,6 @@ where they will be interpreted into the "ssl" dictionary automatically:
         "&ssl_key=/home/gord/client-ssl/client-key.pem"
     )
 
-If the server uses an automatically-generated certificate that is self-signed
-or does not match the host name (as seen from the client), it may also be
-necessary to indicate ``ssl_check_hostname=false``::
-
-    connection_uri = (
-        "mysql+pymysql://scott:tiger@192.168.0.134/test"
-        "?ssl_ca=/home/gord/client-ssl/ca.pem"
-        "&ssl_cert=/home/gord/client-ssl/client-cert.pem"
-        "&ssl_key=/home/gord/client-ssl/client-key.pem"
-        "&ssl_check_hostname=false"
-    )
-
-
 .. seealso::
 
     :ref:`pymysql_ssl` in the PyMySQL dialect
@@ -85,7 +74,9 @@ Using MySQLdb with Google Cloud SQL
 -----------------------------------
 
 Google Cloud SQL now recommends use of the MySQLdb dialect.  Connect
-using a URL like the following::
+using a URL like the following:
+
+.. sourcecode:: text
 
     mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>
 
@@ -108,12 +99,7 @@ from ... import util
 
 
 class MySQLExecutionContext_mysqldb(MySQLExecutionContext):
-    @property
-    def rowcount(self):
-        if hasattr(self, "_rowcount"):
-            return self._rowcount
-        else:
-            return self.cursor.rowcount
+    pass
 
 
 class MySQLCompiler_mysqldb(MySQLCompiler):
@@ -135,7 +121,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
     preparer = MySQLIdentifierPreparer
 
     def __init__(self, **kwargs):
-        super(MySQLDialect_mysqldb, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._mysql_dbapi_version = (
             self._parse_dbapi_version(self.dbapi.__version__)
             if self.dbapi is not None and hasattr(self.dbapi, "__version__")
@@ -159,11 +145,11 @@ class MySQLDialect_mysqldb(MySQLDialect):
             return False
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("MySQLdb")
 
     def on_connect(self):
-        super_ = super(MySQLDialect_mysqldb, self).on_connect()
+        super_ = super().on_connect()
 
         def on_connect(conn):
             if super_ is not None:
@@ -179,15 +165,8 @@ class MySQLDialect_mysqldb(MySQLDialect):
         return on_connect
 
     def do_ping(self, dbapi_connection):
-        try:
-            dbapi_connection.ping(False)
-        except self.dbapi.Error as err:
-            if self.is_disconnect(err, dbapi_connection, None):
-                return False
-            else:
-                raise
-        else:
-            return True
+        dbapi_connection.ping()
+        return True
 
     def do_executemany(self, cursor, statement, parameters, context=None):
         rowcount = cursor.executemany(statement, parameters)
@@ -219,9 +198,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
             ]
         else:
             additional_tests = []
-        return super(MySQLDialect_mysqldb, self)._check_unicode_returns(
-            connection, additional_tests
-        )
+        return super()._check_unicode_returns(connection, additional_tests)
 
     def create_connect_args(self, url, _translate_args=None):
         if _translate_args is None:
@@ -237,7 +214,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
         util.coerce_kw_type(opts, "read_timeout", int)
         util.coerce_kw_type(opts, "write_timeout", int)
         util.coerce_kw_type(opts, "client_flag", int)
-        util.coerce_kw_type(opts, "local_infile", int)
+        util.coerce_kw_type(opts, "local_infile", bool)
         # Note: using either of the below will cause all strings to be
         # returned as Unicode, both in raw SQL operations and with column
         # types like String and MSString.
@@ -308,24 +285,21 @@ class MySQLDialect_mysqldb(MySQLDialect):
         else:
             return cset_name()
 
-    _isolation_lookup = set(
-        [
+    def get_isolation_level_values(self, dbapi_connection):
+        return (
             "SERIALIZABLE",
             "READ UNCOMMITTED",
             "READ COMMITTED",
             "REPEATABLE READ",
             "AUTOCOMMIT",
-        ]
-    )
+        )
 
-    def _set_isolation_level(self, connection, level):
+    def set_isolation_level(self, dbapi_connection, level):
         if level == "AUTOCOMMIT":
-            connection.autocommit(True)
+            dbapi_connection.autocommit(True)
         else:
-            connection.autocommit(False)
-            super(MySQLDialect_mysqldb, self)._set_isolation_level(
-                connection, level
-            )
+            dbapi_connection.autocommit(False)
+            super().set_isolation_level(dbapi_connection, level)
 
 
 dialect = MySQLDialect_mysqldb
