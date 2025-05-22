@@ -1,7 +1,8 @@
 .env
 key.txt
-venv
+venv/
 __pycache__/
+logs/
 *.pyc
 *.pyo
 *.pyd
@@ -26,8 +27,4 @@ __pycache__/
 *.egg-info
 *.egg
 *.whl
-*.dist-info
-*.egg-info
-*.egg
-*.egg-info
-*.egg       
+*.dist-info      

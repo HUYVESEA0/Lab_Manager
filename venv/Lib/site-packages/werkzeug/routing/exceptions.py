@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import difflib
 import typing as t
 
@@ -10,11 +8,10 @@ from ..utils import redirect
 
 if t.TYPE_CHECKING:
     from _typeshed.wsgi import WSGIEnvironment
-
+    from .map import MapAdapter
+    from .rules import Rule  # noqa: F401
     from ..wrappers.request import Request
     from ..wrappers.response import Response
-    from .map import MapAdapter
-    from .rules import Rule
 
 
 class RoutingException(Exception):
@@ -40,9 +37,9 @@ class RequestRedirect(HTTPException, RoutingException):
 
     def get_response(
         self,
-        environ: WSGIEnvironment | Request | None = None,
-        scope: dict[str, t.Any] | None = None,
-    ) -> Response:
+        environ: t.Optional[t.Union["WSGIEnvironment", "Request"]] = None,
+        scope: t.Optional[dict] = None,
+    ) -> "Response":
         return redirect(self.new_url, self.code)
 
 
@@ -59,7 +56,7 @@ class RequestPath(RoutingException):
 class RequestAliasRedirect(RoutingException):  # noqa: B903
     """This rule is an alias and wants to redirect to the canonical URL."""
 
-    def __init__(self, matched_values: t.Mapping[str, t.Any], endpoint: t.Any) -> None:
+    def __init__(self, matched_values: t.Mapping[str, t.Any], endpoint: str) -> None:
         super().__init__()
         self.matched_values = matched_values
         self.endpoint = endpoint
@@ -72,10 +69,10 @@ class BuildError(RoutingException, LookupError):
 
     def __init__(
         self,
-        endpoint: t.Any,
+        endpoint: str,
         values: t.Mapping[str, t.Any],
-        method: str | None,
-        adapter: MapAdapter | None = None,
+        method: t.Optional[str],
+        adapter: t.Optional["MapAdapter"] = None,
     ) -> None:
         super().__init__(endpoint, values, method)
         self.endpoint = endpoint
@@ -84,19 +81,16 @@ class BuildError(RoutingException, LookupError):
         self.adapter = adapter
 
     @cached_property
-    def suggested(self) -> Rule | None:
+    def suggested(self) -> t.Optional["Rule"]:
         return self.closest_rule(self.adapter)
 
-    def closest_rule(self, adapter: MapAdapter | None) -> Rule | None:
-        def _score_rule(rule: Rule) -> float:
+    def closest_rule(self, adapter: t.Optional["MapAdapter"]) -> t.Optional["Rule"]:
+        def _score_rule(rule: "Rule") -> float:
             return sum(
                 [
                     0.98
                     * difflib.SequenceMatcher(
-                        # endpoints can be any type, compare as strings
-                        None,
-                        str(rule.endpoint),
-                        str(self.endpoint),
+                        None, rule.endpoint, self.endpoint
                     ).ratio(),
                     0.01 * bool(set(self.values or ()).issubset(rule.arguments)),
                     0.01 * bool(rule.methods and self.method in rule.methods),
@@ -147,6 +141,6 @@ class WebsocketMismatch(BadRequest):
 class NoMatch(Exception):
     __slots__ = ("have_match_for", "websocket_mismatch")
 
-    def __init__(self, have_match_for: set[str], websocket_mismatch: bool) -> None:
+    def __init__(self, have_match_for: t.Set[str], websocket_mismatch: bool) -> None:
         self.have_match_for = have_match_for
         self.websocket_mismatch = websocket_mismatch

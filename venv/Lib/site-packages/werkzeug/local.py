@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import copy
 import math
 import operator
@@ -20,7 +18,7 @@ T = t.TypeVar("T")
 F = t.TypeVar("F", bound=t.Callable[..., t.Any])
 
 
-def release_local(local: Local | LocalStack[t.Any]) -> None:
+def release_local(local: t.Union["Local", "LocalStack"]) -> None:
     """Release the data for the current context in a :class:`Local` or
     :class:`LocalStack` without using a :class:`LocalManager`.
 
@@ -51,7 +49,9 @@ class Local:
 
     __slots__ = ("__storage",)
 
-    def __init__(self, context_var: ContextVar[dict[str, t.Any]] | None = None) -> None:
+    def __init__(
+        self, context_var: t.Optional[ContextVar[t.Dict[str, t.Any]]] = None
+    ) -> None:
         if context_var is None:
             # A ContextVar not created at global scope interferes with
             # Python's garbage collection. However, a local only makes
@@ -61,12 +61,12 @@ class Local:
 
         object.__setattr__(self, "_Local__storage", context_var)
 
-    def __iter__(self) -> t.Iterator[tuple[str, t.Any]]:
+    def __iter__(self) -> t.Iterator[t.Tuple[str, t.Any]]:
         return iter(self.__storage.get({}).items())
 
     def __call__(
-        self, name: str, *, unbound_message: str | None = None
-    ) -> LocalProxy[t.Any]:
+        self, name: str, *, unbound_message: t.Optional[str] = None
+    ) -> "LocalProxy":
         """Create a :class:`LocalProxy` that access an attribute on this
         local namespace.
 
@@ -124,7 +124,7 @@ class LocalStack(t.Generic[T]):
 
     __slots__ = ("_storage",)
 
-    def __init__(self, context_var: ContextVar[list[T]] | None = None) -> None:
+    def __init__(self, context_var: t.Optional[ContextVar[t.List[T]]] = None) -> None:
         if context_var is None:
             # A ContextVar not created at global scope interferes with
             # Python's garbage collection. However, a local only makes
@@ -137,14 +137,14 @@ class LocalStack(t.Generic[T]):
     def __release_local__(self) -> None:
         self._storage.set([])
 
-    def push(self, obj: T) -> list[T]:
+    def push(self, obj: T) -> t.List[T]:
         """Add a new item to the top of the stack."""
         stack = self._storage.get([]).copy()
         stack.append(obj)
         self._storage.set(stack)
         return stack
 
-    def pop(self) -> T | None:
+    def pop(self) -> t.Optional[T]:
         """Remove the top item from the stack and return it. If the
         stack is empty, return ``None``.
         """
@@ -158,7 +158,7 @@ class LocalStack(t.Generic[T]):
         return rv
 
     @property
-    def top(self) -> T | None:
+    def top(self) -> t.Optional[T]:
         """The topmost item on the stack.  If the stack is empty,
         `None` is returned.
         """
@@ -170,8 +170,8 @@ class LocalStack(t.Generic[T]):
         return stack[-1]
 
     def __call__(
-        self, name: str | None = None, *, unbound_message: str | None = None
-    ) -> LocalProxy[t.Any]:
+        self, name: t.Optional[str] = None, *, unbound_message: t.Optional[str] = None
+    ) -> "LocalProxy":
         """Create a :class:`LocalProxy` that accesses the top of this
         local stack.
 
@@ -192,8 +192,9 @@ class LocalManager:
 
     :param locals: A local or list of locals to manage.
 
-    .. versionchanged:: 2.1
-        The ``ident_func`` was removed.
+    .. versionchanged:: 2.0
+        ``ident_func`` is deprecated and will be removed in Werkzeug
+         2.1.
 
     .. versionchanged:: 0.7
         The ``ident_func`` parameter was added.
@@ -207,8 +208,9 @@ class LocalManager:
 
     def __init__(
         self,
-        locals: None
-        | (Local | LocalStack[t.Any] | t.Iterable[Local | LocalStack[t.Any]]) = None,
+        locals: t.Optional[
+            t.Union[Local, LocalStack, t.Iterable[t.Union[Local, LocalStack]]]
+        ] = None,
     ) -> None:
         if locals is None:
             self.locals = []
@@ -224,19 +226,19 @@ class LocalManager:
         for local in self.locals:
             release_local(local)
 
-    def make_middleware(self, app: WSGIApplication) -> WSGIApplication:
+    def make_middleware(self, app: "WSGIApplication") -> "WSGIApplication":
         """Wrap a WSGI application so that local data is released
         automatically after the response has been sent for a request.
         """
 
         def application(
-            environ: WSGIEnvironment, start_response: StartResponse
+            environ: "WSGIEnvironment", start_response: "StartResponse"
         ) -> t.Iterable[bytes]:
             return ClosingIterator(app(environ, start_response), self.cleanup)
 
         return application
 
-    def middleware(self, func: WSGIApplication) -> WSGIApplication:
+    def middleware(self, func: "WSGIApplication") -> "WSGIApplication":
         """Like :meth:`make_middleware` but used as a decorator on the
         WSGI application function.
 
@@ -272,27 +274,23 @@ class _ProxyLookup:
 
     def __init__(
         self,
-        f: t.Callable[..., t.Any] | None = None,
-        fallback: t.Callable[[LocalProxy[t.Any]], t.Any] | None = None,
-        class_value: t.Any | None = None,
+        f: t.Optional[t.Callable] = None,
+        fallback: t.Optional[t.Callable] = None,
+        class_value: t.Optional[t.Any] = None,
         is_attr: bool = False,
     ) -> None:
-        bind_f: t.Callable[[LocalProxy[t.Any], t.Any], t.Callable[..., t.Any]] | None
+        bind_f: t.Optional[t.Callable[["LocalProxy", t.Any], t.Callable]]
 
         if hasattr(f, "__get__"):
             # A Python function, can be turned into a bound method.
 
-            def bind_f(
-                instance: LocalProxy[t.Any], obj: t.Any
-            ) -> t.Callable[..., t.Any]:
+            def bind_f(instance: "LocalProxy", obj: t.Any) -> t.Callable:
                 return f.__get__(obj, type(obj))  # type: ignore
 
         elif f is not None:
             # A C function, use partial to bind the first argument.
 
-            def bind_f(
-                instance: LocalProxy[t.Any], obj: t.Any
-            ) -> t.Callable[..., t.Any]:
+            def bind_f(instance: "LocalProxy", obj: t.Any) -> t.Callable:
                 return partial(f, obj)
 
         else:
@@ -304,10 +302,10 @@ class _ProxyLookup:
         self.class_value = class_value
         self.is_attr = is_attr
 
-    def __set_name__(self, owner: LocalProxy[t.Any], name: str) -> None:
+    def __set_name__(self, owner: "LocalProxy", name: str) -> None:
         self.name = name
 
-    def __get__(self, instance: LocalProxy[t.Any], owner: type | None = None) -> t.Any:
+    def __get__(self, instance: "LocalProxy", owner: t.Optional[type] = None) -> t.Any:
         if instance is None:
             if self.class_value is not None:
                 return self.class_value
@@ -337,9 +335,7 @@ class _ProxyLookup:
     def __repr__(self) -> str:
         return f"proxy {self.name}"
 
-    def __call__(
-        self, instance: LocalProxy[t.Any], *args: t.Any, **kwargs: t.Any
-    ) -> t.Any:
+    def __call__(self, instance: "LocalProxy", *args: t.Any, **kwargs: t.Any) -> t.Any:
         """Support calling unbound methods from the class. For example,
         this happens with ``copy.copy``, which does
         ``type(x).__copy__(x)``. ``type(x)`` can't be proxied, so it
@@ -356,14 +352,12 @@ class _ProxyIOp(_ProxyLookup):
     __slots__ = ()
 
     def __init__(
-        self,
-        f: t.Callable[..., t.Any] | None = None,
-        fallback: t.Callable[[LocalProxy[t.Any]], t.Any] | None = None,
+        self, f: t.Optional[t.Callable] = None, fallback: t.Optional[t.Callable] = None
     ) -> None:
         super().__init__(f, fallback)
 
-        def bind_f(instance: LocalProxy[t.Any], obj: t.Any) -> t.Callable[..., t.Any]:
-            def i_op(self: t.Any, other: t.Any) -> LocalProxy[t.Any]:
+        def bind_f(instance: "LocalProxy", obj: t.Any) -> t.Callable:
+            def i_op(self: t.Any, other: t.Any) -> "LocalProxy":
                 f(self, other)  # type: ignore
                 return instance
 
@@ -477,10 +471,10 @@ class LocalProxy(t.Generic[T]):
 
     def __init__(
         self,
-        local: ContextVar[T] | Local | LocalStack[T] | t.Callable[[], T],
-        name: str | None = None,
+        local: t.Union[ContextVar[T], Local, LocalStack[T], t.Callable[[], T]],
+        name: t.Optional[str] = None,
         *,
-        unbound_message: str | None = None,
+        unbound_message: t.Optional[str] = None,
     ) -> None:
         if name is None:
             get_name = _identity
@@ -503,7 +497,7 @@ class LocalProxy(t.Generic[T]):
         elif isinstance(local, LocalStack):
 
             def _get_current_object() -> T:
-                obj = local.top
+                obj = local.top  # type: ignore[union-attr]
 
                 if obj is None:
                     raise RuntimeError(unbound_message)
@@ -514,7 +508,7 @@ class LocalProxy(t.Generic[T]):
 
             def _get_current_object() -> T:
                 try:
-                    obj = local.get()
+                    obj = local.get()  # type: ignore[union-attr]
                 except LookupError:
                     raise RuntimeError(unbound_message) from None
 
@@ -523,7 +517,7 @@ class LocalProxy(t.Generic[T]):
         elif callable(local):
 
             def _get_current_object() -> T:
-                return get_name(local())
+                return get_name(local())  # type: ignore
 
         else:
             raise TypeError(f"Don't know how to proxy '{type(local)}'.")
@@ -531,33 +525,32 @@ class LocalProxy(t.Generic[T]):
         object.__setattr__(self, "_LocalProxy__wrapped", local)
         object.__setattr__(self, "_get_current_object", _get_current_object)
 
-    __doc__ = _ProxyLookup(  # type: ignore[assignment]
+    __doc__ = _ProxyLookup(  # type: ignore
         class_value=__doc__, fallback=lambda self: type(self).__doc__, is_attr=True
     )
     __wrapped__ = _ProxyLookup(
-        fallback=lambda self: self._LocalProxy__wrapped,  # type: ignore[attr-defined]
-        is_attr=True,
+        fallback=lambda self: self._LocalProxy__wrapped, is_attr=True
     )
     # __del__ should only delete the proxy
-    __repr__ = _ProxyLookup(  # type: ignore[assignment]
+    __repr__ = _ProxyLookup(  # type: ignore
         repr, fallback=lambda self: f"<{type(self).__name__} unbound>"
     )
-    __str__ = _ProxyLookup(str)  # type: ignore[assignment]
+    __str__ = _ProxyLookup(str)  # type: ignore
     __bytes__ = _ProxyLookup(bytes)
-    __format__ = _ProxyLookup()  # type: ignore[assignment]
+    __format__ = _ProxyLookup()  # type: ignore
     __lt__ = _ProxyLookup(operator.lt)
     __le__ = _ProxyLookup(operator.le)
-    __eq__ = _ProxyLookup(operator.eq)  # type: ignore[assignment]
-    __ne__ = _ProxyLookup(operator.ne)  # type: ignore[assignment]
+    __eq__ = _ProxyLookup(operator.eq)  # type: ignore
+    __ne__ = _ProxyLookup(operator.ne)  # type: ignore
     __gt__ = _ProxyLookup(operator.gt)
     __ge__ = _ProxyLookup(operator.ge)
-    __hash__ = _ProxyLookup(hash)  # type: ignore[assignment]
+    __hash__ = _ProxyLookup(hash)  # type: ignore
     __bool__ = _ProxyLookup(bool, fallback=lambda self: False)
     __getattr__ = _ProxyLookup(getattr)
     # __getattribute__ triggered through __getattr__
-    __setattr__ = _ProxyLookup(setattr)  # type: ignore[assignment]
-    __delattr__ = _ProxyLookup(delattr)  # type: ignore[assignment]
-    __dir__ = _ProxyLookup(dir, fallback=lambda self: [])  # type: ignore[assignment]
+    __setattr__ = _ProxyLookup(setattr)  # type: ignore
+    __delattr__ = _ProxyLookup(delattr)  # type: ignore
+    __dir__ = _ProxyLookup(dir, fallback=lambda self: [])  # type: ignore
     # __get__ (proxying descriptor not supported)
     # __set__ (descriptor)
     # __delete__ (descriptor)
@@ -568,7 +561,9 @@ class LocalProxy(t.Generic[T]):
     # __weakref__ (__getattr__)
     # __init_subclass__ (proxying metaclass not supported)
     # __prepare__ (metaclass)
-    __class__ = _ProxyLookup(fallback=lambda self: type(self), is_attr=True)  # type: ignore[assignment]
+    __class__ = _ProxyLookup(
+        fallback=lambda self: type(self), is_attr=True
+    )  # type: ignore
     __instancecheck__ = _ProxyLookup(lambda self, other: isinstance(other, self))
     __subclasscheck__ = _ProxyLookup(lambda self, other: issubclass(other, self))
     # __class_getitem__ triggered through __getitem__

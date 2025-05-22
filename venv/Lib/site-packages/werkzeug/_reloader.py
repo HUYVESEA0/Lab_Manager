@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import fnmatch
 import os
 import subprocess
@@ -57,13 +55,13 @@ def _iter_module_paths() -> t.Iterator[str]:
             yield name
 
 
-def _remove_by_pattern(paths: set[str], exclude_patterns: set[str]) -> None:
+def _remove_by_pattern(paths: t.Set[str], exclude_patterns: t.Set[str]) -> None:
     for pattern in exclude_patterns:
         paths.difference_update(fnmatch.filter(paths, pattern))
 
 
 def _find_stat_paths(
-    extra_files: set[str], exclude_patterns: set[str]
+    extra_files: t.Set[str], exclude_patterns: t.Set[str]
 ) -> t.Iterable[str]:
     """Find paths for the stat reloader to watch. Returns imported
     module files, Python files under non-system paths. Extra files and
@@ -117,7 +115,7 @@ def _find_stat_paths(
 
 
 def _find_watchdog_paths(
-    extra_files: set[str], exclude_patterns: set[str]
+    extra_files: t.Set[str], exclude_patterns: t.Set[str]
 ) -> t.Iterable[str]:
     """Find paths for the stat reloader to watch. Looks at the same
     sources as the stat reloader, but watches everything under
@@ -141,7 +139,7 @@ def _find_watchdog_paths(
 
 
 def _find_common_roots(paths: t.Iterable[str]) -> t.Iterable[str]:
-    root: dict[str, dict[str, t.Any]] = {}
+    root: t.Dict[str, dict] = {}
 
     for chunks in sorted((PurePath(x).parts for x in paths), key=len, reverse=True):
         node = root
@@ -153,28 +151,21 @@ def _find_common_roots(paths: t.Iterable[str]) -> t.Iterable[str]:
 
     rv = set()
 
-    def _walk(node: t.Mapping[str, dict[str, t.Any]], path: tuple[str, ...]) -> None:
+    def _walk(node: t.Mapping[str, dict], path: t.Tuple[str, ...]) -> None:
         for prefix, child in node.items():
             _walk(child, path + (prefix,))
 
-        # If there are no more nodes, and a path has been accumulated, add it.
-        # Path may be empty if the "" entry is in sys.path.
-        if not node and path:
+        if not node:
             rv.add(os.path.join(*path))
 
     _walk(root, ())
     return rv
 
 
-def _get_args_for_reloading() -> list[str]:
+def _get_args_for_reloading() -> t.List[str]:
     """Determine how the script was executed, and return the args needed
     to execute it again in a new process.
     """
-    if sys.version_info >= (3, 10):
-        # sys.orig_argv, added in Python 3.10, contains the exact args used to invoke
-        # Python. Still replace argv[0] with sys.executable for accuracy.
-        return [sys.executable, *sys.orig_argv[1:]]
-
     rv = [sys.executable]
     py_script = sys.argv[0]
     args = sys.argv[1:]
@@ -230,15 +221,15 @@ class ReloaderLoop:
 
     def __init__(
         self,
-        extra_files: t.Iterable[str] | None = None,
-        exclude_patterns: t.Iterable[str] | None = None,
-        interval: int | float = 1,
+        extra_files: t.Optional[t.Iterable[str]] = None,
+        exclude_patterns: t.Optional[t.Iterable[str]] = None,
+        interval: t.Union[int, float] = 1,
     ) -> None:
-        self.extra_files: set[str] = {os.path.abspath(x) for x in extra_files or ()}
-        self.exclude_patterns: set[str] = set(exclude_patterns or ())
+        self.extra_files: t.Set[str] = {os.path.abspath(x) for x in extra_files or ()}
+        self.exclude_patterns: t.Set[str] = set(exclude_patterns or ())
         self.interval = interval
 
-    def __enter__(self) -> ReloaderLoop:
+    def __enter__(self) -> "ReloaderLoop":
         """Do any setup, then run one step of the watch to populate the
         initial filesystem state.
         """
@@ -281,7 +272,7 @@ class ReloaderLoop:
         self.log_reload(filename)
         sys.exit(3)
 
-    def log_reload(self, filename: str | bytes) -> None:
+    def log_reload(self, filename: str) -> None:
         filename = os.path.abspath(filename)
         _log("info", f" * Detected change in {filename!r}, reloading")
 
@@ -290,7 +281,7 @@ class StatReloaderLoop(ReloaderLoop):
     name = "stat"
 
     def __enter__(self) -> ReloaderLoop:
-        self.mtimes: dict[str, float] = {}
+        self.mtimes: t.Dict[str, float] = {}
         return super().__enter__()
 
     def run_step(self) -> None:
@@ -312,33 +303,17 @@ class StatReloaderLoop(ReloaderLoop):
 
 class WatchdogReloaderLoop(ReloaderLoop):
     def __init__(self, *args: t.Any, **kwargs: t.Any) -> None:
-        from watchdog.events import EVENT_TYPE_CLOSED
-        from watchdog.events import EVENT_TYPE_CREATED
-        from watchdog.events import EVENT_TYPE_DELETED
-        from watchdog.events import EVENT_TYPE_MODIFIED
-        from watchdog.events import EVENT_TYPE_MOVED
-        from watchdog.events import FileModifiedEvent
-        from watchdog.events import PatternMatchingEventHandler
         from watchdog.observers import Observer
+        from watchdog.events import PatternMatchingEventHandler
 
         super().__init__(*args, **kwargs)
         trigger_reload = self.trigger_reload
 
         class EventHandler(PatternMatchingEventHandler):
-            def on_any_event(self, event: FileModifiedEvent):  # type: ignore
-                if event.event_type not in {
-                    EVENT_TYPE_CLOSED,
-                    EVENT_TYPE_CREATED,
-                    EVENT_TYPE_DELETED,
-                    EVENT_TYPE_MODIFIED,
-                    EVENT_TYPE_MOVED,
-                }:
-                    # skip events that don't involve changes to the file
-                    return
-
+            def on_any_event(self, event):  # type: ignore
                 trigger_reload(event.src_path)
 
-        reloader_name = Observer.__name__.lower()  # type: ignore[attr-defined]
+        reloader_name = Observer.__name__.lower()
 
         if reloader_name.endswith("observer"):
             reloader_name = reloader_name[:-8]
@@ -360,7 +335,7 @@ class WatchdogReloaderLoop(ReloaderLoop):
         )
         self.should_reload = False
 
-    def trigger_reload(self, filename: str | bytes) -> None:
+    def trigger_reload(self, filename: str) -> None:
         # This is called inside an event handler, which means throwing
         # SystemExit has no effect.
         # https://github.com/gorakhargosh/watchdog/issues/294
@@ -368,7 +343,7 @@ class WatchdogReloaderLoop(ReloaderLoop):
         self.log_reload(filename)
 
     def __enter__(self) -> ReloaderLoop:
-        self.watches: dict[str, t.Any] = {}
+        self.watches: t.Dict[str, t.Any] = {}
         self.observer.start()
         return super().__enter__()
 
@@ -407,7 +382,7 @@ class WatchdogReloaderLoop(ReloaderLoop):
                 self.observer.unschedule(watch)
 
 
-reloader_loops: dict[str, type[ReloaderLoop]] = {
+reloader_loops: t.Dict[str, t.Type[ReloaderLoop]] = {
     "stat": StatReloaderLoop,
     "watchdog": WatchdogReloaderLoop,
 }
@@ -441,9 +416,9 @@ def ensure_echo_on() -> None:
 
 def run_with_reloader(
     main_func: t.Callable[[], None],
-    extra_files: t.Iterable[str] | None = None,
-    exclude_patterns: t.Iterable[str] | None = None,
-    interval: int | float = 1,
+    extra_files: t.Optional[t.Iterable[str]] = None,
+    exclude_patterns: t.Optional[t.Iterable[str]] = None,
+    interval: t.Union[int, float] = 1,
     reloader_type: str = "auto",
 ) -> None:
     """Run the given function in an independent Python interpreter."""

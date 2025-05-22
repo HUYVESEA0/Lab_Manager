@@ -10,13 +10,11 @@
                 <div class="card-header bg-primary text-white">
                     <h4>Dashboard</h4>
                 </div>
-                <div class="card-body">
-                    <h2>Welcome {{ current_user.username }}!</h2>
+                <div class="card-body">                    <h2>Welcome {{ current_user.username }}!</h2>
                     <p>This is your personal dashboard. You can manage your Python projects here.</p>
                     
                     <div class="alert alert-info">
                         <h5>Session Information</h5>
-                        <p><strong>Number of visits to home page:</strong> {{ session_data.visits }}</p>
                         <p><strong>Last visit:</strong> {{ session_data.last_visit }}</p>
                         <p><strong>Login time:</strong> {{ session_data.login_time }}</p>
                         <a href="{{ url_for('session_manager') }}" class="btn btn-sm btn-primary">Manage Sessions</a>

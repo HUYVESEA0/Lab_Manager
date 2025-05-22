@@ -12,9 +12,6 @@ common HTTP errors such as non-empty responses for 304 status codes.
 :copyright: 2007 Pallets
 :license: BSD-3-Clause
 """
-
-from __future__ import annotations
-
 import typing as t
 from types import TracebackType
 from urllib.parse import urlparse
@@ -38,7 +35,7 @@ class HTTPWarning(Warning):
     """Warning class for HTTP warnings."""
 
 
-def check_type(context: str, obj: object, need: type = str) -> None:
+def check_type(context: str, obj: object, need: t.Type = str) -> None:
     if type(obj) is not need:
         warn(
             f"{context!r} requires {need.__name__!r}, got {type(obj).__name__!r}.",
@@ -120,7 +117,7 @@ class ErrorStream:
 
 
 class GuardedWrite:
-    def __init__(self, write: t.Callable[[bytes], object], chunks: list[int]) -> None:
+    def __init__(self, write: t.Callable[[bytes], object], chunks: t.List[int]) -> None:
         self._write = write
         self._chunks = chunks
 
@@ -134,8 +131,8 @@ class GuardedIterator:
     def __init__(
         self,
         iterator: t.Iterable[bytes],
-        headers_set: tuple[int, Headers],
-        chunks: list[int],
+        headers_set: t.Tuple[int, Headers],
+        chunks: t.List[int],
     ) -> None:
         self._iterator = iterator
         self._next = iter(iterator).__next__
@@ -143,7 +140,7 @@ class GuardedIterator:
         self.headers_set = headers_set
         self.chunks = chunks
 
-    def __iter__(self) -> GuardedIterator:
+    def __iter__(self) -> "GuardedIterator":
         return self
 
     def __next__(self) -> bytes:
@@ -181,44 +178,30 @@ class GuardedIterator:
                         key
                     ):
                         warn(
-                            f"Entity header {key!r} found in 304 response.",
-                            HTTPWarning,
-                            stacklevel=2,
+                            f"Entity header {key!r} found in 304 response.", HTTPWarning
                         )
                 if bytes_sent:
-                    warn(
-                        "304 responses must not have a body.",
-                        HTTPWarning,
-                        stacklevel=2,
-                    )
+                    warn("304 responses must not have a body.", HTTPWarning)
             elif 100 <= status_code < 200 or status_code == 204:
                 if content_length != 0:
                     warn(
                         f"{status_code} responses must have an empty content length.",
                         HTTPWarning,
-                        stacklevel=2,
                     )
                 if bytes_sent:
-                    warn(
-                        f"{status_code} responses must not have a body.",
-                        HTTPWarning,
-                        stacklevel=2,
-                    )
+                    warn(f"{status_code} responses must not have a body.", HTTPWarning)
             elif content_length is not None and content_length != bytes_sent:
                 warn(
                     "Content-Length and the number of bytes sent to the"
                     " client do not match.",
                     WSGIWarning,
-                    stacklevel=2,
                 )
 
     def __del__(self) -> None:
         if not self.closed:
             try:
                 warn(
-                    "Iterator was garbage collected before it was closed.",
-                    WSGIWarning,
-                    stacklevel=2,
+                    "Iterator was garbage collected before it was closed.", WSGIWarning
                 )
             except Exception:
                 pass
@@ -247,11 +230,11 @@ class LintMiddleware:
         app = LintMiddleware(app)
     """
 
-    def __init__(self, app: WSGIApplication) -> None:
+    def __init__(self, app: "WSGIApplication") -> None:
         self.app = app
 
-    def check_environ(self, environ: WSGIEnvironment) -> None:
-        if type(environ) is not dict:  # noqa: E721
+    def check_environ(self, environ: "WSGIEnvironment") -> None:
+        if type(environ) is not dict:
             warn(
                 "WSGI environment is not a standard Python dict.",
                 WSGIWarning,
@@ -297,9 +280,11 @@ class LintMiddleware:
     def check_start_response(
         self,
         status: str,
-        headers: list[tuple[str, str]],
-        exc_info: None | (tuple[type[BaseException], BaseException, TracebackType]),
-    ) -> tuple[int, Headers]:
+        headers: t.List[t.Tuple[str, str]],
+        exc_info: t.Optional[
+            t.Tuple[t.Type[BaseException], BaseException, TracebackType]
+        ],
+    ) -> t.Tuple[int, Headers]:
         check_type("status", status, str)
         status_code_str = status.split(None, 1)[0]
 
@@ -319,14 +304,14 @@ class LintMiddleware:
         if status_code < 100:
             warn("Status code < 100 detected.", WSGIWarning, stacklevel=3)
 
-        if type(headers) is not list:  # noqa: E721
+        if type(headers) is not list:
             warn("Header list is not a list.", WSGIWarning, stacklevel=3)
 
         for item in headers:
             if type(item) is not tuple or len(item) != 2:
                 warn("Header items must be 2-item tuples.", WSGIWarning, stacklevel=3)
             name, value = item
-            if type(name) is not str or type(value) is not str:  # noqa: E721
+            if type(name) is not str or type(value) is not str:
                 warn(
                     "Header keys and values must be strings.", WSGIWarning, stacklevel=3
                 )
@@ -341,10 +326,10 @@ class LintMiddleware:
         if exc_info is not None and not isinstance(exc_info, tuple):
             warn("Invalid value for exc_info.", WSGIWarning, stacklevel=3)
 
-        headers_obj = Headers(headers)
-        self.check_headers(headers_obj)
+        headers = Headers(headers)
+        self.check_headers(headers)
 
-        return status_code, headers_obj
+        return status_code, headers
 
     def check_headers(self, headers: Headers) -> None:
         etag = headers.get("etag")
@@ -374,9 +359,9 @@ class LintMiddleware:
                 )
 
     def check_iterator(self, app_iter: t.Iterable[bytes]) -> None:
-        if isinstance(app_iter, str):
+        if isinstance(app_iter, bytes):
             warn(
-                "The application returned a string. The response will send one"
+                "The application returned a bytestring. The response will send one"
                 " character at a time to the client, which will kill performance."
                 " Return a list or iterable instead.",
                 WSGIWarning,
@@ -392,8 +377,8 @@ class LintMiddleware:
                 "A WSGI app does not take keyword arguments.", WSGIWarning, stacklevel=2
             )
 
-        environ: WSGIEnvironment = args[0]
-        start_response: StartResponse = args[1]
+        environ: "WSGIEnvironment" = args[0]
+        start_response: "StartResponse" = args[1]
 
         self.check_environ(environ)
         environ["wsgi.input"] = InputStream(environ["wsgi.input"])
@@ -403,8 +388,8 @@ class LintMiddleware:
         # iterate to the end and we can check the content length.
         environ["wsgi.file_wrapper"] = FileWrapper
 
-        headers_set: list[t.Any] = []
-        chunks: list[int] = []
+        headers_set: t.List[t.Any] = []
+        chunks: t.List[int] = []
 
         def checking_start_response(
             *args: t.Any, **kwargs: t.Any
@@ -417,17 +402,13 @@ class LintMiddleware:
                 )
 
             if kwargs:
-                warn(
-                    "'start_response' does not take keyword arguments.",
-                    WSGIWarning,
-                    stacklevel=2,
-                )
+                warn("'start_response' does not take keyword arguments.", WSGIWarning)
 
             status: str = args[0]
-            headers: list[tuple[str, str]] = args[1]
-            exc_info: (
-                None | (tuple[type[BaseException], BaseException, TracebackType])
-            ) = args[2] if len(args) == 3 else None
+            headers: t.List[t.Tuple[str, str]] = args[1]
+            exc_info: t.Optional[
+                t.Tuple[t.Type[BaseException], BaseException, TracebackType]
+            ] = (args[2] if len(args) == 3 else None)
 
             headers_set[:] = self.check_start_response(status, headers, exc_info)
             return GuardedWrite(start_response(status, headers, exc_info), chunks)
@@ -435,5 +416,5 @@ class LintMiddleware:
         app_iter = self.app(environ, t.cast("StartResponse", checking_start_response))
         self.check_iterator(app_iter)
         return GuardedIterator(
-            app_iter, t.cast(tuple[int, Headers], headers_set), chunks
+            app_iter, t.cast(t.Tuple[int, Headers], headers_set), chunks
         )

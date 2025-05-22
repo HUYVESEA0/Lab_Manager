@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import io
 import mimetypes
 import os
@@ -10,7 +8,6 @@ import typing as t
 import unicodedata
 from datetime import datetime
 from time import time
-from urllib.parse import quote
 from zlib import adler32
 
 from markupsafe import escape
@@ -22,11 +19,11 @@ from .datastructures import Headers
 from .exceptions import NotFound
 from .exceptions import RequestedRangeNotSatisfiable
 from .security import safe_join
+from .urls import url_quote
 from .wsgi import wrap_file
 
 if t.TYPE_CHECKING:
     from _typeshed.wsgi import WSGIEnvironment
-
     from .wrappers.request import Request
     from .wrappers.response import Response
 
@@ -34,14 +31,19 @@ _T = t.TypeVar("_T")
 
 _entity_re = re.compile(r"&([^;]+);")
 _filename_ascii_strip_re = re.compile(r"[^A-Za-z0-9_.-]")
-_windows_device_files = {
+_windows_device_files = (
     "CON",
-    "PRN",
     "AUX",
+    "COM1",
+    "COM2",
+    "COM3",
+    "COM4",
+    "LPT1",
+    "LPT2",
+    "LPT3",
+    "PRN",
     "NUL",
-    *(f"COM{i}" for i in range(10)),
-    *(f"LPT{i}" for i in range(10)),
-}
+)
 
 
 class cached_property(property, t.Generic[_T]):
@@ -78,8 +80,8 @@ class cached_property(property, t.Generic[_T]):
     def __init__(
         self,
         fget: t.Callable[[t.Any], _T],
-        name: str | None = None,
-        doc: str | None = None,
+        name: t.Optional[str] = None,
+        doc: t.Optional[str] = None,
     ) -> None:
         super().__init__(fget, doc=doc)
         self.__name__ = name or fget.__name__
@@ -143,14 +145,14 @@ class environ_property(_DictAccessorProperty[_TAccessorValue]):
 
     read_only = True
 
-    def lookup(self, obj: Request) -> WSGIEnvironment:
+    def lookup(self, obj: "Request") -> "WSGIEnvironment":
         return obj.environ
 
 
 class header_property(_DictAccessorProperty[_TAccessorValue]):
     """Like `environ_property` but for headers."""
 
-    def lookup(self, obj: Request | Response) -> Headers:  # type: ignore[override]
+    def lookup(self, obj: t.Union["Request", "Response"]) -> Headers:
         return obj.headers
 
 
@@ -240,8 +242,8 @@ def secure_filename(filename: str) -> str:
 
 
 def redirect(
-    location: str, code: int = 302, Response: type[Response] | None = None
-) -> Response:
+    location: str, code: int = 302, Response: t.Optional[t.Type["Response"]] = None
+) -> "Response":
     """Returns a response object (a WSGI application) that, if called,
     redirects the client to the target location. Supported codes are
     301, 302, 303, 305, 307, and 308. 300 is not supported because
@@ -262,16 +264,24 @@ def redirect(
         unspecified.
     """
     if Response is None:
-        from .wrappers import Response
+        from .wrappers import Response  # type: ignore
 
-    html_location = escape(location)
-    response = Response(  # type: ignore[misc]
+    display_location = escape(location)
+    if isinstance(location, str):
+        # Safe conversion is necessary here as we might redirect
+        # to a broken URI scheme (for instance itms-services).
+        from .urls import iri_to_uri
+
+        location = iri_to_uri(location, safe_conversion=True)
+
+    response = Response(  # type: ignore
         "<!doctype html>\n"
         "<html lang=en>\n"
         "<title>Redirecting...</title>\n"
         "<h1>Redirecting...</h1>\n"
         "<p>You should be redirected automatically to the target URL: "
-        f'<a href="{html_location}">{html_location}</a>. If not, click the link.\n',
+        f'<a href="{escape(location)}">{display_location}</a>. If'
+        " not, click the link.\n",
         code,
         mimetype="text/html",
     )
@@ -279,7 +289,7 @@ def redirect(
     return response
 
 
-def append_slash_redirect(environ: WSGIEnvironment, code: int = 308) -> Response:
+def append_slash_redirect(environ: "WSGIEnvironment", code: int = 308) -> "Response":
     """Redirect to the current URL with a slash appended.
 
     If the current URL is ``/user/42``, the redirect URL will be
@@ -317,19 +327,21 @@ def append_slash_redirect(environ: WSGIEnvironment, code: int = 308) -> Response
 
 
 def send_file(
-    path_or_file: os.PathLike[str] | str | t.IO[bytes],
-    environ: WSGIEnvironment,
-    mimetype: str | None = None,
+    path_or_file: t.Union[os.PathLike, str, t.IO[bytes]],
+    environ: "WSGIEnvironment",
+    mimetype: t.Optional[str] = None,
     as_attachment: bool = False,
-    download_name: str | None = None,
+    download_name: t.Optional[str] = None,
     conditional: bool = True,
-    etag: bool | str = True,
-    last_modified: datetime | int | float | None = None,
-    max_age: None | (int | t.Callable[[str | None], int | None]) = None,
+    etag: t.Union[bool, str] = True,
+    last_modified: t.Optional[t.Union[datetime, int, float]] = None,
+    max_age: t.Optional[
+        t.Union[int, t.Callable[[t.Optional[str]], t.Optional[int]]]
+    ] = None,
     use_x_sendfile: bool = False,
-    response_class: type[Response] | None = None,
-    _root_path: os.PathLike[str] | str | None = None,
-) -> Response:
+    response_class: t.Optional[t.Type["Response"]] = None,
+    _root_path: t.Optional[t.Union[os.PathLike, str]] = None,
+) -> "Response":
     """Send the contents of a file to the client.
 
     The first argument can be a file path or a file-like object. Paths
@@ -407,16 +419,16 @@ def send_file(
 
         response_class = Response
 
-    path: str | None = None
-    file: t.IO[bytes] | None = None
-    size: int | None = None
-    mtime: float | None = None
+    path: t.Optional[str] = None
+    file: t.Optional[t.IO[bytes]] = None
+    size: t.Optional[int] = None
+    mtime: t.Optional[float] = None
     headers = Headers()
 
     if isinstance(path_or_file, (os.PathLike, str)) or hasattr(
         path_or_file, "__fspath__"
     ):
-        path_or_file = t.cast("t.Union[os.PathLike[str], str]", path_or_file)
+        path_or_file = t.cast(t.Union[os.PathLike, str], path_or_file)
 
         # Flask will pass app.root_path, allowing its send_file wrapper
         # to not have to deal with paths.
@@ -458,8 +470,7 @@ def send_file(
         except UnicodeEncodeError:
             simple = unicodedata.normalize("NFKD", download_name)
             simple = simple.encode("ascii", "ignore").decode("ascii")
-            # safe = RFC 5987 attr-char
-            quoted = quote(download_name, safe="!#$&+-.^_`|~")
+            quoted = url_quote(download_name, safe="")
             names = {"filename": simple, "filename*": f"UTF-8''{quoted}"}
         else:
             names = {"filename": download_name}
@@ -515,7 +526,7 @@ def send_file(
     if isinstance(etag, str):
         rv.set_etag(etag)
     elif etag and path is not None:
-        check = adler32(path.encode()) & 0xFFFFFFFF
+        check = adler32(path.encode("utf-8")) & 0xFFFFFFFF
         rv.set_etag(f"{mtime}-{size}-{check}")
 
     if conditional:
@@ -536,11 +547,11 @@ def send_file(
 
 
 def send_from_directory(
-    directory: os.PathLike[str] | str,
-    path: os.PathLike[str] | str,
-    environ: WSGIEnvironment,
+    directory: t.Union[os.PathLike, str],
+    path: t.Union[os.PathLike, str],
+    environ: "WSGIEnvironment",
     **kwargs: t.Any,
-) -> Response:
+) -> "Response":
     """Send a file from within a directory using :func:`send_file`.
 
     This is a secure way to serve files from a folder, such as static
@@ -561,20 +572,24 @@ def send_from_directory(
     .. versionadded:: 2.0
         Adapted from Flask's implementation.
     """
-    path_str = safe_join(os.fspath(directory), os.fspath(path))
+    path = safe_join(os.fspath(directory), os.fspath(path))
 
-    if path_str is None:
+    if path is None:
         raise NotFound()
 
     # Flask will pass app.root_path, allowing its send_from_directory
     # wrapper to not have to deal with paths.
     if "_root_path" in kwargs:
-        path_str = os.path.join(kwargs["_root_path"], path_str)
+        path = os.path.join(kwargs["_root_path"], path)
 
-    if not os.path.isfile(path_str):
-        raise NotFound()
+    try:
+        if not os.path.isfile(path):
+            raise NotFound()
+    except ValueError:
+        # path contains null byte on Python < 3.8
+        raise NotFound() from None
 
-    return send_file(path_str, environ, **kwargs)
+    return send_file(path, environ, **kwargs)
 
 
 def import_string(import_name: str, silent: bool = False) -> t.Any:

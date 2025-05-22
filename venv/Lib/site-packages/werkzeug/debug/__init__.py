@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import getpass
 import hashlib
 import json
@@ -11,18 +9,16 @@ import time
 import typing as t
 import uuid
 from contextlib import ExitStack
+from contextlib import nullcontext
 from io import BytesIO
 from itertools import chain
-from multiprocessing import Value
 from os.path import basename
 from os.path import join
 from zlib import adler32
 
 from .._internal import _log
 from ..exceptions import NotFound
-from ..exceptions import SecurityError
 from ..http import parse_cookie
-from ..sansio.utils import host_is_trusted
 from ..security import gen_salt
 from ..utils import send_file
 from ..wrappers.request import Request
@@ -45,16 +41,16 @@ def hash_pin(pin: str) -> str:
     return hashlib.sha1(f"{pin} added salt".encode("utf-8", "replace")).hexdigest()[:12]
 
 
-_machine_id: str | bytes | None = None
+_machine_id: t.Optional[t.Union[str, bytes]] = None
 
 
-def get_machine_id() -> str | bytes | None:
+def get_machine_id() -> t.Optional[t.Union[str, bytes]]:
     global _machine_id
 
     if _machine_id is not None:
         return _machine_id
 
-    def _generate() -> str | bytes | None:
+    def _generate() -> t.Optional[t.Union[str, bytes]]:
         linux = b""
 
         # machine-id is stable across boots, boot_id is not.
@@ -85,8 +81,7 @@ def get_machine_id() -> str | bytes | None:
         try:
             # subprocess may not be available, e.g. Google App Engine
             # https://github.com/pallets/werkzeug/issues/925
-            from subprocess import PIPE
-            from subprocess import Popen
+            from subprocess import Popen, PIPE
 
             dump = Popen(
                 ["ioreg", "-c", "IOPlatformExpertDevice", "-d", "2"], stdout=PIPE
@@ -109,12 +104,12 @@ def get_machine_id() -> str | bytes | None:
                     0,
                     winreg.KEY_READ | winreg.KEY_WOW64_64KEY,
                 ) as rk:
-                    guid: str | bytes
+                    guid: t.Union[str, bytes]
                     guid_type: int
                     guid, guid_type = winreg.QueryValueEx(rk, "MachineGuid")
 
                     if guid_type == winreg.REG_SZ:
-                        return guid.encode()
+                        return guid.encode("utf-8")
 
                     return guid
             except OSError:
@@ -131,7 +126,7 @@ class _ConsoleFrame:
     standalone console.
     """
 
-    def __init__(self, namespace: dict[str, t.Any]):
+    def __init__(self, namespace: t.Dict[str, t.Any]):
         self.console = Console(namespace)
         self.id = 0
 
@@ -140,8 +135,8 @@ class _ConsoleFrame:
 
 
 def get_pin_and_cookie_name(
-    app: WSGIApplication,
-) -> tuple[str, str] | tuple[None, None]:
+    app: "WSGIApplication",
+) -> t.Union[t.Tuple[str, str], t.Tuple[None, None]]:
     """Given an application object this returns a semi-stable 9 digit pin
     code and a random key.  The hope is that this is stable between
     restarts to not make debugging particularly frustrating.  If the pin
@@ -166,15 +161,14 @@ def get_pin_and_cookie_name(
             num = pin
 
     modname = getattr(app, "__module__", t.cast(object, app).__class__.__module__)
-    username: str | None
+    username: t.Optional[str]
 
     try:
         # getuser imports the pwd module, which does not exist in Google
         # App Engine. It may also raise a KeyError if the UID does not
         # have a username, such as in Docker.
         username = getpass.getuser()
-    # Python >= 3.13 only raises OSError
-    except (ImportError, KeyError, OSError):
+    except (ImportError, KeyError):
         username = None
 
     mod = sys.modules.get(modname)
@@ -198,7 +192,7 @@ def get_pin_and_cookie_name(
         if not bit:
             continue
         if isinstance(bit, str):
-            bit = bit.encode()
+            bit = bit.encode("utf-8")
         h.update(bit)
     h.update(b"cookiesalt")
 
@@ -235,8 +229,8 @@ class DebuggedApplication:
 
     The ``evalex`` argument allows evaluating expressions in any frame
     of a traceback. This works by preserving each frame with its local
-    state. Some state, such as context globals, cannot be restored with
-    the frame by default. When ``evalex`` is enabled,
+    state. Some state, such as :doc:`local`, cannot be restored with the
+    frame by default. When ``evalex`` is enabled,
     ``environ["werkzeug.debug.preserve_context"]`` will be a callable
     that takes a context manager, and can be called multiple times.
     Each context manager will be entered before evaluating code in the
@@ -268,11 +262,11 @@ class DebuggedApplication:
 
     def __init__(
         self,
-        app: WSGIApplication,
+        app: "WSGIApplication",
         evalex: bool = False,
         request_key: str = "werkzeug.request",
         console_path: str = "/console",
-        console_init_func: t.Callable[[], dict[str, t.Any]] | None = None,
+        console_init_func: t.Optional[t.Callable[[], t.Dict[str, t.Any]]] = None,
         show_hidden_frames: bool = False,
         pin_security: bool = True,
         pin_logging: bool = True,
@@ -281,14 +275,14 @@ class DebuggedApplication:
             console_init_func = None
         self.app = app
         self.evalex = evalex
-        self.frames: dict[int, DebugFrameSummary | _ConsoleFrame] = {}
-        self.frame_contexts: dict[int, list[t.ContextManager[None]]] = {}
+        self.frames: t.Dict[int, t.Union[DebugFrameSummary, _ConsoleFrame]] = {}
+        self.frame_contexts: t.Dict[int, t.List[t.ContextManager[None]]] = {}
         self.request_key = request_key
         self.console_path = console_path
         self.console_init_func = console_init_func
         self.show_hidden_frames = show_hidden_frames
         self.secret = gen_salt(20)
-        self._failed_pin_auth = Value("B")
+        self._failed_pin_auth = 0
 
         self.pin_logging = pin_logging
         if pin_security:
@@ -302,16 +296,8 @@ class DebuggedApplication:
         else:
             self.pin = None
 
-        self.trusted_hosts: list[str] = [".localhost", "127.0.0.1"]
-        """List of domains to allow requests to the debugger from. A leading dot
-        allows all subdomains. This only allows ``".localhost"`` domains by
-        default.
-
-        .. versionadded:: 3.0.3
-        """
-
     @property
-    def pin(self) -> str | None:
+    def pin(self) -> t.Optional[str]:
         if not hasattr(self, "_pin"):
             pin_cookie = get_pin_and_cookie_name(self.app)
             self._pin, self._pin_cookie = pin_cookie  # type: ignore
@@ -330,10 +316,10 @@ class DebuggedApplication:
         return self._pin_cookie
 
     def debug_application(
-        self, environ: WSGIEnvironment, start_response: StartResponse
+        self, environ: "WSGIEnvironment", start_response: "StartResponse"
     ) -> t.Iterator[bytes]:
         """Run the application and conserve the traceback frames."""
-        contexts: list[t.ContextManager[t.Any]] = []
+        contexts: t.List[t.ContextManager[t.Any]] = []
 
         if self.evalex:
             environ["werkzeug.debug.preserve_context"] = contexts.append
@@ -356,7 +342,7 @@ class DebuggedApplication:
 
             is_trusted = bool(self.check_pin_trust(environ))
             html = tb.render_debugger_html(
-                evalex=self.evalex and self.check_host_trust(environ),
+                evalex=self.evalex,
                 secret=self.secret,
                 evalex_trusted=is_trusted,
             )
@@ -377,16 +363,13 @@ class DebuggedApplication:
 
             environ["wsgi.errors"].write("".join(tb.render_traceback_text()))
 
-    def execute_command(
+    def execute_command(  # type: ignore[return]
         self,
         request: Request,
         command: str,
-        frame: DebugFrameSummary | _ConsoleFrame,
+        frame: t.Union[DebugFrameSummary, _ConsoleFrame],
     ) -> Response:
         """Execute a command in a console."""
-        if not self.check_host_trust(request.environ):
-            return SecurityError()  # type: ignore[return-value]
-
         contexts = self.frame_contexts.get(id(frame), [])
 
         with ExitStack() as exit_stack:
@@ -397,9 +380,6 @@ class DebuggedApplication:
 
     def display_console(self, request: Request) -> Response:
         """Display a standalone shell."""
-        if not self.check_host_trust(request.environ):
-            return SecurityError()  # type: ignore[return-value]
-
         if 0 not in self.frames:
             if self.console_init_func is None:
                 ns = {}
@@ -430,7 +410,7 @@ class DebuggedApplication:
                 BytesIO(data), request.environ, download_name=filename, etag=etag
             )
 
-    def check_pin_trust(self, environ: WSGIEnvironment) -> bool | None:
+    def check_pin_trust(self, environ: "WSGIEnvironment") -> t.Optional[bool]:
         """Checks if the request passed the pin test.  This returns `True` if the
         request is trusted on a pin/cookie basis and returns `False` if not.
         Additionally if the cookie's stored pin hash is wrong it will return
@@ -452,21 +432,12 @@ class DebuggedApplication:
             return None
         return (time.time() - PIN_TIME) < ts
 
-    def check_host_trust(self, environ: WSGIEnvironment) -> bool:
-        return host_is_trusted(environ.get("HTTP_HOST"), self.trusted_hosts)
-
     def _fail_pin_auth(self) -> None:
-        with self._failed_pin_auth.get_lock():
-            count = self._failed_pin_auth.value
-            self._failed_pin_auth.value = count + 1
-
-        time.sleep(5.0 if count > 5 else 0.5)
+        time.sleep(5.0 if self._failed_pin_auth > 5 else 0.5)
+        self._failed_pin_auth += 1
 
     def pin_auth(self, request: Request) -> Response:
         """Authenticates with the pin."""
-        if not self.check_host_trust(request.environ):
-            return SecurityError()  # type: ignore[return-value]
-
         exhausted = False
         auth = False
         trust = self.check_pin_trust(request.environ)
@@ -487,7 +458,7 @@ class DebuggedApplication:
             auth = True
 
         # If we failed too many times, then we're locked out.
-        elif self._failed_pin_auth.value > 10:
+        elif self._failed_pin_auth > 10:
             exhausted = True
 
         # Otherwise go through pin based authentication
@@ -495,7 +466,7 @@ class DebuggedApplication:
             entered_pin = request.args["pin"]
 
             if entered_pin.strip().replace("-", "") == pin.replace("-", ""):
-                self._failed_pin_auth.value = 0
+                self._failed_pin_auth = 0
                 auth = True
             else:
                 self._fail_pin_auth()
@@ -516,11 +487,8 @@ class DebuggedApplication:
             rv.delete_cookie(self.pin_cookie_name)
         return rv
 
-    def log_pin_request(self, request: Request) -> Response:
+    def log_pin_request(self) -> Response:
         """Log the pin if needed."""
-        if not self.check_host_trust(request.environ):
-            return SecurityError()  # type: ignore[return-value]
-
         if self.pin_logging and self.pin is not None:
             _log(
                 "info", " * To enable the debugger you need to enter the security pin:"
@@ -529,7 +497,7 @@ class DebuggedApplication:
         return Response("")
 
     def __call__(
-        self, environ: WSGIEnvironment, start_response: StartResponse
+        self, environ: "WSGIEnvironment", start_response: "StartResponse"
     ) -> t.Iterable[bytes]:
         """Dispatch the requests."""
         # important: don't ever access a function here that reads the incoming
@@ -547,7 +515,7 @@ class DebuggedApplication:
             elif cmd == "pinauth" and secret == self.secret:
                 response = self.pin_auth(request)  # type: ignore
             elif cmd == "printpin" and secret == self.secret:
-                response = self.log_pin_request(request)  # type: ignore
+                response = self.log_pin_request()  # type: ignore
             elif (
                 self.evalex
                 and cmd is not None

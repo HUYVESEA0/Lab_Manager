@@ -8,13 +8,9 @@ Serve Shared Static Files
 :copyright: 2007 Pallets
 :license: BSD-3-Clause
 """
-
-from __future__ import annotations
-
-import collections.abc as cabc
-import importlib.util
 import mimetypes
 import os
+import pkgutil
 import posixpath
 import typing as t
 from datetime import datetime
@@ -30,8 +26,8 @@ from ..utils import get_content_type
 from ..wsgi import get_path_info
 from ..wsgi import wrap_file
 
-_TOpener = t.Callable[[], tuple[t.IO[bytes], datetime, int]]
-_TLoader = t.Callable[[t.Optional[str]], tuple[t.Optional[str], t.Optional[_TOpener]]]
+_TOpener = t.Callable[[], t.Tuple[t.IO[bytes], datetime, int]]
+_TLoader = t.Callable[[t.Optional[str]], t.Tuple[t.Optional[str], t.Optional[_TOpener]]]
 
 if t.TYPE_CHECKING:
     from _typeshed.wsgi import StartResponse
@@ -40,6 +36,7 @@ if t.TYPE_CHECKING:
 
 
 class SharedDataMiddleware:
+
     """A WSGI middleware which provides static content for development
     environments or simple server setups. Its usage is quite simple::
 
@@ -102,22 +99,22 @@ class SharedDataMiddleware:
 
     def __init__(
         self,
-        app: WSGIApplication,
-        exports: (
-            cabc.Mapping[str, str | tuple[str, str]]
-            | t.Iterable[tuple[str, str | tuple[str, str]]]
-        ),
+        app: "WSGIApplication",
+        exports: t.Union[
+            t.Dict[str, t.Union[str, t.Tuple[str, str]]],
+            t.Iterable[t.Tuple[str, t.Union[str, t.Tuple[str, str]]]],
+        ],
         disallow: None = None,
         cache: bool = True,
         cache_timeout: int = 60 * 60 * 12,
         fallback_mimetype: str = "application/octet-stream",
     ) -> None:
         self.app = app
-        self.exports: list[tuple[str, _TLoader]] = []
+        self.exports: t.List[t.Tuple[str, _TLoader]] = []
         self.cache = cache
         self.cache_timeout = cache_timeout
 
-        if isinstance(exports, cabc.Mapping):
+        if isinstance(exports, dict):
             exports = exports.items()
 
         for key, value in exports:
@@ -159,12 +156,12 @@ class SharedDataMiddleware:
 
     def get_package_loader(self, package: str, package_path: str) -> _TLoader:
         load_time = datetime.now(timezone.utc)
-        spec = importlib.util.find_spec(package)
-        reader = spec.loader.get_resource_reader(package)  # type: ignore[union-attr]
+        provider = pkgutil.get_loader(package)
+        reader = provider.get_resource_reader(package)  # type: ignore
 
         def loader(
-            path: str | None,
-        ) -> tuple[str | None, _TOpener | None]:
+            path: t.Optional[str],
+        ) -> t.Tuple[t.Optional[str], t.Optional[_TOpener]]:
             if path is None:
                 return None, None
 
@@ -201,8 +198,8 @@ class SharedDataMiddleware:
 
     def get_directory_loader(self, directory: str) -> _TLoader:
         def loader(
-            path: str | None,
-        ) -> tuple[str | None, _TOpener | None]:
+            path: t.Optional[str],
+        ) -> t.Tuple[t.Optional[str], t.Optional[_TOpener]]:
             if path is not None:
                 path = safe_join(directory, path)
 
@@ -219,13 +216,13 @@ class SharedDataMiddleware:
         return loader
 
     def generate_etag(self, mtime: datetime, file_size: int, real_filename: str) -> str:
-        fn_str = os.fsencode(real_filename)
+        real_filename = os.fsencode(real_filename)
         timestamp = mtime.timestamp()
-        checksum = adler32(fn_str) & 0xFFFFFFFF
+        checksum = adler32(real_filename) & 0xFFFFFFFF
         return f"wzsdm-{timestamp}-{file_size}-{checksum}"
 
     def __call__(
-        self, environ: WSGIEnvironment, start_response: StartResponse
+        self, environ: "WSGIEnvironment", start_response: "StartResponse"
     ) -> t.Iterable[bytes]:
         path = get_path_info(environ)
         file_loader = None

@@ -215,22 +215,11 @@
                                 </button>
                             </form>
                         </div>
-                        
-                        <!-- Appearance Settings Tab -->
+                          <!-- Appearance Settings Tab -->
                         <div class="tab-pane fade" id="appearance" role="tabpanel">
                             <form method="POST" action="#">
                                 <div class="settings-category">
-                                    <h4>Theme Settings</h4>
-                                    
-                                    <div class="setting-item">
-                                        <label for="theme">Application Theme</label>
-                                        <select class="form-control" id="theme" name="theme">
-                                            <option value="light">Light Theme</option>
-                                            <option value="dark">Dark Theme</option>
-                                            <option value="auto">Auto (System Default)</option>
-                                        </select>
-                                        <div class="setting-description">Change the visual appearance of the application</div>
-                                    </div>
+                                    <h4>Application Appearance</h4>
                                     
                                     <div class="setting-item">
                                         <label for="primary_color">Primary Color</label>
@@ -242,44 +231,6 @@
                                         <label for="secondary_color">Secondary Color</label>
                                         <input type="color" class="form-control" id="secondary_color" name="secondary_color" value="#6c757d">
                                         <div class="setting-description">Secondary color used for accents and details</div>
-                                    </div>
-                                    
-                                    <div class="setting-item">
-                                        <label for="theme">Chế độ Theme</label>
-                                        <select class="form-control" id="theme_mode" name="theme_mode">
-                                            <option value="auto">Tự động theo hệ thống</option>
-                                            <option value="manual">Thủ công</option>
-                                            <option value="time-based">Tự động theo thời gian</option>
-                                        </select>
-                                        <div class="setting-description">Chọn cách thức áp dụng giao diện sáng/tối</div>
-                                    </div>
-
-                                    <div id="time-based-settings" style="display: none;">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="setting-item">
-                                                    <label for="dark_theme_start">Bắt đầu chế độ tối (giờ)</label>
-                                                    <input type="number" class="form-control" id="dark_theme_start" name="dark_theme_start" min="0" max="23" value="18">
-                                                    <div class="setting-description">Giờ bắt đầu chế độ tối (0-23)</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="setting-item">
-                                                    <label for="dark_theme_end">Kết thúc chế độ tối (giờ)</label>
-                                                    <input type="number" class="form-control" id="dark_theme_end" name="dark_theme_end" min="0" max="23" value="6">
-                                                    <div class="setting-description">Giờ kết thúc chế độ tối (0-23)</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="setting-item">
-                                        <label for="theme">Giao diện mặc định</label>
-                                        <select class="form-control" id="theme" name="theme">
-                                            <option value="light">Sáng</option>
-                                            <option value="dark">Tối</option>
-                                        </select>
-                                        <div class="setting-description">Chọn giao diện mặc định khi ở chế độ thủ công</div>
                                     </div>
                                 </div>
                                 
@@ -488,137 +439,10 @@
         if (activeTab) {
             $('#settingsTabs a[href="' + activeTab + '"]').tab('show');
         }
-        
-        // Store the active tab in localStorage when tab is changed
+          // Store the active tab in localStorage when tab is changed
         $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
             localStorage.setItem('activeSettingsTab', $(e.target).attr('href'));
         });
-
-        // Sync theme dropdown with current theme setting
-        const themeSelect = document.getElementById('theme');
-        if (themeSelect) {
-            const savedTheme = localStorage.getItem('preferred-theme');
-            if (savedTheme) {
-                themeSelect.value = savedTheme;
-            } else {
-                themeSelect.value = 'auto';
-            }
-            
-            // Update theme when dropdown changes
-            themeSelect.addEventListener('change', function() {
-                const selectedTheme = this.value;
-                if (selectedTheme === 'auto') {
-                    localStorage.removeItem('preferred-theme');
-                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                        document.body.classList.add('dark-theme');
-                    } else {
-                        document.body.classList.remove('dark-theme');
-                    }
-                } else if (selectedTheme === 'dark') {
-                    localStorage.setItem('preferred-theme', 'dark');
-                    document.body.classList.add('dark-theme');
-                } else {
-                    localStorage.setItem('preferred-theme', 'light');
-                    document.body.classList.remove('dark-theme');
-                }
-                
-                // Update theme toggle icons
-                const toggleIcons = document.querySelectorAll('.theme-toggle i');
-                if (toggleIcons) {
-                    toggleIcons.forEach(icon => {
-                        icon.className = document.body.classList.contains('dark-theme') ? 
-                            'fas fa-sun' : 'fas fa-moon';
-                    });
-                }
-            });
-        }
-
-        // Theme mode settings
-        const themeModeSelect = document.getElementById('theme_mode');
-        const timeBasedSettings = document.getElementById('time-based-settings');
-        const darkThemeStart = document.getElementById('dark_theme_start');
-        const darkThemeEnd = document.getElementById('dark_theme_end');
-        
-        // Load saved settings
-        const savedThemeMode = localStorage.getItem('preferred-theme-mode') || 'auto';
-        themeModeSelect.value = savedThemeMode;
-        
-        // Show/hide time-based settings
-        if (savedThemeMode === 'time-based') {
-            timeBasedSettings.style.display = 'block';
-            darkThemeStart.value = localStorage.getItem('dark-theme-start') || 18;
-            darkThemeEnd.value = localStorage.getItem('dark-theme-end') || 6;
-        } else {
-            timeBasedSettings.style.display = 'none';
-        }
-        
-        // Load theme selection
-        const savedTheme = localStorage.getItem('preferred-theme') || 'light';
-        themeSelect.value = savedTheme;
-        
-        // Theme mode change handler
-        themeModeSelect.addEventListener('change', function() {
-            const selectedMode = this.value;
-            
-            // Show/hide time settings
-            if (selectedMode === 'time-based') {
-                timeBasedSettings.style.display = 'block';
-            } else {
-                timeBasedSettings.style.display = 'none';
-            }
-            
-            // Apply the selected mode
-            if (window.themeSwitcher) {
-                const startHour = parseInt(darkThemeStart.value);
-                const endHour = parseInt(darkThemeEnd.value);
-                window.themeSwitcher.setThemeMode(selectedMode, startHour, endHour);
-            } else {
-                // Fallback if themeSwitcher is not available
-                localStorage.setItem('preferred-theme-mode', selectedMode);
-            }
-        });
-        
-        // Theme preference change handler
-        themeSelect.addEventListener('change', function() {
-            const selectedTheme = this.value;
-            localStorage.setItem('preferred-theme', selectedTheme);
-            
-            // Apply theme if in manual mode
-            if (themeModeSelect.value === 'manual') {
-                if (selectedTheme === 'dark') {
-                    document.body.classList.add('dark-theme');
-                    updateToggleIcons('sun');
-                } else {
-                    document.body.classList.remove('dark-theme');
-                    updateToggleIcons('moon');
-                }
-            }
-        });
-        
-        // Time settings change handlers
-        darkThemeStart.addEventListener('change', function() {
-            localStorage.setItem('dark-theme-start', this.value);
-            if (themeModeSelect.value === 'time-based' && window.themeSwitcher) {
-                window.themeSwitcher.applyTimeBasedTheme();
-            }
-        });
-        
-        darkThemeEnd.addEventListener('change', function() {
-            localStorage.setItem('dark-theme-end', this.value);
-            if (themeModeSelect.value === 'time-based' && window.themeSwitcher) {
-                window.themeSwitcher.applyTimeBasedTheme();
-            }
-        });
-        
-        // Helper function to update icons
-        function updateToggleIcons(icon) {
-            const toggleIcons = document.querySelectorAll('.theme-toggle i');
-            if (toggleIcons) {
-                toggleIcons.forEach(iconEl => {
-                    iconEl.className = `fas fa-${icon}`;
-                });
-            }
-        }
     });
 </script>
 {% endblock %}

@@ -12,9 +12,8 @@
     {% block styles %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">Python Manager</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">        <div class="container">
+            <a class="navbar-brand" href="{% if current_user.is_authenticated %}{% if current_user.is_admin_manager() %}{{ url_for('admin_manager_dashboard') }}{% elif current_user.is_admin() %}{{ url_for('admin_dashboard') }}{% else %}{{ url_for('dashboard') }}{% endif %}{% else %}{{ url_for('login') }}{% endif %}">Python Manager</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -30,11 +29,7 @@
                         </div>
                     </div>
                 </form>
-                
-                <ul class="navbar-nav ml-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
-                    </li>
+                  <ul class="navbar-nav ml-auto">
                     {% if current_user.is_authenticated %}
                         {% if current_user.is_admin() %}
                         <li class="nav-item dropdown">
@@ -177,11 +172,13 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
-        {% block content %}
+          {% block content %}
         <div class="jumbotron">
-            <h1>Welcome to Python Manager</h1>
-            <p class="lead">A powerful tool for managing your Python projects.</p>
+            <h1>Redirecting...</h1>
+            <p class="lead">You are being redirected to your dashboard.</p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
         </div>
         
         {% if current_user.is_authenticated %}

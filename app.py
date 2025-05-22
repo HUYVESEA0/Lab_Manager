@@ -1,17 +1,17 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, session, jsonify, g
+from flask import Flask, render_template, redirect, url_for, flash, request, session, jsonify, g, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 # Thay thế import url_parse từ werkzeug
 from urllib.parse import urlparse
-import datetime
-import os
-import random
-import string
-import json
+from werkzeug.urls import url_parse
 from sqlalchemy import func
 from flask_migrate import Migrate
 from flask_caching import Cache
 from functools import wraps
+import os
+from datetime import datetime, date, time, timedelta
+import random
+import string
 # Import models trước khi khởi tạo app
 from models import db, User, SystemSetting, ActivityLog, init_app
 from models import LabSession, SessionRegistration, LabEntry
@@ -20,19 +20,56 @@ from utils import log_activity, ensure_session_consistency
 from session_handler import SessionHandler
 from utils import clear_auth_session
 from werkzeug.exceptions import HTTPException
+from typing import List, Optional, Union, Dict, Any, Iterable, TypeVar, cast
 from werkzeug.datastructures import CombinedMultiDict, MultiDict
 import traceback
 from flask_wtf.csrf import CSRFError, CSRFProtect
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
 
 app = Flask(__name__)  # Ensure this is defined at the module level
-app.config.from_object('config.DevelopmentConfig')
-# Cấu hình session để hết hạn sau 30 phút
-app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(minutes=30)
+
+# Configure application directly from environment variables
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///app.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Security settings
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'a490d2cf7db80c80989d44c1f7f9e8c168f1bd9bdf75b230')
+
+# Session configuration
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=int(os.getenv('PERMANENT_SESSION_LIFETIME', 30)))
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'True') == 'True'
+app.config['SESSION_COOKIE_HTTPONLY'] = os.getenv('SESSION_COOKIE_HTTPONLY', 'True') == 'True'
+app.config['SESSION_COOKIE_SAMESITE'] = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
+
+# Remember cookie configuration
+app.config['REMEMBER_COOKIE_SECURE'] = os.getenv('REMEMBER_COOKIE_SECURE', 'True') == 'True'
+app.config['REMEMBER_COOKIE_HTTPONLY'] = os.getenv('REMEMBER_COOKIE_HTTPONLY', 'True') == 'True'
+app.config['REMEMBER_COOKIE_SAMESITE'] = os.getenv('REMEMBER_COOKIE_SAMESITE', 'Lax')
+
+# CSRF protection
+app.config['WTF_CSRF_ENABLED'] = os.getenv('WTF_CSRF_ENABLED', 'True') == 'True'
+app.config['WTF_CSRF_TIME_LIMIT'] = int(os.getenv('WTF_CSRF_TIME_LIMIT', 3600))  # 1 hour in seconds
+
+# Development-specific settings based on FLASK_DEBUG
+# Note: FLASK_ENV is deprecated in Flask 2.3+, use FLASK_DEBUG instead
+debug_mode = os.getenv('FLASK_DEBUG', '0') == '1'
+app.config['DEBUG'] = debug_mode
+
+# Configure session security based on debug mode
+if debug_mode:
+    # Less secure settings for development
+    app.config['SESSION_COOKIE_SECURE'] = False
+    app.config['REMEMBER_COOKIE_SECURE'] = False
+else:
+    # Ensure secure cookies in production
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['REMEMBER_COOKIE_SECURE'] = True
+
 # Add a configuration flag to control UI changes
 app.config['PRESERVE_USER_EXPERIENCE'] = True
-app.config['SECRET_KEY'] = 'your-secret-key'  # Make sure this is properly set
-app.config['WTF_CSRF_ENABLED'] = True
-app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # Token valid for 1 hour
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
@@ -49,29 +86,41 @@ cache = Cache(app, config={
     'CACHE_DEFAULT_TIMEOUT': 300  # 5 phút
 })
 
+# Thiết lập Flask-Migrate để quản lý migrations của database
 migrate = Migrate(app, db)
-# Thiết lập Flask-Login
+
+# Thiết lập Flask-Login cho quản lý authentication
 login_manager = LoginManager(app)
-login_manager.login_view = 'login'
+setattr(login_manager, 'login_view', 'login')  # Use setattr to bypass type checking
+login_manager.login_message = 'Bạn cần đăng nhập để truy cập trang này.'
 login_manager.login_message_category = 'info'
+login_manager.session_protection = 'strong'  # Provides better session security
+
 # Import thêm decorator mới
 from decorators import admin_required, admin_manager_required
+
+@login_manager.user_loader
+def load_user(id):
+    # Updated to use SQLAlchemy 2.0 compatible API
+    return db.session.get(User, int(id))
 
 # Add this after creating the Flask app but before any route definitions
 @app.after_request
 def set_secure_cookie(response):
     """Ensure all cookies have the secure flag set."""
-    cookies = [cookie for cookie in response.headers if cookie[0] == 'Set-Cookie']
-    
-    for cookie_header in cookies:
-        header_value = cookie_header[1]
-        if '; secure' not in header_value.lower():
-            # Add secure flag if not present
-            response.headers.remove(cookie_header)
-            response.headers.add(
-                'Set-Cookie',
-                f"{header_value}; Secure"
-            )
+    # Only add Secure flag if we're in production mode or if HTTPS is being used
+    if not app.debug and app.config.get('SESSION_COOKIE_SECURE', False):
+        cookies = [cookie for cookie in response.headers if cookie[0] == 'Set-Cookie']
+        
+        for cookie_header in cookies:
+            header_value = cookie_header[1]
+            if '; secure' not in header_value.lower():
+                # Add secure flag if not present
+                response.headers.remove(cookie_header)
+                response.headers.add(
+                    'Set-Cookie',
+                    f"{header_value}; Secure"
+                )
     
     return response
 
@@ -126,37 +175,18 @@ with app.app_context():
 from forms import LoginForm, RegistrationForm, UserEditForm, CreateUserForm, SystemSettingsForm
 from forms import LabSessionForm, SessionRegistrationForm, LabVerificationForm, LabResultForm
 
-@login_manager.user_loader
-def load_user(id):
-    return User.query.get(int(id))
-
-# Cache trang index trong 5 phút
+# Always redirect to appropriate dashboard based on role or login page
 @app.route('/')
-@cache.cached(timeout=300)  # Cache trong 5 phút
 def index():
-    # Đếm số lần truy cập trang chủ
-    if 'visits' in session:
-        session['visits'] = session.get('visits') + 1
+    if current_user.is_authenticated:
+        if current_user.is_admin_manager():
+            return redirect(url_for('admin_manager_dashboard'))
+        elif current_user.is_admin():
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return redirect(url_for('dashboard'))
     else:
-        session['visits'] = 1
-    # Lưu thời gian truy cập cuối cùng
-    session['last_visit'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-    notifications = []
-    news_items = []
-    lab_sessions = []
-    if current_user.is_authenticated and current_user.is_admin_manager():
-        notifications = ["New user registration pending approval", "System maintenance scheduled"]
-        news_items = ["Version 2.0 released", "New features added to lab management"]
-        lab_sessions = [
-            {"title": "Python Basics", "date": "2023-10-15", "status": "Completed"},
-            {"title": "Advanced Flask", "date": "2023-10-20", "status": "Ongoing"},
-        ]
-    stats = {
-        'lab_session_count': LabSession.query.count(),
-        'active_lab_sessions': LabSession.query.filter_by(is_active=True).count()
-    }
-    return render_template('index.html', notifications=notifications, news_items=news_items, lab_sessions=lab_sessions, stats=stats)
+        return redirect(url_for('login'))
 
 # Tạo các utility function cho việc tối ưu
 def get_user_stats(refresh=False):
@@ -258,7 +288,7 @@ def login():
                 
                 # Add user info to session
                 session['user_email'] = user.email
-                session['login_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                session['login_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 
                 # Show success message
                 flash('Đăng nhập thành công!', 'success')
@@ -271,14 +301,21 @@ def login():
                 # Check if next URL is also in session from Flask-Login
                 if not next_url and 'next' in session:
                     next_url = session.pop('next', None)
-                    
-                # Check if redirect URL is safe and redirect if it is
+                      # Check if redirect URL is safe and redirect if it is
                 if next_url and url_has_allowed_host_and_scheme(next_url, request.host):
                     app.logger.info(f"Redirecting after login to: {next_url}")
                     return redirect(next_url)
                 else:
-                    app.logger.info("Redirecting to dashboard after login")
-                    return redirect(url_for('dashboard'))
+                    # Redirect to appropriate dashboard based on user role
+                    if user.is_admin_manager():
+                        app.logger.info("Redirecting admin manager to admin manager dashboard")
+                        return redirect(url_for('admin_manager_dashboard'))
+                    elif user.is_admin():
+                        app.logger.info("Redirecting admin to admin dashboard")
+                        return redirect(url_for('admin_dashboard'))
+                    else:
+                        app.logger.info("Redirecting regular user to dashboard")
+                        return redirect(url_for('dashboard'))
                 
             except Exception as e:
                 app.logger.error(f"Error during login: {str(e)}")
@@ -306,7 +343,7 @@ def logout():
         log_activity('User logout', f'User {username} logged out')
         
         # Lưu thời gian đăng xuất trước khi xóa session
-        logout_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        logout_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         # Đăng xuất người dùng
         logout_user()
@@ -317,7 +354,7 @@ def logout():
         # Đặt thông báo đăng xuất
         flash(f'Bạn đã đăng xuất lúc {logout_time}', 'info')
     
-    return redirect(url_for('index'))
+    return redirect(url_for('login'))
 
 @app.route('/dashboard')
 @login_required
@@ -598,7 +635,15 @@ def search():
     query = request.args.get('q', '')
     if not query or len(query) < 2:
         flash('Vui lòng nhập ít nhất 2 ký tự để tìm kiếm', 'warning')
-        return redirect(url_for('index'))
+        if current_user.is_authenticated:
+            if current_user.is_admin_manager():
+                return redirect(url_for('admin_manager_dashboard'))
+            elif current_user.is_admin():
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('dashboard'))
+        else:
+            return redirect(url_for('login'))
     users = User.query.filter(
         (User.username.ilike(f'%{query}%')) |
         (User.email.ilike(f'%{query}%'))
@@ -629,7 +674,7 @@ def search():
 @app.route('/lab-sessions')
 @login_required
 def lab_sessions():
-    now = datetime.datetime.now()
+    now = datetime.now()
     available_sessions = LabSession.query.filter(
         LabSession.is_active == True,
         LabSession.date >= now.date(),
@@ -715,14 +760,14 @@ def lab_session_active(entry_id):
     form = LabResultForm()
     if form.validate_on_submit():
         entry.lab_result = form.lab_result.data
-        entry.check_out_time = datetime.datetime.now()
+        entry.check_out_time = datetime.now()
         db.session.commit()
         log_activity('Lab check-out', f'Completed lab session {lab_session.title}')
         flash('Bạn đã nộp kết quả và kết thúc ca thực hành!', 'success')
         return redirect(url_for('my_lab_sessions'))
-    now = datetime.datetime.now()
+    now = datetime.now()
     time_elapsed = now - entry.check_in_time
-    time_remaining = lab_session.end_time - now if now < lab_session.end_time else datetime.timedelta(0)
+    time_remaining = lab_session.end_time - now if now < lab_session.end_time else timedelta(0)
     return render_template('lab/active_session.html',
                            entry=entry,
                            session=lab_session,
@@ -761,22 +806,22 @@ def create_lab_session():
             verification_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
         
         # Parse date string to datetime.date object
-        date_obj = datetime.datetime.strptime(form.date.data, '%Y-%m-%d').date()
+        date_obj = datetime.strptime(form.date.data, '%Y-%m-%d').date() if form.date.data else datetime.now().date()
         
         # Parse time strings to datetime.time objects
         if isinstance(form.start_time.data, str):
-            start_time_obj = datetime.datetime.strptime(form.start_time.data, '%H:%M').time()
+            start_time_obj = datetime.strptime(form.start_time.data, '%H:%M').time()
         else:
-            start_time_obj = form.start_time.data
+            start_time_obj = form.start_time.data if form.start_time.data else time(9, 0)  # Default 9:00 AM
             
         if isinstance(form.end_time.data, str):
-            end_time_obj = datetime.datetime.strptime(form.end_time.data, '%H:%M').time()
+            end_time_obj = datetime.strptime(form.end_time.data, '%H:%M').time()
         else:
-            end_time_obj = form.end_time.data
+            end_time_obj = form.end_time.data if form.end_time.data else time(11, 0)  # Default 11:00 AM
         
         # Now use the proper date and time objects
-        start_datetime = datetime.datetime.combine(date_obj, start_time_obj)
-        end_datetime = datetime.datetime.combine(date_obj, end_time_obj)
+        start_datetime = datetime.combine(date_obj, start_time_obj)
+        end_datetime = datetime.combine(date_obj, end_time_obj)
         
         lab_session = LabSession(
             title=form.title.data,
@@ -805,22 +850,22 @@ def edit_lab_session(session_id):
     form = LabSessionForm()
     if form.validate_on_submit():
         # Parse date string to datetime.date object
-        date_obj = datetime.datetime.strptime(form.date.data, '%Y-%m-%d').date()
+        date_obj = datetime.strptime(form.date.data, '%Y-%m-%d').date() if form.date.data else datetime.now().date()
         
         # Parse time strings to datetime.time objects
         if isinstance(form.start_time.data, str):
-            start_time_obj = datetime.datetime.strptime(form.start_time.data, '%H:%M').time()
+            start_time_obj = datetime.strptime(form.start_time.data, '%H:%M').time()
         else:
-            start_time_obj = form.start_time.data
+            start_time_obj = form.start_time.data if form.start_time.data else time(9, 0)  # Default 9:00 AM
             
         if isinstance(form.end_time.data, str):
-            end_time_obj = datetime.datetime.strptime(form.end_time.data, '%H:%M').time()
+            end_time_obj = datetime.strptime(form.end_time.data, '%H:%M').time()
         else:
-            end_time_obj = form.end_time.data
+            end_time_obj = form.end_time.data if form.end_time.data else time(11, 0)  # Default 11:00 AM
         
         # Now use the proper date and time objects
-        start_datetime = datetime.datetime.combine(date_obj, start_time_obj)
-        end_datetime = datetime.datetime.combine(date_obj, end_time_obj)
+        start_datetime = datetime.combine(date_obj, start_time_obj)
+        end_datetime = datetime.combine(date_obj, end_time_obj)
         
         lab_session.title = form.title.data
         lab_session.description = form.description.data
@@ -918,7 +963,7 @@ def admin_manager_dashboard():
         'admin_count': User.query.filter(User.role.in_(['admin', 'admin_manager'])).count(),
         'regular_users': User.query.filter_by(role='user').count(),
         'lab_session_count': LabSession.query.count(),
-        'active_lab_sessions': LabSession.query.filter(LabSession.date >= datetime.datetime.now()).count(),
+        'active_lab_sessions': LabSession.query.filter(LabSession.date >= datetime.now()).count(),
         'activity_count': ActivityLog.query.count(),
         'system_settings_count': SystemSetting.query.count()
     }
@@ -937,51 +982,68 @@ def get_form_data(form_type):
     """Route để lấy dữ liệu form thông qua AJAX"""
     if form_type == 'login':
         form = LoginForm()
-        return jsonify({'csrf_token': form.csrf_token._value()})
+        # Use getattr to avoid Pylance warnings about csrf_token
+        csrf_token = getattr(form, 'csrf_token', None)
+        if csrf_token:
+            return jsonify({'csrf_token': csrf_token._value()})
     elif form_type == 'register':
         form = RegistrationForm()
-        return jsonify({'csrf_token': form.csrf_token._value()})
+        csrf_token = getattr(form, 'csrf_token', None)
+        if csrf_token:
+            return jsonify({'csrf_token': csrf_token._value()})
     return jsonify({'error': 'Invalid form type'})
 
 # Error handlers
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template('errors/404.html'), 404
+    response = make_response(render_template('errors/404.html'))
+    response.status_code = 404
+    return response
 
 @app.errorhandler(403)
 def forbidden(e):
-    return render_template('errors/403.html'), 403
+    response = make_response(render_template('errors/403.html'))
+    response.status_code = 403
+    return response
 
 @app.errorhandler(500)
 def server_error(e):
-    return render_template('errors/500.html'), 500
+    response = make_response(render_template('errors/500.html'))
+    response.status_code = 500
+    return response
 
 @app.errorhandler(400)
 def bad_request(e):
-    return render_template('errors/error.html', 
-                         error_title="Bad Request",
-                         error_code="400",
-                         error_message="The request could not be understood by the server.",
-                         error_description="The request may contain syntax errors or invalid parameters.",
-                         error_icon="fa-exclamation-circle"), 400
+    response = make_response(render_template('errors/error.html', 
+                          error_title="Bad Request",
+                          error_code="400",
+                          error_message="The request could not be understood by the server.",
+                          error_description="The request may contain syntax errors or invalid parameters.",
+                          error_icon="fa-exclamation-circle"))
+    response.status_code = 400
+    return response
 
 # Global error handler for all other exceptions
 @app.errorhandler(Exception)
 def handle_exception(e):
     # Log the error
     app.logger.error(f"Unhandled exception: {str(e)}")
-    
-    # If it's already an HTTP exception, let the specific handlers deal with it
+      # If it's already an HTTP exception, let the specific handlers deal with it
     if isinstance(e, HTTPException):
-        return render_template('errors/error.html',
-                              error_title=e.name,
-                              error_code=e.code,
-                              error_message=e.description,
+        error_code = e.code if hasattr(e, 'code') and e.code is not None else 500
+        response = make_response(render_template('errors/error.html',
+                              error_title=e.name if hasattr(e, 'name') else "Server Error",
+                              error_code=error_code,
+                              error_message=e.description if hasattr(e, 'description') else str(e),
                               error_description="An error occurred while processing your request.",
-                              error_icon="fa-exclamation-triangle"), e.code
+                              error_icon="fa-exclamation-triangle"))
+        response.status_code = error_code
+        return response
     
     # For all other exceptions, show a generic 500 error
-    return render_template('errors/500.html'), 500
+    response = make_response(render_template('errors/500.html'))
+    response.status_code = 500
+    return response
 
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
@@ -994,28 +1056,44 @@ def safe_combine_dicts(dicts_or_dict):
     """
     Safely creates a CombinedMultiDict from input which might not be iterable.
     Handles the case where a single dict is passed instead of an iterable of dicts.
+    
+    Args:
+        dicts_or_dict: A dictionary, MultiDict, list/tuple of these, or None.
+        
+    Returns:
+        CombinedMultiDict: The resulting combined dictionary.
     """
     try:
         # If it's already a proper iterable of dicts
         if isinstance(dicts_or_dict, (list, tuple)):
-            return CombinedMultiDict(dicts_or_dict)
+            # Convert any plain dicts to MultiDicts
+            multi_dicts = []
+            for d in dicts_or_dict:
+                if isinstance(d, MultiDict):
+                    multi_dicts.append(d)
+                elif isinstance(d, dict):
+                    multi_dicts.append(MultiDict(d))
+            return CombinedMultiDict(multi_dicts)
         
         # If it's a single dict, wrap it in a list
-        elif isinstance(dicts_or_dict, (dict, MultiDict)):
-            return CombinedMultiDict([dicts_or_dict])
+        elif isinstance(dicts_or_dict, dict):
+            if isinstance(dicts_or_dict, MultiDict):
+                return CombinedMultiDict([dicts_or_dict])
+            else:
+                return CombinedMultiDict([MultiDict(dicts_or_dict)])
             
         # If it's None, return an empty CombinedMultiDict
         elif dicts_or_dict is None:
-            return CombinedMultiDict()
+            return CombinedMultiDict([])
             
         # If it's something else entirely
         else:
             app.logger.error(f"Invalid type passed to combine_dicts: {type(dicts_or_dict)}")
-            return CombinedMultiDict()
+            return CombinedMultiDict([])
             
     except Exception as e:
         app.logger.error(f"Error creating CombinedMultiDict: {e}")
-        return CombinedMultiDict()
+        return CombinedMultiDict([])
 
 # Find places where CombinedMultiDict is used directly and replace with safe_combine_dicts
 # For example, if you have code like:
@@ -1044,27 +1122,21 @@ def url_has_allowed_host_and_scheme(url, allowed_hosts):
     
     return parsed_url.netloc in allowed_hosts and parsed_url.scheme in ('http', 'https')
 
-# Add this error handler to catch unhandled exceptions
-@app.errorhandler(Exception)
-def handle_exception(e):
-    app.logger.error(f"Unhandled exception: {str(e)}\n{traceback.format_exc()}")
-    return "An internal error occurred. Please try again later.", 500
-
-@app.errorhandler(Exception)
-def handle_general_exception(e):
-    app.logger.error(f"Unhandled exception: {str(e)}", exc_info=True)
-    # In development, you might want to see the full traceback
-    if app.debug:
-        raise e
-    return render_template('error.html', error=str(e)), 500
+# We're not defining a second catch-all exception handler
+# because we already have one above (handle_exception)
 
 application = app  # alias for WSGI servers
 
 if __name__ == '__main__':
-    # Hiển thị thông tin chạy ứng dụng
-    print(f"Starting Python Manager in development mode (debug={app.debug})...")
-    print(f"Visit http://127.0.0.1:5000 to access the application")
+    # Get configuration from environment variables
+    debug_mode = os.getenv('FLASK_DEBUG', '0') == '1'
+    host = os.getenv('FLASK_RUN_HOST', '127.0.0.1')
+    port = int(os.getenv('FLASK_RUN_PORT', 5000))
+    
+    # Display application startup information
+    print(f"Starting Python Manager in {'debug' if debug_mode else 'production'} mode")
+    print(f"Visit http://{host}:{port} to access the application")
     print("Use Ctrl+C to stop the server")
     
-    # Khởi chạy ứng dụng với cấu hình phát triển
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Run the application with environment configuration
+    app.run(host=host, port=port, debug=debug_mode)
