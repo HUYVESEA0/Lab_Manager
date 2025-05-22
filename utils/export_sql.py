@@ -1,6 +1,7 @@
 """
 Utility module for exporting database tables to SQL files.
 """
+
 import argparse
 import os
 
@@ -37,7 +38,7 @@ def export_table_to_sql(connection_string, table_name, output_file=None):
         columns = result.keys()
 
         # Generate INSERT statements
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(f"-- Export data from {table_name}\n\n")
 
             # Add delete statement to clear table first
@@ -51,9 +52,9 @@ def export_table_to_sql(connection_string, table_name, output_file=None):
                         values.append("NULL")
                     elif isinstance(value, (int, float)):
                         values.append(str(value))
-                    else:
-                        # Escape single quotes in string values
-                        values.append(f"'{str(value).replace('\'', '\'\'')}'")
+                    else:  # Escape single quotes in string values
+                        val_str = str(value).replace("'", "''")
+                        values.append(f"'{val_str}'")
 
                 columns_str = ", ".join(columns)
                 values_str = ", ".join(values)
