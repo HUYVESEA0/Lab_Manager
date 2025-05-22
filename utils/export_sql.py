@@ -5,7 +5,7 @@ Utility module for exporting database tables to SQL files.
 import argparse
 import os
 
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 
 
 def export_table_to_sql(connection_string, table_name, output_file=None):
@@ -23,15 +23,16 @@ def export_table_to_sql(connection_string, table_name, output_file=None):
     engine = create_engine(connection_string)
     inspector = inspect(engine)
 
-    # Check if table exists
-    if table_name not in inspector.get_table_names():
+    # Check if table exists - avoid potential None by checking if inspector is active
+    if inspector is None or table_name not in inspector.get_table_names():
         print(f"Table {table_name} does not exist in the database")
         return False
 
-    # Get table data
-    with engine.connect() as connection:
-        # Get all table data
-        result = connection.execute(f"SELECT * FROM {table_name}")
+    # Get table data - use transaction context to handle connection properly
+    connection = engine.connect()
+    try:
+        # Get all table data - using text query for better compatibility
+        result = connection.execute(text(f"SELECT * FROM {table_name}"))
         rows = result.fetchall()
 
         # Get column names
@@ -62,8 +63,10 @@ def export_table_to_sql(connection_string, table_name, output_file=None):
 
             f.write("\n-- End of export\n")
 
-    print(f"Successfully exported {len(rows)} rows from {table_name} to {output_file}")
-    return True
+        print(f"Successfully exported {len(rows)} rows from {table_name} to {output_file}")
+        return True
+    finally:
+        connection.close()
 
 
 def export_all_tables(connection_string, output_dir=None):
@@ -82,13 +85,24 @@ def export_all_tables(connection_string, output_dir=None):
 
     engine = create_engine(connection_string)
     inspector = inspect(engine)
+
+    # Make sure inspector is valid before using it
+    if inspector is None:
+        print("Error: Unable to inspect database schema")
+        return False
+
     table_names = inspector.get_table_names()
+
+    if not table_names:
+        print("No tables found in the database")
+        return False
 
     for table in table_names:
         output_file = os.path.join(output_dir, f"{table}.sql")
         export_table_to_sql(connection_string, table, output_file)
 
     print(f"Exported {len(table_names)} tables to {output_dir}")
+    return True
 
 
 if __name__ == "__main__":
