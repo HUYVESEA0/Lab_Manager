@@ -4,7 +4,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 # Thay thế import url_parse từ werkzeug
 from urllib.parse import urlparse
 from werkzeug.urls import url_parse
-from sqlalchemy import func
+from sqlalchemy import func, or_, text
 from flask_migrate import Migrate
 from flask_caching import Cache
 from functools import wraps
@@ -254,9 +254,13 @@ def login():
     
     try:
         if request.method == 'POST' and login_form.validate_on_submit():
-            try:
-                # Find user by email
-                user = User.query.filter_by(email=login_form.email.data.lower().strip()).first()
+            try:                # Find user by email
+                email_input = login_form.email.data
+                if email_input is not None:
+                    email_input = email_input.lower().strip()
+                else:
+                    email_input = ""
+                user = User.query.filter_by(email=email_input).first()
             
                 if not user:
                     flash('Email không tồn tại trong hệ thống', 'danger')
@@ -454,7 +458,7 @@ def create_user():
         user = User(
             username=form.username.data,
             email=form.email.data,
-            role=form.role.data,
+            role=form.role.data
         )
         user.set_password(form.password.data)
         db.session.add(user)
@@ -556,6 +560,7 @@ def system_settings():
         SystemSetting.set_setting('enable_registration', True, 'boolean', 'Enable User Registration')
         SystemSetting.set_setting('enable_password_reset', True, 'boolean', 'Enable Password Reset')
         SystemSetting.set_setting('items_per_page', 25, 'integer', 'Number of items per page in listings')
+    
     form = SystemSettingsForm()
     if form.validate_on_submit():
         SystemSetting.set_setting('app_name', form.app_name.data, 'string', 'Application Name')
@@ -567,11 +572,23 @@ def system_settings():
         log_activity('Update settings', 'System settings were updated')
         flash('Cài đặt hệ thống đã được cập nhật thành công!', 'success')
         return redirect(url_for('system_settings'))
-    form.app_name.data = SystemSetting.get_setting('app_name', 'Python Manager')
-    form.app_description.data = SystemSetting.get_setting('app_description', 'A Flask application for managing Python projects')
-    form.enable_registration.data = SystemSetting.get_setting('enable_registration', True)
-    form.enable_password_reset.data = SystemSetting.get_setting('enable_password_reset', True)
-    form.items_per_page.data = SystemSetting.get_setting('items_per_page', 25)
+        
+    # Type-safe assignments to form fields
+    app_name = SystemSetting.get_setting('app_name', 'Python Manager')
+    form.app_name.data = str(app_name) if app_name is not None else ''
+    
+    app_desc = SystemSetting.get_setting('app_description', 'A Flask application for managing Python projects')
+    form.app_description.data = str(app_desc) if app_desc is not None else ''
+    
+    enable_reg = SystemSetting.get_setting('enable_registration', True)
+    form.enable_registration.data = bool(enable_reg)
+    
+    enable_reset = SystemSetting.get_setting('enable_password_reset', True)
+    form.enable_password_reset.data = bool(enable_reset)
+    
+    items_per_page = SystemSetting.get_setting('items_per_page', 25)
+    form.items_per_page.data = int(items_per_page) if items_per_page is not None else 25
+    
     settings = SystemSetting.query.all()
     if current_user.is_admin_manager():
         return render_template('admin/admin_system_settings.html', form=form, settings=settings)
@@ -644,25 +661,53 @@ def search():
                 return redirect(url_for('dashboard'))
         else:
             return redirect(url_for('login'))
-    users = User.query.filter(
-        (User.username.ilike(f'%{query}%')) |
-        (User.email.ilike(f'%{query}%'))
-    ).all()
+    
+    # Search users with safety checks
+    users = []
+    try:
+        # Use the SQLAlchemy text() function to create a raw SQL query for searching users
+        search_pattern = f"%{query}%"
+        users = User.query.filter(
+            db.or_(
+                db.text("username LIKE :pattern"),
+                db.text("email LIKE :pattern")
+            )
+        ).params(pattern=search_pattern).all()
+    except Exception as e:
+        app.logger.error(f"Error in user search: {str(e)}")
+    
+    # Search activities
     activities = []
     if current_user.is_authenticated and current_user.is_admin():
-        activities = ActivityLog.query.filter(
-            (ActivityLog.action.ilike(f'%{query}%')) |
-            (ActivityLog.details.ilike(f'%{query}%'))
-        ).limit(25).all()
+        try:
+            search_pattern = f"%{query}%"
+            activities = ActivityLog.query.filter(
+                db.or_(
+                    db.text("action LIKE :pattern"),
+                    db.text("details LIKE :pattern")
+                )
+            ).params(pattern=search_pattern).limit(25).all()
+        except Exception as e:
+            app.logger.error(f"Error in activity search: {str(e)}")
+    
+    # Search settings
     settings = []
     if current_user.is_authenticated and current_user.is_admin():
-        settings = SystemSetting.query.filter(
-            (SystemSetting.key.ilike(f'%{query}%')) |
-            (SystemSetting.value.ilike(f'%{query}%')) |
-            (SystemSetting.description.ilike(f'%{query}%'))
-        ).all()
+        try:
+            search_pattern = f"%{query}%"
+            settings = SystemSetting.query.filter(
+                db.or_(
+                    db.text("key LIKE :pattern"),
+                    db.text("value LIKE :pattern"),
+                    db.text("description LIKE :pattern")
+                )
+            ).params(pattern=search_pattern).all()
+        except Exception as e:
+            app.logger.error(f"Error in settings search: {str(e)}")
+    
     if current_user.is_authenticated:
         log_activity('Search', f'User searched for: {query}')
+    
     results_found = bool(users or activities or settings)
     return render_template('search_results.html',
                           query=query, 
@@ -960,7 +1005,7 @@ def reset_database():
 def admin_manager_dashboard():
     stats = {
         'user_count': User.query.count(),
-        'admin_count': User.query.filter(User.role.in_(['admin', 'admin_manager'])).count(),
+        'admin_count': User.query.filter(or_(User.role == 'admin', User.role == 'admin_manager')).count(),
         'regular_users': User.query.filter_by(role='user').count(),
         'lab_session_count': LabSession.query.count(),
         'active_lab_sessions': LabSession.query.filter(LabSession.date >= datetime.now()).count(),
@@ -971,6 +1016,12 @@ def admin_manager_dashboard():
     recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
     recent_lab_sessions = LabSession.query.order_by(LabSession.date.desc()).limit(5).all()
     log_activity('Access system admin dashboard', 'Admin manager accessed the system dashboard')
+    
+    return render_template('admin/admin_manager_dashboard.html',
+                          stats=stats,
+                          recent_logs=recent_logs,
+                          recent_users=recent_users,
+                          recent_lab_sessions=recent_lab_sessions)
     return render_template('admin/admin_manager_dashboard.html', 
                           stats=stats, 
                           recent_logs=recent_logs,

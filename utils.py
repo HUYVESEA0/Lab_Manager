@@ -97,12 +97,13 @@ def url_has_allowed_host_and_scheme(url, host):
     if url is None:
         return False
     
-    # Simple check to prevent open redirects
-    if not url.startswith(('http://', 'https://')):
-        # Relative URL is safe
-        return True
-    
-    # Check if absolute URL belongs to our domain
+    # Import inside function to avoid circular imports
     from urllib.parse import urlparse
     url_info = urlparse(url)
+    
+    # If there's no netloc, it's a relative URL which is safe
+    if not url_info.netloc:
+        return True
+    
+    # If there is a netloc (domain), check if it's our domain
     return url_info.netloc == host

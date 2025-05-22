@@ -16,6 +16,11 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default='user')  # 'admin_manager', 'admin', or 'user'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    def __init__(self, username=None, email=None, role='user'):
+        self.username = username
+        self.email = email
+        self.role = role
+    
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
         
