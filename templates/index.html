@@ -47,9 +47,9 @@
                                     <i class="fas fa-shield-alt mr-2"></i>System Administrator
                                 </a>
                                 {% endif %}
-                                
+
                                 <div class="dropdown-divider"></div>
-                                
+
                                 <!-- User Management Section -->
                                 <h6 class="dropdown-header">User Management</h6>
                                 <a class="dropdown-item" href="{{ url_for('admin_users') }}">
@@ -58,9 +58,9 @@
                                 <a class="dropdown-item" href="{{ url_for('create_user') }}">
                                     <i class="fas fa-user-plus mr-2"></i>Create User
                                 </a>
-                                
+
                                 <div class="dropdown-divider"></div>
-                                
+
                                 <!-- Content Management Section -->
                                 <h6 class="dropdown-header">Content Management</h6>
                                 <a class="dropdown-item" href="{{ url_for('admin_lab_sessions') }}">
@@ -71,9 +71,9 @@
                                     <i class="fas fa-calendar-check mr-2"></i>Lab Scheduling
                                 </a>
                                 {% endif %}
-                                
+
                                 <div class="dropdown-divider"></div>
-                                
+
                                 <!-- System Section -->
                                 <h6 class="dropdown-header">System</h6>
                                 <a class="dropdown-item" href="{{ url_for('system_settings') }}">
@@ -82,10 +82,10 @@
                                 <a class="dropdown-item" href="{{ url_for('activity_logs') }}">
                                     <i class="fas fa-history mr-2"></i>Activity Logs
                                 </a>
-                                
+
                                 {% if current_user.is_admin_manager() %}
                                 <div class="dropdown-divider"></div>
-                                
+
                                 <!-- Admin Manager Only Section -->
                                 <h6 class="dropdown-header text-danger">System Administrator Only</h6>
                                 <a class="dropdown-item text-danger" href="{{ url_for('system_operations') }}">
@@ -104,14 +104,14 @@
                             </div>
                         </li>
                         {% endif %}
-                        
+
                         <!-- Dashboard -->
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('dashboard') }}">
                                 <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
                             </a>
                         </li>
-                        
+
                         <!-- Lab Sessions dropdown -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="labSessionsDropdown" role="button" data-toggle="dropdown">
@@ -132,7 +132,7 @@
                                 {% endif %}
                             </div>
                         </li>
-                        
+
                         <!-- Tools dropdown -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="toolsDropdown" role="button" data-toggle="dropdown">
@@ -145,7 +145,7 @@
                                 <!-- Add other tools here as needed -->
                             </div>
                         </li>
-                        
+
                         <!-- Logout -->
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('logout') }}">
@@ -163,7 +163,7 @@
             </div>
         </div>
     </nav>
-    
+
     <main class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -180,7 +180,7 @@
                 <span class="sr-only">Loading...</span>
             </div>
         </div>
-        
+
         {% if current_user.is_authenticated %}
             {% if current_user.is_admin_manager() %}
             <div class="admin-manager-section mt-4">
@@ -278,11 +278,11 @@
         {% endif %}
         {% endblock %}
     </main>
-    
+
     <footer class="bg-dark text-white text-center py-3 mt-5">
         <p>&copy; 2023 Python Manager</p>
     </footer>
-    
+
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>

@@ -1,8 +1,8 @@
-from flask import Flask, session, render_template_string
+from flask import Flask, render_template_string, session
 from flask_login import LoginManager, current_user, login_required
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'debug-key'
+app.config["SECRET_KEY"] = "debug-key"
 login_manager = LoginManager(app)
 
 # Template HTML để hiển thị thông tin debug
@@ -28,12 +28,12 @@ DEBUG_TEMPLATE = """
 </head>
 <body>
     <h1>Flask Session Debug Tool</h1>
-    
+
     <div class="auth-status {% if current_user.is_authenticated %}logged-in{% else %}logged-out{% endif %}">
-        Authentication Status: 
+        Authentication Status:
         <strong>{% if current_user.is_authenticated %}Logged In ({{ current_user.username }}){% else %}Logged Out{% endif %}</strong>
     </div>
-    
+
     <div class="debug-box">
         <h2>Session Contents</h2>
         {% if session %}
@@ -46,7 +46,7 @@ DEBUG_TEMPLATE = """
             <p>No session data found.</p>
         {% endif %}
     </div>
-    
+
     <div class="debug-box">
         <h2>Actions</h2>
         <form method="post" action="/debug/clear-session">
@@ -57,16 +57,19 @@ DEBUG_TEMPLATE = """
 </html>
 """
 
-@app.route('/')
+
+@app.route("/")
 def debug_index():
     """Hiển thị thông tin session hiện tại"""
     return render_template_string(DEBUG_TEMPLATE)
 
-@app.route('/debug/clear-session', methods=['POST'])
+
+@app.route("/debug/clear-session", methods=["POST"])
 def clear_session():
     """Xóa toàn bộ session data"""
     session.clear()
     return render_template_string(DEBUG_TEMPLATE + "<script>alert('Session cleared!');</script>")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app.run(debug=True, port=5050)

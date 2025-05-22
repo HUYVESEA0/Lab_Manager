@@ -325,22 +325,22 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize tooltips
         $('[data-toggle="tooltip"]').tooltip();
-        
+
         // Select all checkbox functionality
         const selectAllCheckbox = document.getElementById('selectAll');
         const userCheckboxes = document.querySelectorAll('.user-select');
         const bulkActionsDiv = document.querySelector('.bulk-actions');
-        
+
         selectAllCheckbox.addEventListener('change', function() {
             const isChecked = this.checked;
             userCheckboxes.forEach(checkbox => {
                 checkbox.checked = isChecked;
             });
-            
+
             // Show/hide bulk actions
             updateBulkActionsVisibility();
         });
-        
+
         // Individual checkbox change
         userCheckboxes.forEach(checkbox => {
             checkbox.addEventListener('change', function() {
@@ -348,14 +348,14 @@
                 updateBulkActionsVisibility();
             });
         });
-        
+
         // Update "Select All" checkbox state
         function updateSelectAllCheckbox() {
             const checkedCount = document.querySelectorAll('.user-select:checked').length;
             selectAllCheckbox.checked = checkedCount === userCheckboxes.length && userCheckboxes.length > 0;
             selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < userCheckboxes.length;
         }
-        
+
         // Show/hide bulk actions based on selection
         function updateBulkActionsVisibility() {
             const checkedCount = document.querySelectorAll('.user-select:checked').length;
@@ -364,51 +364,51 @@
             } else {
                 bulkActionsDiv.style.display = 'none';
             }
-            
+
             // Update counters in modals
             document.getElementById('selectedUserCount').textContent = checkedCount;
             document.getElementById('deleteSelectedUserCount').textContent = checkedCount;
         }
-        
+
         // Bulk change role button
         document.getElementById('bulkChangeRole').addEventListener('click', function() {
             $('#bulkChangeRoleModal').modal('show');
         });
-        
+
         // Bulk delete button
         document.getElementById('bulkDelete').addEventListener('click', function() {
             $('#bulkDeleteModal').modal('show');
         });
-        
+
         // Submit bulk change role
         document.getElementById('confirmBulkChangeRole').addEventListener('click', function() {
             const selectedUserIds = getSelectedUserIds();
             const newRole = document.getElementById('newRole').value;
-            
+
             // Here you would normally send an AJAX request to your server
             console.log('Changing role to', newRole, 'for users:', selectedUserIds);
-            
+
             // For demonstration, show an alert
             alert(`Role change to ${newRole} will be applied to ${selectedUserIds.length} users.`);
-            
+
             // Close the modal
             $('#bulkChangeRoleModal').modal('hide');
         });
-        
+
         // Submit bulk delete
         document.getElementById('confirmBulkDelete').addEventListener('click', function() {
             const selectedUserIds = getSelectedUserIds();
-            
+
             // Here you would normally send an AJAX request to your server
             console.log('Deleting users:', selectedUserIds);
-            
+
             // For demonstration, show an alert
             alert(`${selectedUserIds.length} users will be deleted.`);
-            
+
             // Close the modal
             $('#bulkDeleteModal').modal('hide');
         });
-        
+
         // Helper function to get selected user IDs
         function getSelectedUserIds() {
             const selected = document.querySelectorAll('.user-select:checked');

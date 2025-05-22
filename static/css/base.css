@@ -33,7 +33,7 @@ body {
     transition: var(--transition);
 }
 
-.navbar-dark .navbar-brand, 
+.navbar-dark .navbar-brand,
 .navbar-dark .navbar-nav .nav-link {
     color: var(--text-light);
     transition: var(--transition);
@@ -68,7 +68,7 @@ body {
         width: 100%;
         text-align: left;
     }
-    
+
     .dropdown-menu {
         position: static !important;
         width: 100%;
@@ -78,7 +78,7 @@ body {
         box-shadow: none;
         padding-left: 1rem;
     }
-    
+
     .dropdown-item {
         padding: 0.5rem 1rem;
     }
@@ -105,21 +105,21 @@ body {
         border: 0;
         box-shadow: none;
     }
-    
+
     .dropdown-item {
         color: rgba(255, 255, 255, 0.5);
     }
-    
-    .dropdown-item:hover, 
+
+    .dropdown-item:hover,
     .dropdown-item:focus {
         color: rgba(255, 255, 255, 0.75);
         background-color: transparent;
     }
-    
+
     .navbar-dark .navbar-nav .nav-link {
         padding-left: 0.5rem;
     }
-    
+
     .dropdown-menu .dropdown-item {
         padding-left: 1.5rem;
     }
@@ -367,16 +367,16 @@ pre:before {
     .form-group .input-group:has(#verification_code) {
         flex-wrap: nowrap;
     }
-    
+
     #verification_code {
         width: 60%;
     }
-    
+
     #generateCode {
         font-size: 0.8rem;
         padding: 0.5rem 0.8rem;
     }
-    
+
     #generateCode i {
         margin-right: 3px;
     }
@@ -563,12 +563,12 @@ footer:before {
     .card {
         margin-bottom: 1rem;
     }
-    
+
     .btn {
         padding: 0.4rem 1.2rem;
         font-size: 0.8rem;
     }
-    
+
     .table {
         display: block;
         overflow-x: auto;
@@ -601,14 +601,14 @@ footer:before {
     text-align: center;
 }
 
-.dropdown-item:active, 
-.dropdown-item:focus, 
+.dropdown-item:active,
+.dropdown-item:focus,
 .dropdown-item:hover {
     background-color: rgba(0, 123, 255, 0.1);
 }
 
-.dropdown-item.text-danger:active, 
-.dropdown-item.text-danger:focus, 
+.dropdown-item.text-danger:active,
+.dropdown-item.text-danger:focus,
 .dropdown-item.text-danger:hover {
     background-color: rgba(220, 53, 69, 0.1);
     color: #dc3545 !important;

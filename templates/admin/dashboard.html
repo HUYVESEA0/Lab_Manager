@@ -45,7 +45,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <h2>Recent Users</h2>
                     <div class="table-responsive">
                         <table class="table admin-table">
@@ -63,7 +63,7 @@
                                     <td>{{ user.username }}</td>
                                     <td>{{ user.email }}</td>
                                     <td>
-                                        <span class="badge 
+                                        <span class="badge
                                             {% if user.role == 'admin_manager' %}badge-danger
                                             {% elif user.role == 'admin' %}badge-warning
                                             {% else %}badge-info{% endif %}">

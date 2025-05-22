@@ -27,4 +27,4 @@ logs/
 *.egg-info
 *.egg
 *.whl
-*.dist-info      
+*.dist-info

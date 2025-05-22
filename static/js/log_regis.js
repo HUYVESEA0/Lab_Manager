@@ -6,11 +6,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const mobileSwitchButton = document.getElementById('mobileSwitchButton');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
-    
+
     // Fix initialization issues
     if (signInContainer) signInContainer.style.display = 'flex';
     if (signUpContainer) signUpContainer.style.display = 'flex';
-    
+
     // IMPORTANT CHANGE: Ensure forms are visible based on URL
     const currentPath = window.location.pathname;
     if (currentPath.includes('register')) {
@@ -46,45 +46,45 @@ document.addEventListener('DOMContentLoaded', function() {
             signUpContainer.style.visibility = 'hidden';
         }
     }
-    
+
     // Helper functions for form visibility
     function makeRegistrationFormVisible() {
         if (!signUpContainer || !signInContainer) return;
-        
+
         signUpContainer.style.opacity = '1';
         signUpContainer.style.visibility = 'visible';
         signUpContainer.style.display = 'flex';
         signUpContainer.style.zIndex = '5';
-        
+
         signInContainer.style.opacity = '0';
         signInContainer.style.visibility = 'hidden';
         signInContainer.style.zIndex = '1';
     }
-    
+
     function makeLoginFormVisible() {
         if (!signUpContainer || !signInContainer) return;
-        
+
         signInContainer.style.opacity = '1';
         signInContainer.style.visibility = 'visible';
         signInContainer.style.display = 'flex';
         signInContainer.style.zIndex = '2';
-        
+
         signUpContainer.style.opacity = '0';
         signUpContainer.style.visibility = 'hidden';
         signUpContainer.style.zIndex = '1';
     }
-    
+
     // Switch form function with simplified logic
     function switchForm(targetForm) {
         if (targetForm === 'register') {
             // Update UI for registration
             container.classList.add('right-panel-active');
             makeRegistrationFormVisible();
-            
+
             // IMPORTANT CHANGE: Use proper form submission instead of history.pushState
             // Don't update URL with pushState to avoid CSRF issues
             document.title = 'Đăng ký - Python Manager';
-            
+
             // Update mobile button if exists
             if (mobileSwitchButton) {
                 mobileSwitchButton.textContent = 'Đăng nhập';
@@ -94,11 +94,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update UI for login
             container.classList.remove('right-panel-active');
             makeLoginFormVisible();
-            
+
             // IMPORTANT CHANGE: Use proper form submission instead of history.pushState
             // Don't update URL with pushState to avoid CSRF issues
             document.title = 'Đăng nhập - Python Manager';
-            
+
             // Update mobile button if exists
             if (mobileSwitchButton) {
                 mobileSwitchButton.textContent = 'Đăng ký';
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
-    
+
     // Attach event listeners to form switch buttons
     const switchButtons = document.querySelectorAll('.switch-form');
     switchButtons.forEach(button => {
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
             switchForm(targetForm);
         });
     });
-    
+
     // Mobile switch button functionality
     if (mobileSwitchButton) {
         mobileSwitchButton.addEventListener('click', function() {
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
             switchForm(targetForm);
         });
     }
-    
+
     // Handle browser back/forward events
     window.addEventListener('popstate', function() {
         const currentPath = window.location.pathname;
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
             makeLoginFormVisible();
         }
     });
-    
+
     // Fix form submission handling
     if (loginForm) {
         loginForm.addEventListener('submit', function(e) {
@@ -148,26 +148,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     csrfField.value = csrfToken;
                 }
             }
-            
+
             // Remove previous error messages
             loginForm.querySelectorAll('.error-message').forEach(el => el.remove());
-            
+
             const emailInput = loginForm.querySelector('input[name="email"]');
             const passwordInput = loginForm.querySelector('input[name="password"]');
             let hasError = false;
-            
+
             // Validate email
             if (!emailInput.value.trim()) {
                 showFieldError(emailInput, 'Email không được để trống');
                 hasError = true;
             }
-            
+
             // Validate password
             if (!passwordInput.value) {
                 showFieldError(passwordInput, 'Mật khẩu không được để trống');
                 hasError = true;
             }
-            
+
             // FIXED: Only prevent submission if there's an error
             if (hasError) {
                 e.preventDefault();
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Otherwise let the form submit normally
         });
     }
-    
+
     // Helper function to show field errors
     function showFieldError(inputElement, message) {
         const errorSpan = document.createElement('span');

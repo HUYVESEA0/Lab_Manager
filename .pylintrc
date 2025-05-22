@@ -1,15 +1,15 @@
 [MASTER]
 # A comma-separated list of file or directory patterns to skip
-ignore=CVS,__pycache__,migrations
+ignore=CVS,__pycache__,migrations,venv,.venv,env,.env
 
 # Use multiple processes to speed up Pylint
-jobs=4
+jobs=0
 
-# List of plugins (as comma separated values of python module names) to load
-load-plugins=
+# Add files or directories to the denylist. They should be base names, not paths.
+ignore-patterns=
 
 # Python code to execute, usually for sys.path manipulation
-init-hook=
+init-hook='import sys; from os.path import abspath, dirname, join; sys.path.insert(0, join(dirname(abspath(__file__)), "."))'
 
 [MESSAGES CONTROL]
 # Disable the message, report, category or checker
@@ -38,11 +38,18 @@ disable=C0111,  # missing-docstring
         E1101,  # no-member
         W0101,  # unreachable
         C0304,  # missing-final-newline
-        W0622   # redefined-builtin
+        W0622,  # redefined-builtin
+        W0221,  # arguments-differ
+        W0201,  # attribute-defined-outside-init
+        W0511,  # fixme
+        W0707,  # raise-missing-from
+
+# Enable the message, report, category or checker with the given id(s)
+enable=
 
 [REPORTS]
 # Set the output format
-output-format=text
+output-format=colorized
 
 # Tells whether to display a full report or only the messages
 reports=yes
@@ -55,28 +62,28 @@ msg-template={path}:{line}:{column}: {msg_id}: {msg} ({symbol})
 
 [BASIC]
 # Good variable names which should always be accepted
-good-names=i,j,k,ex,Run,_,id
+good-names=i,j,k,ex,Run,_,id,db,f,e,app,g
 
 # Regular expression matching correct function names
-function-rgx=[a-z_][a-z0-9_]{2,30}$
+function-rgx=[a-z_][a-z0-9_]{2,50}$
 
 # Regular expression matching correct variable names
-variable-rgx=[a-z_][a-z0-9_]{2,30}$
+variable-rgx=[a-z_][a-z0-9_]{2,50}$
 
 # Regular expression matching correct constant names
 const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
 
 # Regular expression matching correct attribute names
-attr-rgx=[a-z_][a-z0-9_]{2,30}$
+attr-rgx=[a-z_][a-z0-9_]{2,50}$
 
 # Regular expression matching correct argument names
-argument-rgx=[a-z_][a-z0-9_]{2,30}$
+argument-rgx=[a-z_][a-z0-9_]{2,50}$
 
 # Regular expression matching correct class names
 class-rgx=[A-Z_][a-zA-Z0-9]+$
 
 # Regular expression matching correct class attribute names
-class-attribute-rgx=([A-Za-z_][A-Za-z0-9_]{2,30}|(__.*__))$
+class-attribute-rgx=([A-Za-z_][A-Za-z0-9_]{2,50}|(__.*__))$
 
 # Regular expression which should only match function or class names
 name-group=
@@ -89,14 +96,14 @@ module-rgx=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
 max-line-length=120
 
 # Maximum number of lines in a module
-max-module-lines=1000
+max-module-lines=1500
 
-# String used as indentation unit
+# String used as indentation unit (2 spaces, 4 spaces, or tabs)
 indent-string='    '
 
 [CLASSES]
 # List of method names used to declare (i.e. assign) instance attributes
-defining-attr-methods=__init__,__new__,setUp
+defining-attr-methods=__init__,__new__,setUp,init_app
 
 # List of valid names for the first argument in a class method
 valid-classmethod-first-arg=cls
@@ -106,28 +113,36 @@ valid-metaclass-classmethod-first-arg=cls
 
 [DESIGN]
 # Maximum number of arguments for function / method
-max-args=7
+max-args=10
 
 # Maximum number of locals for function / method body
-max-locals=15
+max-locals=20
 
 # Maximum number of return / yield for function / method body
-max-returns=6
+max-returns=8
 
 # Maximum number of branch for function / method body
-max-branches=12
+max-branches=15
 
 # Maximum number of statements in function / method body
-max-statements=50
+max-statements=60
 
 # Maximum number of parents for a class (see R0901)
 max-parents=7
 
 # Maximum number of attributes for a class (see R0902)
-max-attributes=15
+max-attributes=20
 
 # Minimum number of public methods for a class (see R0903)
 min-public-methods=1
 
 # Maximum number of public methods for a class (see R0904)
-max-public-methods=20
+max-public-methods=30
+
+[IMPORTS]
+# Allow wildcard imports from modules that define __all__
+allow-wildcard-with-all=no
+
+[EXCEPTIONS]
+# Exceptions that will emit a warning when caught
+overgeneral-exceptions=builtins.BaseException,builtins.Exception

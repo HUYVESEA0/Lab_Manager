@@ -55,41 +55,41 @@ img {
     html {
         font-size: 16px; /* Tăng kích thước font cơ bản */
     }
-    
+
     .container {
         max-width: 540px;
     }
-    
+
     /* Hiển thị cho màn hình nhỏ */
     .d-sm-none {
         display: none !important;
     }
-    
+
     .d-sm-block {
         display: block !important;
     }
-    
+
     /* Cải thiện giao diện form */
     input, select, textarea {
         font-size: 0.95rem;
         padding: 0.6rem;
     }
-    
+
     /* Điều chỉnh kích thước nút */
     .btn {
         padding: 0.45rem 1.3rem;
     }
-    
+
     /* Điều chỉnh bảng */
     .table td, .table th {
         padding: 0.8rem;
     }
-    
+
     /* Điều chỉnh card */
     .card {
         margin-bottom: 1.5rem;
     }
-    
+
     /* Cải thiện hiển thị form đăng nhập/đăng ký */
     .form-container form {
         padding: 0 25px;
@@ -101,25 +101,25 @@ img {
     .container {
         max-width: 720px;
     }
-    
+
     /* Hiển thị cho màn hình trung bình */
     .d-md-none {
         display: none !important;
     }
-    
+
     .d-md-block {
         display: block !important;
     }
-    
+
     /* Cải thiện navbar */
     .navbar-nav {
         flex-direction: row;
     }
-    
+
     .navbar-nav .nav-item {
         margin-left: 0.5rem;
     }
-    
+
     /* Cải thiện hệ thống grid */
     .row {
         display: flex;
@@ -127,55 +127,55 @@ img {
         margin-right: -15px;
         margin-left: -15px;
     }
-    
+
     .col-md-6 {
         flex: 0 0 50%;
         max-width: 50%;
         padding-left: 15px;
         padding-right: 15px;
     }
-    
+
     .col-md-4 {
         flex: 0 0 33.333333%;
         max-width: 33.333333%;
         padding-left: 15px;
         padding-right: 15px;
     }
-    
+
     /* Điều chỉnh kích thước typography */
     h1 {
         font-size: 2.25rem;
     }
-    
+
     h2 {
         font-size: 1.8rem;
     }
-    
+
     /* Đặc biệt cho login/register */
     .form-container {
         width: 50%; /* Đặt lại chiều rộng cho tablet */
     }
-    
+
     .overlay-container {
         display: block !important; /* Hiển thị overlay trên tablet */
     }
-    
+
     /* Ẩn nút chuyển đổi mobile */
     .mobile-toggle {
         display: none;
     }
-    
+
     /* Phục hồi animation */
     .container, .form-container, .overlay-panel {
         transition: all 0.6s ease-in-out;
     }
-    
+
     /* Cải thiện bảng */
     .admin-table thead th {
         padding: 1rem;
         font-size: 0.9rem;
     }
-    
+
     /* Calendar picker */
     .date-picker-container {
         max-width: 50%;
@@ -187,25 +187,25 @@ img {
     .container {
         max-width: 960px;
     }
-    
+
     /* Hiển thị cho màn hình lớn */
     .d-lg-none {
         display: none !important;
     }
-    
+
     .d-lg-block {
         display: block !important;
     }
-    
+
     /* Cải thiện navbar */
     .navbar-expand-lg .navbar-nav {
         flex-direction: row;
     }
-    
+
     .navbar-expand-lg .navbar-nav .dropdown-menu {
         position: absolute;
     }
-    
+
     /* Menu dropdown */
     .dropdown-menu {
         position: absolute !important;
@@ -215,34 +215,34 @@ img {
         border-radius: var(--border-radius);
         box-shadow: var(--box-shadow);
     }
-    
+
     /* Cải thiện hệ thống grid */
     .col-lg-3 {
         flex: 0 0 25%;
         max-width: 25%;
     }
-    
+
     .col-lg-4 {
         flex: 0 0 33.333333%;
         max-width: 33.333333%;
     }
-    
+
     .col-lg-6 {
         flex: 0 0 50%;
         max-width: 50%;
     }
-    
+
     /* Cải thiện card */
     .card:hover {
         transform: translateY(-5px);
         box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
     }
-    
+
     /* Animations */
     button, a, .card, .btn {
         transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
-    
+
     /* Cải thiện bảng */
     .table-responsive {
         overflow: visible;
@@ -254,27 +254,27 @@ img {
     .container {
         max-width: 1140px;
     }
-    
+
     /* Hiển thị cho màn hình rất lớn */
     .d-xl-none {
         display: none !important;
     }
-    
+
     .d-xl-block {
         display: block !important;
     }
-    
+
     /* Cải thiện hệ thống grid */
     .col-xl-2 {
         flex: 0 0 16.666667%;
         max-width: 16.666667%;
     }
-    
+
     .col-xl-3 {
         flex: 0 0 25%;
         max-width: 25%;
     }
-    
+
     .col-xl-4 {
         flex: 0 0 33.333333%;
         max-width: 33.333333%;
@@ -288,31 +288,31 @@ img {
     .container.auth-container {
         min-height: 600px;
     }
-    
+
     .form-container {
         width: 100%;
     }
-    
+
     .overlay-container {
         display: none;
     }
-    
+
     .sign-in-container, .sign-up-container {
         width: 100%;
         transform: translateX(0);
         opacity: 1;
     }
-    
+
     .container.right-panel-active .sign-in-container {
         transform: translateY(-100%);
         opacity: 0;
     }
-    
+
     .container.right-panel-active .sign-up-container {
         transform: translateY(0);
         opacity: 1;
     }
-    
+
     .mobile-toggle {
         display: flex;
         flex-wrap: wrap;
@@ -320,7 +320,7 @@ img {
         width: 100%;
         margin: 15px 0;
     }
-    
+
     form {
         padding: 0 20px;
         margin-bottom: 60px; /* Để có không gian cho mobile-nav */
@@ -340,15 +340,15 @@ img {
         background-color: inherit;
         box-shadow: 0 10px 10px -5px rgba(0, 0, 0, 0.1);
     }
-    
+
     .navbar-nav {
         flex-direction: column;
     }
-    
+
     .navbar-nav .nav-item {
         width: 100%;
     }
-    
+
     .dropdown-menu {
         position: static;
         float: none;
@@ -357,7 +357,7 @@ img {
         box-shadow: none;
         padding-left: 1.5rem;
     }
-    
+
     .navbar-toggler {
         display: block;
     }
@@ -369,7 +369,7 @@ img {
     .responsive-table-card thead {
         display: none;
     }
-    
+
     .responsive-table-card tbody tr {
         display: block;
         margin-bottom: 1rem;
@@ -377,7 +377,7 @@ img {
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         background-color: #fff;
     }
-    
+
     .responsive-table-card tbody td {
         display: flex;
         justify-content: space-between;
@@ -386,14 +386,14 @@ img {
         padding: 0.75rem;
         text-align: right;
     }
-    
+
     .responsive-table-card td:before {
         content: attr(data-label);
         float: left;
         font-weight: bold;
         color: #6c757d;
     }
-    
+
     .responsive-table-card td:last-child {
         border-bottom: none;
     }
@@ -404,16 +404,16 @@ img {
     .form-group .input-group:has(#verification_code) {
         flex-wrap: nowrap;
     }
-    
+
     #verification_code {
         width: 60%;
     }
-    
+
     #generateCode {
         font-size: 0.8rem;
         padding: 0.5rem 0.8rem;
     }
-    
+
     #generateCode i {
         margin-right: 3px;
     }
@@ -425,11 +425,11 @@ img {
         padding: 0.75rem;
         font-size: 0.75rem;
     }
-    
+
     .admin-table tbody td {
         padding: 0.75rem;
     }
-    
+
     .admin-table .btn-group .btn {
         padding: 0.25rem 0.5rem;
         font-size: 0.75rem;
@@ -442,7 +442,7 @@ img {
         max-width: 100%;
         min-width: 100%;
     }
-    
+
     .bootstrap-datetimepicker-widget table td {
         height: 30px !important;
         line-height: 30px !important;
@@ -468,17 +468,17 @@ img {
         --text-color: #f8f9fa;
         --text-light: #e9ecef;
         --background-color: #212529;
-        
+
         background-color: var(--background-color);
         color: var(--text-color);
     }
-    
+
     body.auto-dark-mode .card {
         background-color: #343a40;
     }
-    
-    body.auto-dark-mode input, 
-    body.auto-dark-mode select, 
+
+    body.auto-dark-mode input,
+    body.auto-dark-mode select,
     body.auto-dark-mode textarea {
         background-color: #495057;
         color: #e9ecef;
@@ -487,8 +487,8 @@ img {
 }
 
 /* 9. Hỗ trợ màn hình có mật độ điểm ảnh cao (Retina) */
-@media 
-(-webkit-min-device-pixel-ratio: 2), 
+@media
+(-webkit-min-device-pixel-ratio: 2),
 (min-resolution: 192dpi) {
     .retina-image {
         background-size: contain;
@@ -500,11 +500,11 @@ img {
     .container.auth-container {
         min-height: 450px; /* Giảm chiều cao cho landscape trên mobile */
     }
-    
+
     form {
         padding: 0 15px;
     }
-    
+
     input {
         padding: 10px;
         margin: 5px 0;
@@ -518,43 +518,43 @@ img {
         color: #000;
         font-size: 12pt;
     }
-    
+
     .no-print {
         display: none !important;
     }
-    
+
     a {
         text-decoration: underline;
         color: #000;
     }
-    
+
     .container {
         width: 100%;
         max-width: none;
     }
-    
+
     .card, .table {
         box-shadow: none !important;
         border: 1px solid #ddd;
     }
-    
+
     header, footer, aside, nav, form, iframe, .btn, .nav, .menu, .navbar {
         display: none;
     }
-    
+
     table {
         page-break-inside: auto;
     }
-    
+
     tr {
         page-break-inside: avoid;
         page-break-after: auto;
     }
-    
+
     thead {
         display: table-header-group;
     }
-    
+
     tfoot {
         display: table-footer-group;
     }

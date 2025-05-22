@@ -15,31 +15,31 @@
                 <a href="#" class="social"><i class="fab fa-linkedin-in"></i></a>
             </div>
             <span>hoặc sử dụng email của bạn</span>
-            
+
             {{ reg_form.username(placeholder="Username", id="register_username") }}
             {% for error in reg_form.username.errors %}
                 <span class="error-message">{{ error }}</span>
             {% endfor %}
-            
+
             {{ reg_form.email(placeholder="Email", id="register_email") }}
             {% for error in reg_form.email.errors %}
                 <span class="error-message">{{ error }}</span>
             {% endfor %}
-            
+
             {{ reg_form.password(placeholder="Password", id="register_password") }}
             {% for error in reg_form.password.errors %}
                 <span class="error-message">{{ error }}</span>
             {% endfor %}
-            
+
             {{ reg_form.confirm_password(placeholder="Confirm Password", id="register_confirm_password") }}
             {% for error in reg_form.confirm_password.errors %}
                 <span class="error-message">{{ error }}</span>
             {% endfor %}
-            
+
             {{ reg_form.submit(id="btn_register", value="Đăng ký") }}
         </form>
     </div>
-    
+
     <div class="form-container sign-in-container">
         <form action="{{ url_for('login') }}" method="POST" id="login-form">
             <!-- Use a unique ID for the login form CSRF token -->
@@ -51,28 +51,28 @@
                 <a href="#" class="social"><i class="fab fa-linkedin-in"></i></a>
             </div>
             <span>hoặc sử dụng tài khoản của bạn</span>
-            
+
             {{ login_form.email(placeholder="Email", id="login_email") }}
             {% for error in login_form.email.errors %}
                 <span class="error-message">{{ error }}</span>
             {% endfor %}
-            
+
             {{ login_form.password(placeholder="Password", id="login_password") }}
             {% for error in login_form.password.errors %}
                 <span class="error-message">{{ error }}</span>
             {% endfor %}
-            
+
             <div class="remember-me">
                 {{ login_form.remember_me(id="login_remember_me") }}
                 {{ login_form.remember_me.label }}
             </div>
-            
+
             <a href="#">Quên mật khẩu?</a>
             <!-- Fixed: Change to standard input with all needed attributes -->
             <input type="submit" id="btn_login" name="submit" value="Đăng nhập" class="btn-primary">
         </form>
     </div>
-    
+
     <div class="overlay-container">
         <div class="overlay">
             <div class="overlay-panel overlay-left">
@@ -87,7 +87,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Mobile navigation button -->
     <div class="mobile-nav">
         <button type="button" class="mobile-nav-button" id="mobileSwitchButton">
@@ -106,11 +106,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Get CSRF tokens by name rather than by ID
     const loginForm = document.getElementById("login-form");
     const registerForm = document.getElementById("register-form");
-    
+
     if (loginForm && registerForm) {
         const loginCsrf = loginForm.querySelector('input[name="csrf_token"]');
         const registerCsrf = registerForm.querySelector('input[name="csrf_token"]');
-        
+
         // Ensure unique IDs for CSRF inputs
         if (loginCsrf) loginCsrf.id = "login_csrf_token";
         if (registerCsrf) registerCsrf.id = "register_csrf_token";

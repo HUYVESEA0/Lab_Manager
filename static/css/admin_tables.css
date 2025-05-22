@@ -131,7 +131,7 @@
         border-radius: 8px;
         overflow: hidden;
     }
-    
+
     .admin-table {
         box-shadow: none;
     }
@@ -142,11 +142,11 @@
         padding: 0.75rem;
         font-size: 0.75rem;
     }
-    
+
     .admin-table tbody td {
         padding: 0.75rem;
     }
-    
+
     .admin-table .btn-group .btn {
         padding: 0.25rem 0.5rem;
         font-size: 0.75rem;

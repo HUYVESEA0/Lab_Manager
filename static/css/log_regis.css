@@ -44,7 +44,7 @@ body:before {
     width: 100%;
     height: 100%;
     pointer-events: none;
-    background-image: 
+    background-image:
         linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
     background-size: 20px 20px;
@@ -606,40 +606,40 @@ input::placeholder {
     .container {
         min-height: 600px;
     }
-    
+
     .form-container {
         width: 100%;
     }
-    
+
     .sign-in-container {
         width: 100%;
         z-index: 2;
     }
-    
+
     .sign-up-container {
         opacity: 0;
         width: 100%;
         z-index: 1;
     }
-    
+
     .overlay-container {
         display: none;
     }
-    
+
     .container.right-panel-active .sign-in-container {
         transform: translateY(-100%);
         opacity: 0;
         z-index: 1;
         pointer-events: none;
     }
-    
+
     .container.right-panel-active .sign-up-container {
         transform: translateY(0);
         opacity: 1;
         z-index: 5;
         pointer-events: auto;
     }
-    
+
     form {
         padding: 0 30px;
         overflow-y: auto;
@@ -650,17 +650,17 @@ input::placeholder {
         max-height: 100%;
         margin-bottom: 70px; /* Space for mobile button */
     }
-    
+
     button, .ghost {
         padding: 10px 30px;
         font-size: 0.8rem;
     }
-    
+
     #btn_login, #btn_register, input[type="submit"] {
         padding: 10px 30px;
         font-size: 0.8rem;
     }
-    
+
     /* Mobile navigation */
     .mobile-nav {
         display: flex;
@@ -673,7 +673,7 @@ input::placeholder {
         z-index: 1000;
         padding: 0 15px;
     }
-    
+
     .mobile-nav-button {
         padding: 10px 20px;
         width: 140px;
@@ -687,22 +687,22 @@ input::placeholder {
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         transition: all 0.3s ease;
     }
-    
+
     .mobile-nav-button:active {
         transform: scale(0.95);
     }
-    
+
     /* Form spacer for mobile */
     .form-spacer {
         height: 70px;
         width: 100%;
     }
-    
+
     .auth-wrapper {
         width: 100%;
         padding: 10px;
     }
-    
+
     h1 {
         font-size: 1.7rem;
     }
@@ -768,30 +768,30 @@ input::placeholder {
         min-height: 580px;
         margin: 10px auto;
     }
-    
+
     form {
         padding: 0 15px;
     }
-    
+
     h1 {
         font-size: 1.5rem;
     }
-    
+
     p {
         font-size: 0.9rem;
         margin: 10px 0 15px;
     }
-    
+
     input {
         padding: 12px;
         margin: 6px 0;
     }
-    
+
     .social-container a {
         height: 35px;
         width: 35px;
     }
-    
+
     .auth-wrapper {
         padding: 5px;
     }
@@ -821,29 +821,29 @@ input::placeholder {
     .container {
         min-height: 520px;
     }
-    
+
     form {
         padding: 0 15px;
     }
-    
+
     h1 {
         margin: 0 0 10px 0;
         font-size: 1.7rem;
     }
-    
+
     p {
         margin: 10px 0 20px;
     }
-    
+
     input {
         padding: 12px;
         margin: 8px 0;
     }
-    
+
     .social-container {
         margin: 15px 0;
     }
-    
+
     .social-container a {
         height: 35px;
         width: 35px;

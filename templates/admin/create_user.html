@@ -13,7 +13,7 @@
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('create_user') }}">
                         {{ form.hidden_tag() }}
-                        
+
                         <div class="form-group">
                             {{ form.username.label(class="form-control-label") }}
                             {% if form.username.errors %}
@@ -28,7 +28,7 @@
                             {% endif %}
                             <small class="form-text text-muted">Username must be unique.</small>
                         </div>
-                        
+
                         <div class="form-group">
                             {{ form.email.label(class="form-control-label") }}
                             {% if form.email.errors %}
@@ -42,7 +42,7 @@
                                 {{ form.email(class="form-control", placeholder="Enter email address") }}
                             {% endif %}
                         </div>
-                        
+
                         <div class="form-group">
                             {{ form.password.label(class="form-control-label") }}
                             {% if form.password.errors %}
@@ -56,7 +56,7 @@
                                 {{ form.password(class="form-control", placeholder="Enter password") }}
                             {% endif %}
                         </div>
-                        
+
                         <div class="form-group">
                             {{ form.confirm_password.label(class="form-control-label") }}
                             {% if form.confirm_password.errors %}
@@ -70,7 +70,7 @@
                                 {{ form.confirm_password(class="form-control", placeholder="Confirm password") }}
                             {% endif %}
                         </div>
-                        
+
                         <div class="form-group">
                             {{ form.role.label(class="form-control-label") }}
                             {% if form.role.errors %}
@@ -91,7 +91,7 @@
                                 </ul>
                             </small>
                         </div>
-                        
+
                         <div class="form-group mt-4">
                             {{ form.submit(class="btn btn-success") }}
                             <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">Cancel</a>

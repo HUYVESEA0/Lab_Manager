@@ -12,13 +12,13 @@
                 </div>
                 <div class="card-body">
                     <p class="lead">Sorry, something went wrong while processing your request.</p>
-                    
+
                     {% if error %}
                     <div class="alert alert-secondary">
                         <strong>Error details:</strong> {{ error }}
                     </div>
                     {% endif %}
-                    
+
                     <div class="mt-4">                        <a href="{% if current_user.is_authenticated %}{% if current_user.is_admin_manager() %}{{ url_for('admin_manager_dashboard') }}{% elif current_user.is_admin() %}{{ url_for('admin_dashboard') }}{% else %}{{ url_for('dashboard') }}{% endif %}{% else %}{{ url_for('login') }}{% endif %}" class="btn btn-primary">
                             <i class="fas fa-tachometer-alt"></i> Return to Dashboard
                         </a>
