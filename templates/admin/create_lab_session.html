@@ -368,13 +368,13 @@
                                 {% else %}
                                     {{ form.description(class="form-control", rows=4, placeholder="Describe the lab session, objectives, requirements, etc.") }}
                                 {% endif %}
-                                <small class="field-help">Provide details about what will be covered in this lab session</small>
+                                <small class="field-help">Cung cấp chi tiết về những gì sẽ được đề cập trong ca thực hành này</small>
                             </div>
                         </div>
 
                         <!-- Schedule Section -->
                         <div class="form-section">
-                            <h5 class="form-section-title"><i class="fas fa-clock"></i> Schedule</h5>
+                            <h5 class="form-section-title"><i class="fas fa-clock"></i> Lịch Trình</h5>
 
                             <div class="form-group">
                                 <label for="date" class="required-field">{{ form.date.label }} (Chọn lịch)</label>
@@ -506,7 +506,7 @@
                                         {{ form.is_active.label }}
                                     </label>
                                 </div>
-                                <small class="field-help">If checked, students will be able to register for this session</small>
+                                <small class="field-help">Nếu đánh dấu, học viên sẽ có thể đăng ký tham gia ca này</small>
                             </div>
 
                             <div class="form-group">
@@ -559,10 +559,10 @@
 
                         <div class="form-group text-center mt-4">
                             <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-save"></i> Create Lab Session
+                                <i class="fas fa-save"></i> Tạo Ca Thực Hành
                             </button>
                             <a href="{{ url_for('admin_lab_sessions') }}" class="btn btn-secondary btn-lg ml-2">
-                                <i class="fas fa-times"></i> Cancel
+                                <i class="fas fa-times"></i> Hủy Bỏ
                             </a>
                         </div>
                     </form>

@@ -30,8 +30,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Sort the rows
         rows.sort((a, b) => {
-            const cellA = a.querySelectorAll('td')[columnIndex].textContent.trim();
-            const cellB = b.querySelectorAll('td')[columnIndex].textContent.trim();
+            const cellA = a.querySelectorAll('td')[columnIndex].textContent.trim()();
+            const cellB = b.querySelectorAll('td')[columnIndex].textContent.trim()();
 
             return asc
                 ? cellA.localeCompare(cellB, undefined, {numeric: true})

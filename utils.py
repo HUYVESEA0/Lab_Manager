@@ -34,11 +34,16 @@ def ensure_session_consistency():
 
 def clear_auth_session():
     """Xóa các session liên quan đến xác thực"""
-    auth_keys = ["user_email", "login_time", "_user_id", "_fresh", "_id", "_remember"]
+    # Các khóa này không được sử dụng trong hàm
+    # auth_keys = ["user_email", "login_time", "_user_id", "_fresh", "_id", "_remember"]
 
     # Lưu lại các thông tin session quan trọng và các flash message không phải login
-    important_keys = ["visits", "last_visit", "csrf_token", "next_url"]
-    # Make sure we explicitly include the WTF CSRF token with current Flask-WTF config
+    important_keys = [
+        "visits",
+        "last_visit",
+        "csrf_token",
+        "next_url",
+    ]  # Make sure we explicitly include the WTF CSRF token with current Flask-WTF config
     wtf_csrf_key = current_app.config.get("WTF_CSRF_FIELD_NAME", "csrf_token")
     if wtf_csrf_key not in important_keys:
         important_keys.append(wtf_csrf_key)

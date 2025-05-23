@@ -1,6 +1,6 @@
 {% extends "index.html" %}
 
-{% block title %}System Administrator Dashboard{% endblock %}
+{% block title %}Bảng Điều Khiển Quản Trị Hệ Thống{% endblock %}
 
 {% block styles %}
 {{ super() }}
@@ -18,25 +18,23 @@
         <div class="col-md-12">
             <div class="card bg-danger text-white">
                 <div class="card-body">
-                    <h2><i class="fas fa-shield-alt"></i> System Administrator Dashboard</h2>
-                    <p class="lead">Highest level system control and monitoring dashboard (Admin Manager only)</p>
+                    <h2><i class="fas fa-shield-alt"></i> Bảng Điều Khiển Quản Trị Hệ Thống</h2>
+                    <p class="lead">Bảng điều khiển giám sát và quản lý hệ thống cấp cao nhất (Chỉ dành cho Quản Trị Viên)</p>
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- System Stats Overview -->
+    </div>    <!-- System Stats Overview -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card bg-primary text-white h-100">
                 <div class="card-body text-center">
                     <h3><i class="fas fa-users"></i></h3>
-                    <h5>Total Users</h5>
+                    <h5>Tổng Người Dùng</h5>
                     <h2 class="display-4">{{ stats.user_count }}</h2>
-                    <p>{{ stats.admin_count }} admins / {{ stats.regular_users }} users</p>
+                    <p>{{ stats.admin_count }} quản trị viên / {{ stats.regular_users }} người dùng</p>
                 </div>
                 <div class="card-footer">
-                    <a href="{{ url_for('admin_users') }}" class="btn btn-light btn-sm btn-block">Manage Users</a>
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-light btn-sm btn-block">Quản Lý Người Dùng</a>
                 </div>
             </div>
         </div>
@@ -44,12 +42,12 @@
             <div class="card bg-success text-white h-100">
                 <div class="card-body text-center">
                     <h3><i class="fas fa-calendar-alt"></i></h3>
-                    <h5>Lab Sessions</h5>
+                    <h5>Ca Thực Hành</h5>
                     <h2 class="display-4">{{ stats.lab_session_count }}</h2>
-                    <p>{{ stats.active_lab_sessions }} active sessions</p>
+                    <p>{{ stats.active_lab_sessions }} ca đang hoạt động</p>
                 </div>
                 <div class="card-footer">
-                    <a href="{{ url_for('admin_lab_sessions') }}" class="btn btn-light btn-sm btn-block">Manage Sessions</a>
+                    <a href="{{ url_for('admin_lab_sessions') }}" class="btn btn-light btn-sm btn-block">Quản Lý Ca Thực Hành</a>
                 </div>
             </div>
         </div>
@@ -57,20 +55,19 @@
             <div class="card bg-info text-white h-100">
                 <div class="card-body text-center">
                     <h3><i class="fas fa-history"></i></h3>
-                    <h5>Activity Logs</h5>
+                    <h5>Nhật Ký Hoạt Động</h5>
                     <h2 class="display-4">{{ stats.activity_count }}</h2>
-                    <p>System activity records</p>
+                    <p>Ghi nhận hoạt động hệ thống</p>
                 </div>
                 <div class="card-footer">
-                    <a href="{{ url_for('activity_logs') }}" class="btn btn-light btn-sm btn-block">View Logs</a>
+                    <a href="{{ url_for('activity_logs') }}" class="btn btn-light btn-sm btn-block">Xem Nhật Ký</a>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card bg-warning text-dark h-100">
                 <div class="card-body text-center">
-                    <h3><i class="fas fa-cogs"></i></h3>
-                    <h5>System Settings</h5>
+                    <h3><i class="fas fa-cogs"></i></h3>                    <h5>Cài Đặt Hệ Thống</h5>
                     <p>Tham số cấu hình</p>
                 </div>
                 <div class="card-footer">
@@ -94,26 +91,25 @@
                                 <div class="card-body text-center">
                                     <h5><i class="fas fa-database"></i> Cơ sở dữ liệu</h5>
                                     <p>Đặt lại cấu trúc và dữ liệu</p>
-                                    <a href="{{ url_for('reset_database') }}" class="btn btn-danger">Reset Database</a>
+                                    <a href="{{ url_for('reset_database') }}" class="btn btn-danger">Đặt Lại Cơ Sở Dữ Liệu</a>
+                                </div>
+                            </div>
+                        </div>                        <div class="col-md-3">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5><i class="fas fa-sync"></i> Cài Đặt</h5>
+                                    <p>Khôi phục cài đặt mặc định của hệ thống</p>
+                                    <a href="{{ url_for('reset_settings') }}" class="btn btn-warning">Đặt Lại Cài Đặt</a>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="card mb-3">
                                 <div class="card-body text-center">
-                                    <h5><i class="fas fa-sync"></i> Settings</h5>
-                                    <p>Restore default system settings</p>
-                                    <a href="{{ url_for('reset_settings') }}" class="btn btn-warning">Reset Settings</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card mb-3">
-                                <div class="card-body text-center">
-                                    <h5><i class="fas fa-eraser"></i> Activity Logs</h5>
-                                    <p>Clear all system activity logs</p>
+                                    <h5><i class="fas fa-eraser"></i> Nhật Ký Hoạt Động</h5>
+                                    <p>Xóa tất cả nhật ký hoạt động hệ thống</p>
                                     <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#clearLogsModal">
-                                        Clear Logs
+                                        Xóa Nhật Ký
                                     </button>
                                 </div>
                             </div>
@@ -121,9 +117,9 @@
                         <div class="col-md-3">
                             <div class="card mb-3">
                                 <div class="card-body text-center">
-                                    <h5><i class="fas fa-trash-alt"></i> Sessions</h5>
-                                    <p>Clear all user sessions</p>
-                                    <a href="{{ url_for('clear_session') }}" class="btn btn-warning">Clear Sessions</a>
+                                    <h5><i class="fas fa-trash-alt"></i> Phiên</h5>
+                                    <p>Xóa tất cả phiên người dùng</p>
+                                    <a href="{{ url_for('clear_session') }}" class="btn btn-warning">Xóa Phiên</a>
                                 </div>
                             </div>
                         </div>
@@ -131,33 +127,30 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Advanced System Management Section -->
+    </div>    <!-- Advanced System Management Section -->
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header bg-dark text-white">
-                    <h4><i class="fas fa-user-shield"></i> Admin Management</h4>
+                    <h4><i class="fas fa-user-shield"></i> Quản Lý Quản Trị Viên</h4>
                 </div>
                 <div class="card-body">
                     <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> As System Administrator, you can promote regular users to admin, and admins to system administrators.
+                        <i class="fas fa-info-circle"></i> Với tư cách là Quản Trị Viên Hệ Thống, bạn có thể nâng cấp người dùng thông thường lên quản trị viên, và nâng cấp quản trị viên lên quản trị viên hệ thống.
                     </div>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="card mb-3">
-                                <div class="card-body text-center">
-                                    <h5><i class="fas fa-user-plus"></i> Create Admin</h5>
-                                    <p>Promote a regular user to admin</p>
-                                    <a href="{{ url_for('admin_users') }}" class="btn btn-primary">Manage Admins</a>
+                                <div class="card-body text-center">                                    <h5><i class="fas fa-user-plus"></i> Tạo Quản Trị Viên</h5>
+                                    <p>Nâng cấp người dùng thường thành quản trị viên</p>
+                                    <a href="{{ url_for('admin_users') }}" class="btn btn-primary">Quản Lý Quản Trị Viên</a>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="card mb-3">
                                 <div class="card-body text-center">
-                                    <h5><i class="fas fa-user-shield"></i> Create System Admin</h5>
+                                    <h5><i class="fas fa-user-shield"></i> Tạo Quản Trị Viên Hệ Thống</h5>
                                     <p>Promote admin to system administrator</p>
                                     <a href="{{ url_for('admin_users') }}" class="btn btn-danger">Manage System Admins</a>
                                 </div>
@@ -297,7 +290,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <a href="{{ url_for('admin_lab_sessions') }}" class="btn btn-success">Manage Lab Sessions</a>
+                    <a href="{{ url_for('admin_lab_sessions') }}" class="btn btn-success">Quản Lý Ca Thực Hành</a>
                 </div>
             </div>
         </div>
