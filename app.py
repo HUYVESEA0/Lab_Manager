@@ -504,62 +504,64 @@ def edit_user(user_id):
     return render_template("admin/edit_user.html", form=form, user=user)
 
 
-@app.route("/admin/make-admin/<int:user_id>")
+@app.route("/admin/tao-quan-tri-vien/<int:user_id>")
 @login_required
 @admin_manager_required
-def make_admin(user_id):
+def tao_quan_tri_vien(user_id):
     user = User.query.get_or_404(user_id)
     if user.role != "user":
         flash("Chỉ người dùng thường mới có thể được nâng cấp lên quản trị viên.", "danger")
         return redirect(url_for("admin_users"))
     user.role = "admin"
     db.session.commit()
-    log_activity("Make admin", f"User {user.username} was promoted to admin.")
+    log_activity("Nâng cấp quản trị viên", f"Người dùng {user.username} đã được nâng cấp lên quản trị viên.")
     flash(f"Người dùng {user.username} đã được nâng cấp lên quản trị viên!", "success")
     return redirect(url_for("admin_users"))
 
 
-@app.route("/admin/make-admin-manager/<int:user_id>")
+@app.route("/admin/nang-cap-quan-tri-vien-cap-cao/<int:user_id>")
 @login_required
 @admin_manager_required
-def make_admin_manager(user_id):
+def nang_cap_quan_tri_vien_cap_cao(user_id):
     user = User.query.get_or_404(user_id)
     if user.role != "admin":
         flash("Chỉ quản trị viên mới có thể được nâng cấp lên quản trị viên cấp cao.", "danger")
         return redirect(url_for("admin_users"))
     user.role = "admin_manager"
     db.session.commit()
-    log_activity("Make admin manager", f"User {user.username} was promoted to admin_manager.")
+    log_activity(
+        "Nâng cấp quản trị viên cấp cao", f"Người dùng {user.username} đã được nâng cấp lên quản trị viên cấp cao."
+    )
     flash(f"Người dùng {user.username} đã được nâng cấp lên quản trị viên cấp cao!", "success")
     return redirect(url_for("admin_users"))
 
 
-@app.route("/admin/remove-admin/<int:user_id>")
+@app.route("/admin/xoa-quyen-admin/<int:user_id>")
 @login_required
 @admin_manager_required
-def remove_admin(user_id):
+def xoa_quyen_admin(user_id):
     user = User.query.get_or_404(user_id)
     if user.role not in ["admin", "admin_manager"]:
         flash("Chỉ quản trị viên hoặc quản trị viên cấp cao mới có thể bị hạ cấp.", "danger")
         return redirect(url_for("admin_users"))
     user.role = "user"
     db.session.commit()
-    log_activity("Remove admin", f"User {user.username} was demoted to user.")
+    log_activity("Hạ cấp quản trị viên", f"Người dùng {user.username} đã bị hạ cấp xuống người dùng thường.")
     flash(f"Người dùng {user.username} đã bị hạ cấp xuống người dùng thường!", "success")
     return redirect(url_for("admin_users"))
 
 
-@app.route("/admin/delete-user/<int:user_id>")
+@app.route("/admin/xoa-nguoi-dung/<int:user_id>")
 @login_required
 @admin_manager_required
-def delete_user(user_id):
+def xoa_nguoi_dung(user_id):
     user = User.query.get_or_404(user_id)
     if user.role == "admin_manager":
         flash("Không thể xóa quản trị viên cấp cao.", "danger")
         return redirect(url_for("admin_users"))
     db.session.delete(user)
     db.session.commit()
-    log_activity("Delete user", f"User {user.username} was deleted.")
+    log_activity("Xóa người dùng", f"Người dùng {user.username} đã bị xóa.")
     flash(f"Người dùng {user.username} đã bị xóa!", "success")
     return redirect(url_for("admin_users"))
 
@@ -570,34 +572,34 @@ def delete_user(user_id):
 @cache.cached(timeout=60)
 def system_settings():
     if SystemSetting.query.count() == 0:
-        SystemSetting.set_setting("app_name", "Python Manager", "string", "Application Name")
+        SystemSetting.set_setting("app_name", "Lab Manager", "string", "Tên ứng dụng")
         SystemSetting.set_setting(
-            "app_description", "A Flask application for managing Python projects", "string", "Application Description"
+            "app_description", "Một ứng dụng Flask để quản lý các phòng thực hành", "string", "Mô tả ứng dụng"
         )
-        SystemSetting.set_setting("enable_registration", True, "boolean", "Enable User Registration")
-        SystemSetting.set_setting("enable_password_reset", True, "boolean", "Enable Password Reset")
-        SystemSetting.set_setting("items_per_page", 25, "integer", "Number of items per page in listings")
+        SystemSetting.set_setting("enable_registration", True, "boolean", "Bật đăng ký người dùng")
+        SystemSetting.set_setting("enable_password_reset", True, "boolean", "Bật đặt lại mật khẩu")
+        SystemSetting.set_setting("items_per_page", 25, "integer", "Số mục trên mỗi trang trong danh sách")
     form = SystemSettingsForm()
     if form.validate_on_submit():
         SystemSetting.set_setting("app_name", form.app_name.data, "string", "Tên ứng dụng")
-        SystemSetting.set_setting("app_description", form.app_description.data, "string", "Application Description")
+        SystemSetting.set_setting("app_description", form.app_description.data, "string", "Mô tả ứng dụng")
         SystemSetting.set_setting(
-            "enable_registration", form.enable_registration.data, "boolean", "Enable User Registration"
+            "enable_registration", form.enable_registration.data, "boolean", "Bật đăng ký người dùng"
         )
         SystemSetting.set_setting(
-            "enable_password_reset", form.enable_password_reset.data, "boolean", "Enable Password Reset"
+            "enable_password_reset", form.enable_password_reset.data, "boolean", "Bật đặt lại mật khẩu"
         )
         SystemSetting.set_setting(
-            "items_per_page", form.items_per_page.data, "integer", "Number of items per page in listings"
+            "items_per_page", form.items_per_page.data, "integer", "Số mục trên mỗi trang trong danh sách"
         )
         db.session.commit()
-        log_activity("Update settings", "System settings were updated")
+        log_activity("Cập nhật cài đặt", "Cài đặt hệ thống đã được cập nhật")
         flash("Cài đặt hệ thống đã được cập nhật thành công!", "success")
         return redirect(url_for("system_settings"))
-    # Type-safe assignments to form fields
-    app_name = SystemSetting.get_setting("app_name", "Python Manager")
+    # Gán dữ liệu cho các trường form một cách an toàn về kiểu dữ liệu
+    app_name = SystemSetting.get_setting("app_name", "Lab Manager")
     form.app_name.data = str(app_name) if app_name is not None else ""
-    app_desc = SystemSetting.get_setting("app_description", "A Flask application for managing Python projects")
+    app_desc = SystemSetting.get_setting("app_description", "Một ứng dụng Flask để quản lý các dự án Python")
     form.app_description.data = str(app_desc) if app_desc is not None else ""
     enable_reg = SystemSetting.get_setting("enable_registration", True)
     form.enable_registration.data = bool(enable_reg)
@@ -615,20 +617,20 @@ def system_settings():
 @login_required
 @admin_manager_required
 def reset_settings():
-    """Reset all system settings to default values"""
+    """Đặt lại tất cả cài đặt hệ thống về giá trị mặc định"""
     if request.method == "POST" and request.form.get("confirm") == "yes":
         # Xóa tất cả các cài đặt hiện tại
         SystemSetting.query.delete()
         db.session.commit()
         # Khởi tạo lại các cài đặt mặc định
-        SystemSetting.set_setting("app_name", "Python Manager", "string", "Application Name")
+        SystemSetting.set_setting("app_name", "Python Manager", "string", "Tên ứng dụng")
         SystemSetting.set_setting(
-            "app_description", "A Flask application for managing Python projects", "string", "Application Description"
+            "app_description", "Một ứng dụng Flask để quản lý các dự án Python", "string", "Mô tả ứng dụng"
         )
-        SystemSetting.set_setting("enable_registration", True, "boolean", "Enable User Registration")
-        SystemSetting.set_setting("enable_password_reset", True, "boolean", "Enable Password Reset")
-        SystemSetting.set_setting("items_per_page", 25, "integer", "Number of items per page in listings")
-        log_activity("Reset settings", "All system settings were reset to default values")
+        SystemSetting.set_setting("enable_registration", True, "boolean", "Bật đăng ký người dùng")
+        SystemSetting.set_setting("enable_password_reset", True, "boolean", "Bật đặt lại mật khẩu")
+        SystemSetting.set_setting("items_per_page", 25, "integer", "Số mục trên mỗi trang trong danh sách")
+        log_activity("Đặt lại cài đặt", "Tất cả cài đặt hệ thống đã được đặt lại về giá trị mặc định")
         flash("Tất cả cài đặt hệ thống đã được đặt lại về giá trị mặc định.", "success")
         return redirect(url_for("system_settings"))
     return render_template("admin/reset_settings.html")
@@ -639,7 +641,7 @@ def reset_settings():
 @admin_required
 def clear_logs():
     if request.form.get("confirm") == "yes":
-        log_activity("Clear all logs", "All activity logs were cleared from the system")
+        log_activity("Xóa tất cả nhật ký", "Toàn bộ nhật ký hoạt động đã được xóa khỏi hệ thống")
         last_log = ActivityLog.query.order_by(ActivityLog.id.desc()).first()
         if last_log:
             ActivityLog.query.filter(ActivityLog.id != last_log.id).delete()
@@ -648,7 +650,7 @@ def clear_logs():
         db.session.commit()
         flash("Tất cả nhật ký hoạt động đã được xóa", "success")
     else:
-        flash("Yêu cầu xác nhận để xóa nhật ký", "danger")
+        flash("Bạn cần xác nhận để xóa nhật ký", "danger")
     return redirect(url_for("activity_logs"))
 
 
@@ -682,10 +684,10 @@ def search():
                 return redirect(url_for("dashboard"))
         else:
             return redirect(url_for("login"))
-    # Search users with safety checks
+    # Tìm kiếm người dùng với kiểm tra an toàn
     users = []
     try:
-        # Use the SQLAlchemy text() function to create a raw SQL query for searching users
+        # Sử dụng hàm text() của SQLAlchemy để tạo truy vấn SQL thô cho tìm kiếm người dùng
         search_pattern = f"%{query}%"
         users = (
             User.query.filter(db.or_(db.text("username LIKE :pattern"), db.text("email LIKE :pattern")))
@@ -693,9 +695,9 @@ def search():
             .all()
         )
     except Exception as e:
-        app.logger.error(f"Error in user search: {str(e)}")
+        app.logger.error(f"Lỗi khi tìm kiếm người dùng: {str(e)}")
 
-    # Search activities
+    # Tìm kiếm hoạt động
     activities = []
     if current_user.is_authenticated and current_user.is_admin():
         try:
@@ -707,8 +709,8 @@ def search():
                 .all()
             )
         except Exception as e:
-            app.logger.error(f"Error in activity search: {str(e)}")
-    # Search settings
+            app.logger.error(f"Lỗi khi tìm kiếm hoạt động: {str(e)}")
+    # Tìm kiếm cài đặt
     settings = []
     if current_user.is_authenticated and current_user.is_admin():
         try:
@@ -725,9 +727,9 @@ def search():
                 .all()
             )
         except Exception as e:
-            app.logger.error(f"Error in settings search: {str(e)}")
+            app.logger.error(f"Lỗi khi tìm kiếm cài đặt: {str(e)}")
     if current_user.is_authenticated:
-        log_activity("Search", f"User searched for: {query}")
+        log_activity("Tìm kiếm", f"Người dùng đã tìm kiếm: {query}")
     results_found = bool(users or activities or settings)
     return render_template(
         "search_results.html",
@@ -902,7 +904,7 @@ def create_lab_session():
         )
         db.session.add(lab_session)
         db.session.commit()
-        log_activity("Create lab session", f"Created lab session: {form.title.data}")
+        log_activity("Tạo ca thực hành", f"Đã tạo ca thực hành: {form.title.data}")
         flash(f'Ca thực hành "{form.title.data}" đã được tạo thành công! Mã xác thực: {verification_code}', "success")
         return redirect(url_for("admin_lab_sessions"))
     return render_template("admin/create_lab_session.html", form=form)
@@ -940,7 +942,7 @@ def edit_lab_session(session_id):
         if form.verification_code.data:
             lab_session.verification_code = form.verification_code.data
         db.session.commit()
-        log_activity("Edit lab session", f"Updated lab session: {lab_session.title}")
+        log_activity("Chỉnh sửa ca thực hành", f"Đã cập nhật ca thực hành: {lab_session.title}")
         flash(f'Ca thực hành "{lab_session.title}" đã được cập nhật!', "success")
         return redirect(url_for("admin_lab_sessions"))
     form.title.data = lab_session.title
@@ -996,14 +998,14 @@ def schedule_lab_sessions():
 @login_required
 @admin_manager_required
 def schedule_lab_rooms():
-    schedule = []  # Initialize schedule as an empty list
+    schedule = []  # Khởi tạo danh sách lịch trống
     if request.method == "POST":
         lab_sessions = LabSession.query.filter_by(is_active=True).order_by(LabSession.date, LabSession.start_time).all()
-        rooms = ["Room 1", "Room 2", "Room 3", "Room 4", "Room 5", "Room 6"]
+        rooms = ["Phòng 1", "Phòng 2", "Phòng 3", "Phòng 4", "Phòng 5", "Phòng 6"]
         for i, lab_session in enumerate(lab_sessions):
             room = rooms[i % len(rooms)]
             schedule.append({"session": lab_session, "room": room})
-        flash("Các ca thực hành đã được lên lịch thành công!", "success")
+        flash("Các ca thực hành đã được lên lịch phòng thành công!", "success")
     return render_template("admin/schedule_lab_rooms.html", schedule=schedule)
 
 
@@ -1012,7 +1014,7 @@ def schedule_lab_rooms():
 @admin_manager_required
 def reset_database():
     if request.method == "POST" and request.form.get("confirm") == "yes":
-        log_activity("Database reset", "Database was reset by admin")
+        log_activity("Thiết lập lại cơ sở dữ liệu", "Cơ sở dữ liệu đã được thiết lập lại bởi quản trị viên")
         with app.app_context():
             db.drop_all()
             db.create_all()
@@ -1038,7 +1040,9 @@ def admin_manager_dashboard():
     recent_logs = ActivityLog.query.order_by(ActivityLog.timestamp.desc()).limit(10).all()
     recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
     recent_lab_sessions = LabSession.query.order_by(LabSession.date.desc()).limit(5).all()
-    log_activity("Access system admin dashboard", "Admin manager accessed the system dashboard")
+    log_activity(
+        "Truy cập trang tổng quan quản trị hệ thống", "Quản trị viên cấp cao đã truy cập trang tổng quan hệ thống"
+    )
 
     return render_template(
         "admin/admin_manager_dashboard.html",
@@ -1063,7 +1067,7 @@ def get_form_data(form_type):
         csrf_token = getattr(form, "csrf_token", None)
         if csrf_token:
             return jsonify({"csrf_token": csrf_token._value()})
-    return jsonify({"error": "Invalid form type"})
+    return jsonify({"error": "Loại biểu mẫu không hợp lệ"})
 
 
 # Error handlers
@@ -1093,10 +1097,10 @@ def bad_request(e):
     response = make_response(
         render_template(
             "errors/error.html",
-            error_title="Bad Request",
+            error_title="Yêu cầu không hợp lệ",
             error_code="400",
-            error_message="The request could not be understood by the server.",
-            error_description="The request may contain syntax errors or invalid parameters.",
+            error_message="Yêu cầu không thể được máy chủ hiểu.",
+            error_description="Yêu cầu có thể chứa lỗi cú pháp hoặc tham số không hợp lệ.",
             error_icon="fa-exclamation-circle",
         )
     )
@@ -1108,17 +1112,17 @@ def bad_request(e):
 @app.errorhandler(Exception)
 def handle_exception(e):
     # Log the error
-    app.logger.error(f"Unhandled exception: {str(e)}")
+    app.logger.error(f"Ngoại lệ chưa được xửa lý: {str(e)}")
     # If it's already an HTTP exception, let the specific handlers deal with it
     if isinstance(e, HTTPException):
         error_code = e.code if hasattr(e, "code") and e.code is not None else 500
         response = make_response(
             render_template(
                 "errors/error.html",
-                error_title=e.name if hasattr(e, "name") else "Server Error",
+                error_title=e.name if hasattr(e, "name") else "Lỗi máy chủ",
                 error_code=error_code,
                 error_message=e.description if hasattr(e, "description") else str(e),
-                error_description="An error occurred while processing your request.",
+                error_description="Đã xảy ra lỗi trong quá trình xử lý yêu cầu của bạn.",
                 error_icon="fa-exclamation-triangle",
             )
         )
@@ -1132,8 +1136,8 @@ def handle_exception(e):
 
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
-    app.logger.error(f"CSRF Error: {str(e)}")
-    flash("CSRF token validation failed. This could be due to your session expiring. Please try again.", "danger")
+    app.logger.error(f"Lỗi CSRF : {str(e)}")
+    flash("Xác thực CSRF không thành công. Điều này có thể do phiên của bạn đã hết hạn. Vui lòng thử lại.", "danger")
     return redirect(url_for("login"))
 
 
@@ -1171,10 +1175,10 @@ def safe_combine_dicts(dicts_or_dict):
             return CombinedMultiDict([])
         # If it's something else entirely
         else:
-            app.logger.error(f"Invalid type passed to combine_dicts: {type(dicts_or_dict)}")
+            app.logger.error(f"Loại không hợp lệ được chuyển đến combine_dicts: {type(dicts_or_dict)}")
             return CombinedMultiDict([])
     except Exception as e:
-        app.logger.error(f"Error creating CombinedMultiDict: {e}")
+        app.logger.error(f"Lỗi khi tạo CombinedMultiDict: {e}")
         return CombinedMultiDict([])
 
 
