@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ dashboard_title|default("Admin Dashboard") }}{% endblock %}
+
+{% block body_class %}admin-page{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<!-- Unified CSS Variables -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}">
+<!-- Admin specific styles -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_tables.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/system_dashboard.css') }}?v={{ cache_version|default('20250609001') }}">
+
+<!-- External dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/admin_tables.js') }}"></script>
+<script src="{{ url_for('static', filename='js/system_dashboard.js') }}?v={{ cache_version|default('20250609001') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize dashboard based on dashboard type
+    const dashboardType = '{{ dashboard_type|default("basic") }}';
+    
+    if (typeof SystemDashboard !== 'undefined') {
+        window.adminDashboard = new SystemDashboard({
+            type: dashboardType,
+            realTime: {{ 'true' if enable_realtime else 'false' }},
+            updateInterval: {{ update_interval|default(5000) }}
+        });
+        
+        adminDashboard.init();
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (window.adminDashboard) {
+                window.adminDashboard.cleanup();
+            }
+        });
+    }
+    
+    {% block dashboard_scripts %}{% endblock %}
+});
+</script>
+{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated and current_user.is_admin() %}
+    {% block dashboard_content %}
+    <div class="modern-dashboard">
+        <div class="container-fluid">
+            <!-- Default admin dashboard content -->
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                Extend this template to add specific dashboard content.
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+{% else %}
+    <div class="alert alert-danger mt-5">
+        <i class="fas fa-exclamation-triangle"></i>
+        Bạn không có quyền truy cập trang này.
+    </div>
+{% endif %}
+{% endblock %}

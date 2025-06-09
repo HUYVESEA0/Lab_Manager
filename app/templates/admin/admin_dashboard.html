@@ -1,0 +1,237 @@
+{% extends "index.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_tables.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/system_dashboard.css') }}">
+<!-- Real-time updates -->
+<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/system_dashboard.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize real-time dashboard for admin
+    if (typeof SystemDashboard !== 'undefined') {
+        window.adminDashboard = new SystemDashboard();
+        adminDashboard.init();
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (window.adminDashboard) {
+                window.adminDashboard.cleanup();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated and current_user.is_admin() %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Admin Dashboard</h4>
+                </div>
+                <div class="card-body">
+                    <h2>System Overview</h2>
+                    
+                    <!-- Real-time status indicator -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-tachometer-alt"></i> Dashboard Status</span>
+                                    <span id="connection-status" class="badge badge-secondary">
+                                        <i class="fas fa-circle text-secondary"></i> Connecting...
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="metric-card-modern primary">
+                                <div class="metric-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-number" id="metric-total-users">{{ stats.user_count }}</div>
+                                    <div class="metric-label">Users</div>
+                                    <div class="metric-stats">
+                                        <div class="metric-stat">
+                                            <small class="text-muted">Active: <span id="metric-active-users">{{ stats.active_users or 0 }}</span></small>
+                                        </div>
+                                        <div class="metric-stat">
+                                            <small class="text-muted">Online: <span id="metric-online-users">0</span></small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="metric-actions">
+                                    <a href="{{ url_for('admin.admin_users') }}" class="btn btn-primary btn-sm">Quản lý người dùng</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="metric-card-modern success">
+                                <div class="metric-icon">
+                                    <i class="fas fa-flask"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-number" id="metric-total-sessions">{{ stats.lab_session_count }}</div>
+                                    <div class="metric-label">Lab Sessions</div>
+                                    <div class="metric-stats">
+                                        <div class="metric-stat">
+                                            <small class="text-muted">Active: <span id="metric-active-sessions">{{ stats.active_lab_sessions or 0 }}</span></small>
+                                        </div>
+                                        <div class="metric-stat">
+                                            <small class="text-muted">Today: <span id="metric-sessions-today">{{ stats.active_sessions_today or 0 }}</span></small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="metric-actions">
+                                    <a href="{{ url_for('lab.admin_lab_sessions') }}" class="btn btn-success btn-sm">Quản lý ca thực hành</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="metric-card-modern info">
+                                <div class="metric-icon">
+                                    <i class="fas fa-cogs"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-label">System Performance</div>
+                                    <div class="metric-stats">
+                                        <div class="metric-resource">
+                                            <div class="resource-label">
+                                                <small class="text-muted">CPU: <span id="metric-cpu-usage">0%</span></small>
+                                            </div>
+                                            <div class="progress mb-2" style="height: 5px;">
+                                                <div id="cpu-progress" class="progress-bar bg-info" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                        <div class="metric-resource">
+                                            <div class="resource-label">
+                                                <small class="text-muted">Memory: <span id="metric-memory-usage">0%</span></small>
+                                            </div>
+                                            <div class="progress mb-2" style="height: 5px;">
+                                                <div id="memory-progress" class="progress-bar bg-warning" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="metric-actions">
+                                    <a href="{{ url_for('admin.system_settings') }}" class="btn btn-info btn-sm">Quản lý cài đặt</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Người Dùng Gần Đây</h2>
+                    <div class="table-responsive">
+                        <table class="table admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Tên đăng nhập</th>
+                                    <th>Email</th>
+                                    <th>Vai trò</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users[:5] %}
+                                <tr>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                        <span class="badge
+                                            {% if user.role == 'admin_manager' %}badge-danger
+                                            {% elif user.role == 'admin' %}badge-warning
+                                            {% else %}badge-info{% endif %}">
+                                            {{ user.role }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('admin.admin_users') }}" class="btn btn-primary">Xem Tất Cả Người Dùng</a>
+
+                    <h2 class="mt-5">Nhật Ký Hoạt Động Gần Đây</h2>
+                    <div class="table-responsive">
+                        <table class="table admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Thời gian</th>
+                                    <th>Người dùng</th>
+                                    <th>Hành động</th>
+                                    <th>Chi tiết</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in recent_logs %}
+                                <tr>
+                                    <td>{{ log.thoi_gian.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>{{ log.nguoi_dung.ten_nguoi_dung if log.nguoi_dung else 'Anonymous' }}</td>
+                                    <td>{{ log.hanh_dong }}</td>
+                                    <td>{{ log.chi_tiet }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('admin.activity_logs') }}" class="btn btn-primary">Xem Tất Cả Nhật Ký</a>
+
+                    <h2 class="mt-5">Tổng Quan Về Ca Thực Hành</h2>
+                    <div class="table-responsive">
+                        <table class="table admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Ca</th>
+                                    <th>Ngày</th>
+                                    <th>Trạng Thái</th>
+                                    <th>Đăng Ký</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in recent_lab_sessions %}
+                                <tr>
+                                    <td>{{ session.title }}</td>
+                                    <td>{{ session.date }}</td>
+                                    <td>{{ 'Đang hoạt động' if session.is_active else 'Ngừng hoạt động' }}</td>
+                                    <td>{{ session.registrations|length }}/{{ session.max_students }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('lab.admin_lab_sessions') }}" class="btn btn-primary">Xem Tất Cả Ca Thực Hành</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-danger mt-5">Bạn không có quyền truy cập trang này.</div>
+{% endif %}
+{% endblock %}
+
+
+
+
+
+

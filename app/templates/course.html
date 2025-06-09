@@ -1,0 +1,17 @@
+{% extends "index.html" %}
+{% block content %}
+<h1>{{ course.title }}</h1>
+<p>{{ course.description }}</p>
+<h2>Lessons</h2>
+<ul>
+    {% for lesson in course.lessons %}
+    <li>{{ lesson.title }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}
+
+
+
+
+
+

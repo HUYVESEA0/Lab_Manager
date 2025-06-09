@@ -1,0 +1,893 @@
+/* Modern tech-inspired authentication styling for educational platform */
+@import 'variables.css';
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: linear-gradient(135deg, #f6f5f7, #e9e9e9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-family: 'Roboto', sans-serif;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Code-inspired background pattern */
+body:before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    background-size: 20px 20px;
+    z-index: -1;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 800px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Import unified flash message system */
+@import url('flash_messages.css');
+
+/* Remove duplicate flash message styles - now handled by flash_messages.css */
+
+.home-link {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.home-link a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50px;
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: var(--transition);
+}
+
+.home-link a:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-3px);
+    box-shadow: 0 7px 14px rgba(0, 0, 0, 0.1);
+}
+
+.home-link a i {
+    margin-right: 8px;
+}
+
+h1 {
+    font-weight: 700;
+    margin: 0 0 15px 0;
+    color: var(--accent-color);
+    font-size: 2rem;
+}
+
+h2 {
+    text-align: center;
+    color: var(--text-color);
+    margin-bottom: 20px;
+}
+
+p {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+    margin: 20px 0 30px;
+    color: var(--text-color);
+}
+
+span {
+    font-size: 0.85rem;
+    margin-bottom: 15px;
+    color: #666;
+}
+
+a {
+    color: var(--primary-color);
+    font-size: 0.9rem;
+    text-decoration: none;
+    margin: 15px 0;
+    transition: var(--transition);
+}
+
+a:hover {
+    color: var(--secondary-color);
+}
+
+/* Tech-inspired buttons */
+button, .ghost {
+    border-radius: 50px;
+    border: none;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    color: var(--text-light);
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 12px 45px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: var(--transition);
+    cursor: pointer;
+    display: inline-block;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+button:after, .ghost:after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: rotate(30deg);
+    transition: 0.6s;
+}
+
+button:hover:after, .ghost:hover:after {
+    left: -100%;
+    top: -100%;
+}
+
+button:active, .ghost:active {
+    transform: scale(0.98);
+}
+
+button:focus, .ghost:focus {
+    outline: none;
+}
+
+button.ghost, a.ghost {
+    background: transparent;
+    border: 2px solid var(--text-light);
+    color: var(--text-light);
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+}
+
+button.ghost:before, a.ghost:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    z-index: -1;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.5s ease;
+}
+
+button.ghost:hover:before, a.ghost:hover:before {
+    transform: scaleX(1);
+}
+
+button.ghost:hover, a.ghost:hover {
+    color: var(--text-light);
+    border-color: transparent;
+}
+
+form {
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 0 50px;
+    height: 100%;
+    text-align: center;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    position: relative;
+    z-index: 1;    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: auto;
+    padding-bottom: 70px; /* Space for mobile button */
+}
+
+/* Modern input fields with tech-inspired styling */
+input {
+    background-color: #f9f9f9;
+    border: 2px solid transparent;
+    padding: 15px;
+    margin: 10px 0;
+    width: 100%;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: var(--transition);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+    display: block; /* Ensure block display */
+}
+
+input:focus {
+    border-color: var(--primary-color);
+    background-color: white;
+    box-shadow: 0 0 0 3px rgba(58, 134, 255, 0.1);
+    outline: none;
+}
+
+input::placeholder {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+/* Tech-inspired error messages */
+.error-message {
+    color: var(--danger-color);
+    font-size: 0.8rem;
+    margin: -5px 0 5px;
+    width: 100%;
+    text-align: left;
+    padding-left: 5px;
+    opacity: 0;
+    animation: fadeIn 0.3s forwards;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.remember-me input[type="checkbox"] {
+    width: auto;
+    height: auto;
+    margin-right: 8px;
+}
+
+/* Modern educational tech-inspired container design */
+.container {
+    background-color: white;
+    border-radius: 15px;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.15), 0 10px 10px rgba(0, 0, 0, 0.12);
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    max-width: 768px;
+    min-height: 550px;
+    margin: 0 auto;
+    display: flex;
+    transition: all 0.6s ease-in-out;
+    /* Simpler transition for better stability */
+}
+
+.form-container {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    transition: all 0.6s ease-in-out;
+    width: 50%;
+}
+
+.sign-in-container {
+    left: 0;
+    z-index: 2;
+}
+
+.container.right-panel-active .sign-in-container {
+    transform: translateX(100%);
+}
+
+.sign-up-container {
+    left: 0;
+    opacity: 0;
+    z-index: 1;
+}
+
+.container.right-panel-active .sign-up-container {
+    transform: translateX(100%);
+    opacity: 1;
+    z-index: 5;
+}
+
+/* Tech-inspired overlay styling */
+.overlay-container {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 50%;
+    height: 100%;
+    overflow: hidden;
+    transition: transform 0.6s ease-in-out;
+    z-index: 100;
+}
+
+.container.right-panel-active .overlay-container {
+    transform: translateX(-100%);
+}
+
+.overlay {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background-size: 200% 200%;
+    animation: gradientBG 15s ease infinite;
+    color: var(--text-light);
+    position: relative;
+    left: -100%;
+    height: 100%;
+    width: 200%;
+    transform: translateX(0);
+    transition: transform 0.6s ease-in-out;
+    display: flex;
+}
+
+/* Add tech pattern to overlay */
+.overlay:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='1.5'/%3E%3Ccircle cx='13' cy='13' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+}
+
+.container.right-panel-active .overlay {
+    transform: translateX(50%);
+}
+
+.overlay-panel {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 0 40px;
+    text-align: center;
+    top: 0;
+    height: 100%;
+    width: 50%;
+    transform: translateX(0);
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+}
+
+.overlay-left {
+    transform: translateX(-20%);
+}
+
+.container.right-panel-active .overlay-left {
+    transform: translateX(0);
+}
+
+.overlay-right {
+    right: 0;
+    transform: translateX(0);
+}
+
+.container.right-panel-active .overlay-right {
+    transform: translateX(20%);
+}
+
+/* Social media login for educational platform */
+.social-container {
+    margin: 20px 0;
+    display: flex;
+}
+
+.social-container a {
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 5px;
+    height: 40px;
+    width: 40px;
+    transition: var(--transition);
+    background-color: white;
+}
+
+.social-container a:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+}
+
+.social-container a i {
+    transition: var(--transition);
+}
+
+.social-container a:nth-child(1):hover {
+    border-color: #3b5998;
+    background-color: #3b5998;
+}
+
+.social-container a:nth-child(1):hover i {
+    color: white;
+}
+
+.social-container a:nth-child(2):hover {
+    border-color: #db4437;
+    background-color: #db4437;
+}
+
+.social-container a:nth-child(2):hover i {
+    color: white;
+}
+
+.social-container a:nth-child(3):hover {
+    border-color: #0e76a8;
+    background-color: #0e76a8;
+}
+
+.social-container a:nth-child(3):hover i {
+    color: white;
+}
+
+/* Tech-inspired form buttons */
+#btn_login, #btn_register, input[type="submit"] {
+    border-radius: 50px;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 12px 45px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: var(--transition);
+    cursor: pointer;
+    margin-top: 20px;
+    width: 100%;
+    max-width: 250px;
+    border: none;
+    box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+#btn_login:hover, #btn_register:hover, input[type="submit"]:hover {
+    background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+    transform: translateY(-3px);
+    box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+
+#btn_login:after, #btn_register:after, input[type="submit"]:after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: rotate(30deg);
+    transition: 0.6s;
+}
+
+#btn_login:hover:after, #btn_register:hover:after, input[type="submit"]:hover:after {
+    left: -100%;
+    top: -100%;
+}
+
+/* Educational code editor theme for form containers */
+.form-container::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 0.7rem;
+    color: #999;
+    opacity: 0.5;
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+    .container {
+        min-height: 600px;
+    }
+
+    .form-container {
+        width: 100%;
+    }
+
+    .sign-in-container {
+        width: 100%;
+        z-index: 2;
+    }
+
+    .sign-up-container {
+        opacity: 0;
+        width: 100%;
+        z-index: 1;
+    }
+
+    .overlay-container {
+        display: none;
+    }
+
+    .container.right-panel-active .sign-in-container {
+        transform: translateY(-100%);
+        opacity: 0;
+        z-index: 1;
+        pointer-events: none;
+    }
+
+    .container.right-panel-active .sign-up-container {
+        transform: translateY(0);
+        opacity: 1;
+        z-index: 5;
+        pointer-events: auto;
+    }
+
+    form {
+        padding: 0 30px;
+        overflow-y: auto;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        max-height: 100%;
+        margin-bottom: 70px; /* Space for mobile button */
+    }
+
+    button, .ghost {
+        padding: 10px 30px;
+        font-size: 0.8rem;
+    }
+
+    #btn_login, #btn_register, input[type="submit"] {
+        padding: 10px 30px;
+        font-size: 0.8rem;
+    }
+
+    /* Mobile navigation */
+    .mobile-nav {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        position: absolute;
+        bottom: 15px;
+        left: 0;
+        text-align: center;
+        z-index: 1000;
+        padding: 0 15px;
+    }
+
+    .mobile-nav-button {
+        padding: 10px 20px;
+        width: 140px;
+        margin: 0 5px;
+        background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        border: none;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .mobile-nav-button:active {
+        transform: scale(0.95);
+    }
+
+    /* Form spacer for mobile */
+    .form-spacer {
+        height: 70px;
+        width: 100%;
+    }
+
+    .auth-wrapper {
+        width: 100%;
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 1.7rem;
+    }
+}
+
+/* Educational theme for mobile toggle */
+.mobile-toggle {
+    display: none;
+    width: 100%;
+    margin: 15px 0;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    padding: 5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-toggle button {
+    margin: 0 5px;
+    padding: 8px 16px;
+    border-radius: 50px;
+    background: transparent;
+    color: var(--text-color);
+    border: none;
+    transition: var(--transition);
+}
+
+.mobile-toggle button.active {
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .mobile-toggle {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+/* Auth wrapper */
+.auth-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    width: 100%;
+    max-width: 100%;
+    position: relative;
+}
+
+/* Educational and tech-focused animation */
+/* Educational styling for small screens */
+@media (max-width: 480px) {
+    .container {
+        min-height: 580px;
+        margin: 10px auto;
+    }
+
+    form {
+        padding: 0 15px;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    p {
+        font-size: 0.9rem;
+        margin: 10px 0 15px;
+    }
+
+    input {
+        padding: 12px;
+        margin: 6px 0;
+    }
+
+    .social-container a {
+        height: 35px;
+        width: 35px;
+    }
+
+    .auth-wrapper {
+        padding: 5px;
+    }
+}
+
+/* Fix for placeholder fields in inactive forms */
+.placeholder-field {
+    width: 100%;
+    margin: 10px 0;
+    display: block;
+}
+
+.placeholder-field input {
+    opacity: 0.7;
+    cursor: not-allowed;
+    display: block;
+    width: 100%;
+}
+
+/* Fix initial container state */
+#container.right-panel-active {
+    transform: translateX(0);
+}
+
+/* Fix form height on small screens */
+@media (max-height: 700px) {
+    .container {
+        min-height: 520px;
+    }
+
+    form {
+        padding: 0 15px;
+    }
+
+    h1 {
+        margin: 0 0 10px 0;
+        font-size: 1.7rem;
+    }
+
+    p {
+        margin: 10px 0 20px;
+    }
+
+    input {
+        padding: 12px;
+        margin: 8px 0;
+    }
+
+    .social-container {
+        margin: 15px 0;
+    }
+
+    .social-container a {
+        height: 35px;
+        width: 35px;
+    }
+}
+
+/* Optimize animations for performance */
+@media (prefers-reduced-motion: reduce) {
+    .container, .form-container, .overlay, .overlay-panel {
+        transition: none;
+        animation: none;
+    }
+}
+
+/* Fix form overflow issues */
+.form-container form {    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: auto;
+}
+
+/* Fix initialization flash */
+.container {
+    opacity: 0;
+    animation: fadeIn 0.3s ease-in forwards;
+    animation-delay: 0.1s;
+}
+
+/* Optimize animations for performance */
+@media (prefers-reduced-motion: reduce) {
+    .container, .form-container, .overlay, .overlay-panel {
+        transition: none;
+        animation: none;
+    }
+}
+
+/* Fix flash messages z-index */
+.flash-messages {
+    position: relative;
+    z-index: 9999;
+}
+
+/* Ensure forms don't overlap during transitions */
+.form-container.sign-in-container,
+.form-container.sign-up-container {
+    transform-style: flat;
+}
+
+/* Prevent interaction with hidden forms */
+.form-container[style*="visibility: hidden"],
+.form-container:not(.active) {
+    pointer-events: none;
+}
+
+/* Fix for registration form display */
+.sign-up-container form,
+.sign-in-container form {
+    opacity: 1;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Fix for form inputs */
+input {
+    background-color: #f9f9f9;
+    border: 2px solid transparent;
+    padding: 15px;
+    margin: 10px 0;
+    width: 100%;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: var(--transition);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+    display: block; /* Ensure block display */
+}
+
+.placeholder-field input {
+    opacity: 0.7;
+    cursor: not-allowed;
+    display: block;
+    width: 100%;
+}
+
+/* Fix for form initialization */
+#container:not(.right-panel-active) .sign-up-container {
+    display: flex;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+#container.right-panel-active .sign-up-container {
+    display: flex;
+    pointer-events: auto;
+    visibility: visible;
+}
+
+#container.right-panel-active .sign-in-container {
+    display: flex;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+#container:not(.right-panel-active) .sign-in-container {
+    display: flex;
+    pointer-events: auto;
+    visibility: visible;
+}
+
+/* Force opacity and visibility */
+.container.right-panel-active .sign-up-container {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+}
+
+/* Container animation fix */
+.container {
+    opacity: 1;
+    animation: none;
+}
+
+/* Form positioning fixes */
+.form-container form {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 0 40px;
+    text-align: center;
+}
+
+/* Fix for registration form display issues */
+.sign-up-container, .sign-in-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Fix for form inputs */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+    display: block;
+    width: 100%;
+    margin: 8px 0;
+}
+
+/* Remove duplicate styles that might be causing conflicts */

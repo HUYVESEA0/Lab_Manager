@@ -1,0 +1,828 @@
+{% extends "admin/admin_base.html" %}
+
+{% set dashboard_title = "Bảng Điều Khiển Quản Trị Hệ Thống" %}
+{% set dashboard_type = "system" %}
+{% set enable_realtime = true %}
+{% set cache_version = "20250609001" %}
+
+{% block dashboard_content %}
+<div class="modern-dashboard">
+    <div class="container-fluid">
+        <!-- Enhanced Dashboard Hero Section -->
+        <div class="dashboard-hero">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1 class="hero-title">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Bảng Điều Khiển Quản Trị Hệ Thống
+                    </h1>
+                    <p class="hero-subtitle">Giám sát và quản lý toàn bộ hệ thống Lab Manager</p>
+                </div>
+                <div class="hero-actions">
+                    <button class="btn btn-outline-light" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i> Làm mới
+                    </button>
+                    <button class="btn btn-light" data-toggle="modal" data-target="#systemOperationModal">
+                        <i class="fas fa-cogs"></i> Cài đặt
+                    </button>
+                </div>
+            </div>
+            <div class="hero-status">
+                <div class="status-badge online">
+                    <div class="status-indicator"></div>
+                    <span>Hệ thống hoạt động bình thường</span>
+                </div>
+                <div class="last-update">
+                    Cập nhật lúc: <span id="current-time"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics Overview -->
+        <div class="metrics-section">
+            <div class="row g-4">
+                <div class="col-xl-3 col-lg-6">
+                    <div class="metric-card-modern primary">
+                        <div class="metric-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-number">{{ stats.user_count or 245 }}</div>
+                            <div class="metric-label">Tổng Người Dùng</div>
+                            <div class="metric-trend up">
+                                <i class="fas fa-arrow-up"></i> 
+                                <span>{{ stats.regular_users or 0 }} thường + {{ stats.admin_count or 0 }} admin</span>
+                            </div>
+                        </div>
+                        <div class="metric-progress">
+                            <div class="progress-bar" style="width: 85%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-6">
+                    <div class="metric-card-modern success">
+                        <div class="metric-icon">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-number">{{ stats.active_users or 89 }}</div>
+                            <div class="metric-label">Đang Hoạt Động</div>
+                            <div class="metric-trend up">
+                                <i class="fas fa-user-clock"></i> Hôm nay
+                            </div>
+                        </div>
+                        <div class="metric-progress">
+                            <div class="progress-bar" style="width: 92%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-6">
+                    <div class="metric-card-modern info">
+                        <div class="metric-icon">
+                            <i class="fas fa-flask"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-number">{{ stats.lab_session_count or 1247 }}</div>
+                            <div class="metric-label">Phiên Lab</div>
+                            <div class="metric-trend up">
+                                <i class="fas fa-play"></i> {{ stats.active_lab_sessions or 0 }} hoạt động
+                            </div>
+                        </div>
+                        <div class="metric-progress">
+                            <div class="progress-bar" style="width: 78%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-6">
+                    <div class="metric-card-modern warning">
+                        <div class="metric-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-number">{{ stats.critical_alerts + stats.warning_alerts or 3 }}</div>
+                            <div class="metric-label">Cảnh Báo</div>
+                            <div class="metric-trend down">
+                                <i class="fas fa-info-circle"></i> {{ stats.critical_alerts or 0 }} nghiêm trọng
+                            </div>
+                        </div>
+                        <div class="metric-progress">
+                            <div class="progress-bar" style="width: 15%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Content -->
+        <div class="dashboard-content">
+            <div class="row g-4">
+                <!-- System Performance Section - Modern Design -->
+                <div class="col-xl-8 col-lg-12">
+                    <div class="dashboard-card performance-card">
+                        <div class="card-header">
+                            <div class="header-content">
+                                <h5 class="card-title">
+                                    <i class="fas fa-chart-line"></i>
+                                    Hiệu Suất Hệ Thống
+                                </h5>
+                                <p class="card-subtitle">Giám sát tài nguyên và hiệu suất real-time</p>
+                            </div>
+                            <div class="header-actions">
+                                <div class="status-badge online">
+                                    <i class="fas fa-circle"></i>
+                                    Live
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="refreshPerformance()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Performance Chart -->
+                            <div class="chart-container">
+                                <canvas id="performanceChart" height="200"></canvas>
+                            </div>
+                            
+                            <!-- Performance Metrics -->
+                            <div class="performance-metrics">
+                                <div class="metric-item">
+                                    <div class="metric-icon cpu">
+                                        <i class="fas fa-microchip"></i>
+                                    </div>
+                                    <div class="metric-details">
+                                        <div class="metric-label">CPU</div>
+                                        <div class="metric-value">45%</div>
+                                        <div class="metric-bar">
+                                            <div class="bar-fill" style="width: 45%"></div>
+                                        </div>
+                                        <div class="metric-status good">Normal</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="metric-item">
+                                    <div class="metric-icon memory">
+                                        <i class="fas fa-memory"></i>
+                                    </div>
+                                    <div class="metric-details">
+                                        <div class="metric-label">RAM</div>
+                                        <div class="metric-value">75%</div>
+                                        <div class="metric-bar">
+                                            <div class="bar-fill warning" style="width: 75%"></div>
+                                        </div>
+                                        <div class="metric-status warning">High</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="metric-item">
+                                    <div class="metric-icon disk">
+                                        <i class="fas fa-hdd"></i>
+                                    </div>
+                                    <div class="metric-details">
+                                        <div class="metric-label">Disk</div>
+                                        <div class="metric-value">60%</div>
+                                        <div class="metric-bar">
+                                            <div class="bar-fill" style="width: 60%"></div>
+                                        </div>
+                                        <div class="metric-status good">Normal</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="metric-item">
+                                    <div class="metric-icon network">
+                                        <i class="fas fa-wifi"></i>
+                                    </div>
+                                    <div class="metric-details">
+                                        <div class="metric-label">Network</div>
+                                        <div class="metric-value">85%</div>
+                                        <div class="metric-bar">
+                                            <div class="bar-fill" style="width: 85%"></div>
+                                        </div>
+                                        <div class="metric-status good">Active</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- User Activity Section - Modern Design -->
+                <div class="col-xl-4 col-lg-12">
+                    <div class="dashboard-card activity-card">
+                        <div class="card-header">
+                            <div class="header-content">
+                                <h5 class="card-title">
+                                    <i class="fas fa-users"></i>
+                                    Hoạt Động Người Dùng
+                                </h5>
+                                <p class="card-subtitle">Thống kê truy cập real-time</p>
+                            </div>
+                            <div class="header-actions">
+                                <button class="btn btn-sm btn-outline-primary" onclick="refreshActivity()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Activity Chart -->
+                            <div class="chart-container small">
+                                <canvas id="userActivityChart" height="150"></canvas>
+                            </div>
+                            
+                            <!-- Activity Stats -->
+                            <div class="activity-stats">
+                                <div class="stat-row">
+                                    <div class="stat-icon online">
+                                        <i class="fas fa-circle"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-label">Online hiện tại</div>
+                                        <div class="stat-value">24</div>
+                                    </div>
+                                    <div class="stat-trend up">+12%</div>
+                                </div>
+                                
+                                <div class="stat-row">
+                                    <div class="stat-icon login">
+                                        <i class="fas fa-sign-in-alt"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-label">Đăng nhập hôm nay</div>
+                                        <div class="stat-value">156</div>
+                                    </div>
+                                    <div class="stat-trend up">+8%</div>
+                                </div>
+                                
+                                <div class="stat-row">
+                                    <div class="stat-icon session">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-label">Phiên trung bình</div>
+                                        <div class="stat-value">32 phút</div>
+                                    </div>
+                                    <div class="stat-trend down">-5%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- System Operations Section -->
+        <div class="operations-section">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="dashboard-card operations-card">
+                        <div class="card-header danger">
+                            <div class="header-content">
+                                <h5 class="card-title">
+                                    <i class="fas fa-tools"></i>
+                                    Thao Tác Hệ Thống
+                                </h5>
+                                <p class="card-subtitle">Các chức năng quản trị quan trọng - Sử dụng cẩn thận</p>
+                            </div>
+                            <div class="warning-badge">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Cẩn trọng
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-danger border-0 mb-4" role="alert">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>CẢNH BÁO QUAN TRỌNG:</strong> Các thao tác dưới đây có thể ảnh hưởng nghiêm trọng đến hệ thống. 
+                                Hãy đảm bảo bạn đã tạo bản sao lưu và hiểu rõ hậu quả trước khi thực hiện.
+                            </div>
+                            
+                            <div class="operations-grid">
+                                <div class="operation-item">
+                                    <div class="operation-icon backup">
+                                        <i class="fas fa-download"></i>
+                                    </div>
+                                    <div class="operation-content">
+                                        <h6>Sao lưu dữ liệu</h6>
+                                        <p>Tạo bản sao lưu đầy đủ hệ thống</p>
+                                        <form action="{{ url_for('admin.backup_system') }}" method="POST" style="display: inline;">
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-download"></i> Sao lưu
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <div class="operation-item">
+                                    <div class="operation-icon database">
+                                        <i class="fas fa-database"></i>
+                                    </div>
+                                    <div class="operation-content">
+                                        <h6>Đặt lại Database</h6>
+                                        <p>Đặt lại cấu trúc và dữ liệu cơ sở dữ liệu</p>
+                                        <button class="btn btn-danger btn-sm operation-btn" 
+                                                data-operation="reset_database" 
+                                                data-url="{{ url_for('admin.reset_database') }}">
+                                            <i class="fas fa-redo"></i> Đặt Lại DB
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="operation-item">
+                                    <div class="operation-icon settings">
+                                        <i class="fas fa-cog"></i>
+                                    </div>
+                                    <div class="operation-content">
+                                        <h6>Đặt lại Cài đặt</h6>
+                                        <p>Khôi phục cài đặt hệ thống về mặc định</p>
+                                        <button class="btn btn-warning btn-sm operation-btn"
+                                                data-operation="reset_settings"
+                                                data-url="{{ url_for('admin.reset_settings') }}">
+                                            <i class="fas fa-sync"></i> Reset Settings
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="operation-item">
+                                    <div class="operation-icon logs">
+                                        <i class="fas fa-file-alt"></i>
+                                    </div>
+                                    <div class="operation-content">
+                                        <h6>Xóa nhật ký</h6>
+                                        <p>Xóa các tệp nhật ký cũ để giải phóng không gian</p>
+                                        <button class="btn btn-info btn-sm" data-toggle="modal" data-target="#clearLogsModal">
+                                            <i class="fas fa-trash"></i> Xóa logs
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="operation-item">
+                                    <div class="operation-icon restart">
+                                        <i class="fas fa-redo"></i>
+                                    </div>
+                                    <div class="operation-content">
+                                        <h6>Khởi động lại</h6>
+                                        <p>Khởi động lại ứng dụng để áp dụng thay đổi</p>
+                                        <form action="{{ url_for('admin.restart_system') }}" method="POST" style="display: inline;">
+                                            <button type="submit" class="btn btn-secondary btn-sm">
+                                                <i class="fas fa-redo-alt"></i> Restart
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <div class="operation-item">
+                                    <div class="operation-icon reset">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </div>
+                                    <div class="operation-content">
+                                        <h6>Reset hệ thống</h6>
+                                        <p>Đặt lại toàn bộ hệ thống về trạng thái ban đầu</p>
+                                        <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#systemOperationModal">
+                                            <i class="fas fa-exclamation-triangle"></i> Reset
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Recent Activity Section -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card system-metrics">
+                    <div class="card-header">
+                        <h5>
+                            <i class="fas fa-clock text-info"></i> 
+                            Hoạt Động Gần Đây
+                        </h5>
+                        <small class="text-muted">
+                            <i class="fas fa-sync-alt"></i> Cập nhật real-time
+                        </small>
+                    </div>
+                    <div class="card-body">
+                        <div class="activity-feed">
+                            <div class="activity-item">
+                                <div class="activity-icon bg-success">
+                                    <i class="fas fa-user-plus text-white"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <h6 class="mb-1">Người dùng mới đăng ký</h6>
+                                    <p class="mb-0 text-muted">
+                                        <small>User ID: #12345</small>
+                                    </p>
+                                </div>
+                                <div class="activity-time">
+                                    <small class="text-muted">5 phút trước</small>
+                                </div>
+                            </div>
+                            
+                            <div class="activity-item">
+                                <div class="activity-icon bg-primary">
+                                    <i class="fas fa-calendar-check text-white"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <h6 class="mb-1">Ca thực hành mới được tạo</h6>
+                                    <p class="mb-0 text-muted">
+                                        <small>Lab Session: Python Basics</small>
+                                    </p>
+                                </div>
+                                <div class="activity-time">
+                                    <small class="text-muted">15 phút trước</small>
+                                </div>
+                            </div>
+                            
+                            <div class="activity-item">
+                                <div class="activity-icon bg-warning">
+                                    <i class="fas fa-sign-in-alt text-white"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <h6 class="mb-1">Admin đăng nhập</h6>
+                                    <p class="mb-0 text-muted">
+                                        <small>IP: {{ request.remote_addr or '192.168.1.100' }}</small>
+                                    </p>
+                                </div>
+                                <div class="activity-time">
+                                    <small class="text-muted">30 phút trước</small>
+                                </div>
+                            </div>
+                            
+                            <div class="activity-item">
+                                <div class="activity-icon bg-info">
+                                    <i class="fas fa-database text-white"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <h6 class="mb-1">Backup tự động</h6>
+                                    <p class="mb-0 text-muted">
+                                        <small>Size: 2.4 MB</small>
+                                    </p>
+                                </div>
+                                <div class="activity-time">
+                                    <small class="text-muted">1 giờ trước</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <a href="{{ url_for('admin.activity_logs') }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-list"></i> Xem tất cả hoạt động
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card system-metrics mb-4">
+                    <div class="card-header">
+                        <h5>
+                            <i class="fas fa-chart-pie text-success"></i> 
+                            Thống Kê Hệ Thống
+                        </h5>
+                        <small class="text-muted">Tổng quan tình trạng</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="systemStatsChart" height="180"></canvas>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <h5 class="text-success mb-0">99.8%</h5>
+                                    <small class="text-muted">Uptime</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <h5 class="text-primary mb-0">45ms</h5>
+                                    <small class="text-muted">Response Time</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats Card -->
+                <div class="card system-metrics">
+                    <div class="card-header">
+                        <h5>
+                            <i class="fas fa-tachometer-alt text-warning"></i> 
+                            Thống Kê Nhanh
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="quick-stat-item">
+                                    <i class="fas fa-users text-primary mb-2"></i>
+                                    <h6 class="mb-0">{{ stats.user_count or 156 }}</h6>
+                                    <small class="text-muted">Users</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="quick-stat-item">
+                                    <i class="fas fa-calendar text-success mb-2"></i>
+                                    <h6 class="mb-0">{{ stats.lab_session_count or 89 }}</h6>
+                                    <small class="text-muted">Sessions</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="quick-stat-item">
+                                    <i class="fas fa-chart-line text-info mb-2"></i>
+                                    <h6 class="mb-0">{{ stats.activity_count or 1248 }}</h6>
+                                    <small class="text-muted">Activities</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr class="my-3">
+                        
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="quick-stat-item">
+                                    <i class="fas fa-exclamation-triangle text-warning mb-2"></i>
+                                    <h6 class="mb-0">{{ stats.warning_alerts or 3 }}</h6>
+                                    <small class="text-muted">Warnings</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="quick-stat-item">
+                                    <i class="fas fa-check-circle text-success mb-2"></i>
+                                    <h6 class="mb-0">98%</h6>
+                                    <small class="text-muted">Success Rate</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Database Health Section -->
+                <div class="db-status-card">
+                    <div class="card-header">
+                        <h5>
+                            <i class="fas fa-database text-info"></i> 
+                            Tình Trạng Cơ Sở Dữ Liệu
+                        </h5>
+                        <small class="text-muted">Hiệu suất và sử dụng database</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="db-stat-item">
+                                    <div class="db-icon">
+                                        <i class="fas fa-save text-primary"></i>
+                                    </div>
+                                    <div class="db-info">
+                                        <h6 class="mb-1">Dung lượng</h6>
+                                        <div class="progress mb-1" style="height: 8px;">
+                                            <div class="progress-bar bg-primary" style="width: {{ stats.db_usage_percent or 65 }}%"></div>
+                                        </div>
+                                        <small class="text-muted">{{ stats.db_size or '5.2 MB' }} / 100 MB</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="db-stat-item">
+                                    <div class="db-icon">
+                                        <i class="fas fa-table text-success"></i>
+                                    </div>
+                                    <div class="db-info">
+                                        <h6 class="mb-1">Bảng hoạt động</h6>
+                                        <h5 class="text-success mb-0">{{ 
+                                            (stats.user_count > 0) + 
+                                            (stats.lab_session_count > 0) + 
+                                            (stats.activity_count > 0) + 2 
+                                        }}</h5>
+                                        <small class="text-muted">/ 8 bảng chính</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr class="my-3">
+                        
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="db-metric">
+                                    <i class="fas fa-bolt text-warning mb-1"></i>
+                                    <h6 class="mb-0">{{ 
+                                        ((stats.user_count or 0) + (stats.lab_session_count or 0) + (stats.activity_count or 0)) / 1000 * 100 | round(1) if 
+                                        ((stats.user_count or 0) + (stats.lab_session_count or 0) + (stats.activity_count or 0)) > 0 else 45.2 
+                                    }}ms</h6>
+                                    <small class="text-muted">Truy vấn TB</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="db-metric">
+                                    <i class="fas fa-check-circle text-success mb-1"></i>
+                                    <h6 class="mb-0">99.8%</h6>
+                                    <small class="text-muted">Uptime DB</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="db-metric">
+                                    <i class="fas fa-sync text-info mb-1"></i>
+                                    <h6 class="mb-0">{{ 
+                                        (stats.user_count or 0) + (stats.lab_session_count or 0) 
+                                    }}</h6>
+                                    <small class="text-muted">Kết nối</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Clear Logs Modal -->
+<div class="modal fade" id="clearLogsModal" tabindex="-1" role="dialog" aria-labelledby="clearLogsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="clearLogsModalLabel">
+                    <i class="fas fa-exclamation-triangle"></i> Xác nhận xóa nhật ký
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-critical mb-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>CẢNH BÁO NGHIÊM TRỌNG:</strong> Hành động này sẽ xóa vĩnh viễn tất cả nhật ký hoạt động khỏi hệ thống.
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <h6><i class="fas fa-info-circle text-info"></i> Thông tin về thao tác:</h6>
+                        <ul class="list-unstyled ml-3">
+                            <li><i class="fas fa-check text-success"></i> Tất cả lịch sử hoạt động sẽ bị xóa</li>
+                            <li><i class="fas fa-check text-success"></i> Không thể khôi phục sau khi xóa</li>
+                            <li><i class="fas fa-check text-success"></i> Hành động sẽ được ghi nhận mới</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmText">
+                        <strong>Để xác nhận, vui lòng nhập "XOA NHAT KY" vào ô bên dưới:</strong>
+                    </label>
+                    <input type="text" class="form-control" id="confirmText" placeholder="Nhập XOA NHAT KY để xác nhận">
+                    <small class="form-text text-muted">Thao tác này yêu cầu xác nhận bằng văn bản</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Hủy bỏ
+                </button>
+                <form action="{{ url_for('admin.clear_logs') }}" method="POST" id="clearLogsForm">
+                    <input type="hidden" name="confirm" value="yes">
+                    <button type="submit" class="btn btn-danger" id="confirmDeleteBtn" disabled>
+                        <i class="fas fa-trash-alt"></i> Xóa tất cả nhật ký
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Operations Confirmation Modal -->
+<div class="modal fade" id="systemOperationModal" tabindex="-1" role="dialog" aria-labelledby="systemOperationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="systemOperationModalLabel">
+                    <i class="fas fa-exclamation-triangle"></i> Xác nhận thao tác hệ thống
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-critical mb-4">
+                    <i class="fas fa-radiation-alt"></i>
+                    <strong>NGUY HIỂM:</strong> Bạn đang thực hiện thao tác có thể ảnh hưởng nghiêm trọng đến hệ thống!
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-shield-alt text-danger"></i> Biện pháp an toàn:</h6>
+                        <ul class="list-unstyled ml-3">
+                            <li><i class="fas fa-check text-success"></i> Đã sao lưu dữ liệu</li>
+                            <li><i class="fas fa-check text-success"></i> Thông báo cho team</li>
+                            <li><i class="fas fa-check text-success"></i> Kiểm tra maintenance window</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-clock text-warning"></i> Thời gian dự kiến:</h6>
+                        <p class="ml-3">
+                            <i class="fas fa-hourglass-half"></i> Downtime: <strong>5-15 phút</strong><br>
+                            <i class="fas fa-sync"></i> Recovery: <strong>1-3 phút</strong>
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="form-group mt-3">
+                    <label for="operationConfirmText">
+                        <strong>Nhập "XAC NHAN THAO TAC" để tiếp tục:</strong>
+                    </label>
+                    <input type="text" class="form-control" id="operationConfirmText" placeholder="Nhập XAC NHAN THAO TAC">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Hủy bỏ
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmOperationBtn" disabled>
+                    <i class="fas fa-bolt"></i> Thực hiện thao tác
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Enhanced modal interactions
+document.addEventListener('DOMContentLoaded', function() {
+    // Clear logs modal validation
+    const confirmText = document.getElementById('confirmText');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    
+    if (confirmText && confirmDeleteBtn) {
+        confirmText.addEventListener('input', function() {
+            const isValid = this.value.trim().toUpperCase() === 'XOA NHAT KY';
+            confirmDeleteBtn.disabled = !isValid;
+            confirmDeleteBtn.classList.toggle('btn-danger', isValid);
+            confirmDeleteBtn.classList.toggle('btn-secondary', !isValid);
+        });
+    }
+    
+    // System operation modal validation
+    const operationConfirmText = document.getElementById('operationConfirmText');
+    const confirmOperationBtn = document.getElementById('confirmOperationBtn');
+    
+    if (operationConfirmText && confirmOperationBtn) {
+        operationConfirmText.addEventListener('input', function() {
+            const isValid = this.value.trim().toUpperCase() === 'XAC NHAN THAO TAC';
+            confirmOperationBtn.disabled = !isValid;
+            confirmOperationBtn.classList.toggle('btn-danger', isValid);
+            confirmOperationBtn.classList.toggle('btn-secondary', !isValid);
+        });
+    }
+    
+    // Enhanced button interactions for dangerous operations
+    const dangerousButtons = document.querySelectorAll('a[href*="reset_"], a[href*="clear_"]');
+    dangerousButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const operation = this.textContent.trim();
+            const url = this.href;
+            
+            // Show system operation modal
+            document.getElementById('systemOperationModalLabel').innerHTML = 
+                `<i class="fas fa-exclamation-triangle"></i> Xác nhận: ${operation}`;
+            
+            document.getElementById('confirmOperationBtn').onclick = function() {
+                window.location.href = url;
+            };
+            
+            $('#systemOperationModal').modal('show');
+        });
+    });
+    
+    // Update time display
+    function updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('vi-VN', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        document.getElementById('last-update').textContent = timeString;
+    }
+    
+    // Update time immediately and then every second
+    updateTime();
+    setInterval(updateTime, 1000);
+    
+    // Initialize real-time dashboard for admin manager
+    if (typeof SystemDashboard !== 'undefined') {
+        window.systemDashboard = new SystemDashboard();
+        systemDashboard.init();
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (window.systemDashboard) {
+                window.systemDashboard.cleanup();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

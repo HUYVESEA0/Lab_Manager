@@ -1,0 +1,160 @@
+{% extends "index.html" %}
+
+{% block title %}Kết quả tìm kiếm{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Kết quả tìm kiếm cho "{{ query }}"</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <form class="form-inline" action="{{ url_for('search.search') }}" method="GET">
+                            <div class="input-group w-100">
+                                <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Tìm kiếm..." aria-label="Search">
+                                <div class="input-group-append">
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="fas fa-search"></i> Tìm kiếm
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    {% if users or not results_found %}
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5>Người dùng</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if users %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Tên đăng nhập</th>
+                                                <th>Email</th>
+                                                <th>Vai trò</th>
+                                                <th>Hành động</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for user in users %}
+                                            <tr>
+                                                <td>{{ user.username }}</td>
+                                                <td>{{ user.email }}</td>
+                                                <td>
+                                                    <span class="badge
+                                                        {% if user.role == 'admin_manager' %}badge-dark
+                                                        {% elif user.role == 'admin' %}badge-danger
+                                                        {% else %}badge-info{% endif %}">
+                                                        {{ user.role }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {% if current_user.is_admin() %}
+                                                    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="btn btn-sm btn-warning">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </a>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p>Không tìm thấy người dùng nào khớp với "{{ query }}"</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if activities %}
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5>Nhật ký hoạt động</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Thời gian</th>
+                                            <th>Người dùng</th>
+                                            <th>Hành động</th>
+                                            <th>Chi tiết</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for activity in activities %}
+                                        <tr>
+                                            <td>{{ activity.thoi_gian.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                            <td>
+                                                {% if activity.nguoi_dung %}
+                                                    {{ activity.nguoi_dung.ten_nguoi_dung }}
+                                                {% else %}
+                                                    Vô danh
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ activity.hanh_dong }}</td>
+                                            <td>{{ activity.chi_tiet }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if settings %}
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5>Cài đặt hệ thống</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                             <th>Khóa</th>
+                                            <th>Giá trị</th>
+                                            <th>Mô tả</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for setting in settings %}
+                                        <tr>
+                                            <td><code>{{ setting.key }}</code></td>
+                                            <td>{{ setting.value }}</td>
+                                            <td>{{ setting.description }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if not results_found %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Không tìm thấy kết quả cho "{{ query }}". Vui lòng thử tìm kiếm với từ khóa khác.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+
+
+

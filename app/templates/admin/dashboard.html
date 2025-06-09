@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Bảng điều khiển quản trị{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_tables.css') }}">
+{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated and current_user.is_admin() %}
+<body class="admin-page">
+<div class="container admin-container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Bảng điều khiển quản trị</h4>
+                </div>
+                <div class="card-body">
+                    <h2>Tổng quan hệ thống</h2>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card mb-4">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Người dùng</h5>
+                                    <p class="display-4">{{ stats.user_count }}</p>
+                                    <a href="{{ url_for('admin.admin_users') }}" class="btn btn-primary">Quản lý người dùng</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card mb-4">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Ca thực hành</h5>
+                                    <p class="display-4">{{ stats.lab_session_count }}</p>
+                                    <a href="{{ url_for('lab.admin_lab_sessions') }}" class="btn btn-primary">Quản lý ca thực hành</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card mb-4">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Cài đặt hệ thống</h5>
+                                    <a href="{{ url_for('admin.system_settings') }}" class="btn btn-primary">Quản lý cài đặt</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Người dùng gần đây</h2>
+                    <div class="table-responsive">
+                        <table class="table admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Tên người dùng</th>
+                                    <th>Email</th>
+                                    <th>Vai trò</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users[:5] %}
+                                <tr>
+                                    <td>{{ user.ten_nguoi_dung }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                        <span class="badge
+                                            {% if user.vai_tro == 'quan_tri_he_thong' %}badge-danger
+                                            {% elif user.vai_tro == 'quan_tri_vien' %}badge-warning
+                                            {% else %}badge-info{% endif %}">
+                                            {{ user.vai_tro }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('admin.admin_users') }}" class="btn btn-primary">Xem tất cả người dùng</a>
+
+                    <h2 class="mt-5">Nhật ký hoạt động gần đây</h2>
+                    <div class="table-responsive">
+                        <table class="table admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in recent_logs %}
+                                <tr>
+                                    <td>{{ log.thoi_gian.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>{{ log.user.ten_nguoi_dung if log.user else 'Ẩn danh' }}</td>
+                                    <td>{{ log.hanh_dong }}</td>
+                                    <td>{{ log.chi_tiet }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('admin.activity_logs') }}" class="btn btn-primary">Xem tất cả nhật ký</a>
+
+                    <h2 class="mt-5">Lab Session Overview</h2>
+                    <div class="table-responsive">
+                        <table class="table admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Session</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Registrations</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in recent_lab_sessions %}
+                                <tr>
+                                    <td>{{ session.title }}</td>
+                                    <td>{{ session.date }}</td>
+                                    <td>{{ 'Active' if session.is_active else 'Inactive' }}</td>
+                                    <td>{{ session.registrations|length }}/{{ session.max_students }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('lab.admin_lab_sessions') }}" class="btn btn-primary">View All Lab Sessions</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+{% else %}
+<div class="alert alert-danger mt-5">Bạn không có quyền truy cập trang này.</div>
+{% endif %}
+{% endblock %}
+
+
+
+
+
+

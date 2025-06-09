@@ -1,0 +1,669 @@
+{% extends "base.html" %}
+
+{% block title %}Hồ sơ cá nhân{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile_enhanced.css') }}">
+<style>
+    /* Modern Profile Styles */
+    .profile-container {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 0;
+    }
+    
+    .profile-header-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px 15px 0 0;
+        padding: 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-header-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        opacity: 0.1;
+    }
+    
+    .avatar-section {
+        text-align: center;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .avatar-container {
+        position: relative;
+        display: inline-block;
+        margin-bottom: 1rem;
+    }
+    
+    .avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+    
+    .avatar:hover {
+        transform: scale(1.05);
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .avatar-upload {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 35px;
+        height: 35px;
+        background: #28a745;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        cursor: pointer;
+        border: 3px solid white;
+        transition: all 0.3s ease;
+    }
+    
+    .avatar-upload:hover {
+        background: #218838;
+        transform: scale(1.1);
+    }
+    
+    .user-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .user-subtitle {
+        font-size: 1rem;
+        opacity: 0.9;
+        margin-bottom: 1.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .profile-stats {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 1.5rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .stat-item {
+        text-align: center;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        display: block;
+    }
+    
+    .stat-label {
+        font-size: 0.85rem;
+        opacity: 0.8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .profile-content {
+        background: white;
+        border-radius: 0 0 15px 15px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .profile-tabs {
+        display: flex;
+        border-bottom: 1px solid #e9ecef;
+        background: #f8f9fa;
+    }
+    
+    .profile-tab {
+        flex: 1;
+        padding: 1rem;
+        text-align: center;
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        color: #6c757d;
+    }
+    
+    .profile-tab.active {
+        background: white;
+        color: #495057;
+        border-bottom: 3px solid #667eea;
+    }
+    
+    .profile-tab:hover:not(.active) {
+        background: #e9ecef;
+        color: #495057;
+    }
+    
+    .tab-content {
+        padding: 2rem;
+    }
+    
+    .tab-pane {
+        display: none;
+    }
+    
+    .tab-pane.active {
+        display: block;
+    }
+    
+    .info-card {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #667eea;
+    }
+    
+    .info-card h5 {
+        color: #495057;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    
+    .form-control {
+        border-radius: 8px;
+        border: 2px solid #e9ecef;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        outline: none;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .activity-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #e9ecef;
+        transition: all 0.3s ease;
+    }
+    
+    .activity-item:hover {
+        background: #f8f9fa;
+    }
+    
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .activity-icon.success {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+    }
+    
+    .activity-icon.info {
+        background: rgba(23, 162, 184, 0.1);
+        color: #17a2b8;
+    }
+    
+    .activity-content {
+        flex: 1;
+    }
+    
+    .activity-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        color: #495057;
+    }
+    
+    .activity-time {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-card-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.5rem;
+        color: white;
+    }
+    
+    .stat-card-icon.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .stat-card-icon.success {
+        background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+    }
+    
+    .stat-card-icon.warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .stat-card-icon.info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .stat-card-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-card-label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .profile-stats {
+            gap: 1rem;
+        }
+        
+        .stat-item {
+            flex: 1;
+        }
+        
+        .profile-tabs {
+            flex-direction: column;
+        }
+        
+        .tab-content {
+            padding: 1rem;
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .user-title {
+            font-size: 1.5rem;
+        }
+        
+        .avatar {
+            width: 100px;
+            height: 100px;
+            font-size: 2.5rem;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .profile-header-card {
+            padding: 1.5rem;
+        }
+        
+        .profile-stats {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .stat-item {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 1rem;
+        }
+        
+        .stat-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container profile-container">
+    <!-- Profile Header -->
+    <div class="profile-header-card">
+        <div class="avatar-section">
+            <div class="avatar-container">
+                <div class="avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="avatar-upload" title="Thay đổi ảnh đại diện">
+                    <i class="fas fa-camera"></i>
+                </div>
+            </div>
+            <h1 class="user-title">{{ current_user.ten_nguoi_dung }}</h1>
+            <p class="user-subtitle">
+                <i class="fas fa-envelope mr-2"></i>{{ current_user.email }}
+                {% if current_user.vai_tro == 'quan_tri_he_thong' %}
+                    <span class="badge badge-light ml-2"><i class="fas fa-crown mr-1"></i>Quản trị hệ thống</span>
+                {% elif current_user.vai_tro == 'quan_tri_vien' %}
+                    <span class="badge badge-light ml-2"><i class="fas fa-user-shield mr-1"></i>Quản trị viên</span>
+                {% else %}
+                    <span class="badge badge-light ml-2"><i class="fas fa-user mr-1"></i>Người dùng</span>
+                {% endif %}
+            </p>
+            
+            <div class="profile-stats">
+                <div class="stat-item">
+                    <span class="stat-number">{{ user_stats.total_sessions if user_stats else 0 }}</span>
+                    <span class="stat-label">Phiên thực hành</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ user_stats.completed_sessions if user_stats else 0 }}</span>
+                    <span class="stat-label">Đã hoàn thành</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ user_stats.days_since_joined if user_stats else 0 }}</span>
+                    <span class="stat-label">Ngày tham gia</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Content -->
+    <div class="profile-content">
+        <!-- Tabs Navigation -->
+        <div class="profile-tabs">
+            <button class="profile-tab active" data-tab="info">
+                <i class="fas fa-user-edit mr-2"></i>Thông tin cá nhân
+            </button>
+            <button class="profile-tab" data-tab="stats">
+                <i class="fas fa-chart-bar mr-2"></i>Thống kê
+            </button>
+            <button class="profile-tab" data-tab="activity">
+                <i class="fas fa-history mr-2"></i>Hoạt động gần đây
+            </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Personal Information Tab -->
+            <div class="tab-pane active" id="info">
+                <div class="info-card">
+                    <h5><i class="fas fa-user-cog mr-2"></i>Cập nhật thông tin hồ sơ</h5>
+                    <p class="text-muted mb-0">Quản lý thông tin cá nhân và cài đặt tài khoản của bạn</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('user.profile') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                {{ form.ten_nguoi_dung.label(class="form-control-label") }}
+                                {% if form.ten_nguoi_dung.errors %}
+                                    {{ form.ten_nguoi_dung(class="form-control is-invalid") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.ten_nguoi_dung.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.ten_nguoi_dung(class="form-control") }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                {{ form.email.label(class="form-control-label") }}
+                                {% if form.email.errors %}
+                                    {{ form.email(class="form-control is-invalid") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.email.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.email(class="form-control") }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if has_bio_field %}
+                    <div class="form-group">
+                        {{ form.bio.label(class="form-control-label") }}
+                        {% if form.bio.errors %}
+                            {{ form.bio(class="form-control is-invalid", rows=4) }}
+                            <div class="invalid-feedback">
+                                {% for error in form.bio.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.bio(class="form-control", rows=4, placeholder="Giới thiệu ngắn gọn về bản thân bạn...") }}
+                        {% endif %}
+                        <small class="form-text text-muted">Giới thiệu ngắn gọn về bản thân bạn (tối đa 500 ký tự)</small>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-card">
+                                <h6><i class="fas fa-info-circle mr-2"></i>Thông tin tài khoản</h6>
+                                <p class="mb-1"><strong>Ngày tạo:</strong> {{ current_user.ngay_tao.strftime('%d/%m/%Y %H:%M') if current_user.ngay_tao else 'Không xác định' }}</p>
+                                <p class="mb-1"><strong>Vai trò:</strong> 
+                                    {% if current_user.vai_tro == 'quan_tri_he_thong' %}
+                                        <span class="text-danger">Quản trị hệ thống</span>
+                                    {% elif current_user.vai_tro == 'quan_tri_vien' %}
+                                        <span class="text-warning">Quản trị viên</span>
+                                    {% else %}
+                                        <span class="text-info">Người dùng</span>
+                                    {% endif %}
+                                </p>
+                                <p class="mb-0"><strong>ID tài khoản:</strong> #{{ current_user.id }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-card">
+                                <h6><i class="fas fa-shield-alt mr-2"></i>Bảo mật</h6>
+                                <p class="mb-2">Đảm bảo tài khoản của bạn được bảo vệ an toàn</p>
+                                <a href="{{ url_for('user.settings') }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-key mr-1"></i>Đổi mật khẩu
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group mt-4 text-center">
+                        {{ form.submit(class="btn btn-primary px-4 mr-3") }}
+                        <a href="{{ url_for('user.dashboard') }}" class="btn btn-secondary px-4">
+                            <i class="fas fa-arrow-left mr-2"></i>Quay lại
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Statistics Tab -->
+            <div class="tab-pane" id="stats">
+                <div class="info-card">
+                    <h5><i class="fas fa-chart-line mr-2"></i>Thống kê hoạt động</h5>
+                    <p class="text-muted mb-0">Tổng quan về các hoạt động và thành tích của bạn</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-icon primary">
+                            <i class="fas fa-flask"></i>
+                        </div>
+                        <div class="stat-card-number">{{ user_stats.total_sessions if user_stats else 0 }}</div>
+                        <div class="stat-card-label">Tổng phiên thực hành</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-icon success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-card-number">{{ user_stats.completed_sessions if user_stats else 0 }}</div>
+                        <div class="stat-card-label">Phiên hoàn thành</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-icon warning">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-card-number">{{ user_stats.total_hours if user_stats else 0 }}h</div>
+                        <div class="stat-card-label">Tổng thời gian</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-icon info">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div class="stat-card-number">{{ user_stats.days_since_joined if user_stats else 0 }}</div>
+                        <div class="stat-card-label">Ngày tham gia</div>
+                    </div>
+                </div>
+
+                {% if user_stats and user_stats.recent_sessions %}
+                <div class="info-card">
+                    <h6><i class="fas fa-history mr-2"></i>Phiên thực hành gần đây</h6>
+                    {% for session in user_stats.recent_sessions %}
+                    <div class="activity-item">
+                        <div class="activity-icon success">
+                            <i class="fas fa-flask"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">{{ session.title }}</div>
+                            <div class="activity-time">{{ session.date.strftime('%d/%m/%Y') if session.date else 'Không xác định' }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Activity Tab -->
+            <div class="tab-pane" id="activity">
+                <div class="info-card">
+                    <h5><i class="fas fa-list-alt mr-2"></i>Hoạt động gần đây</h5>
+                    <p class="text-muted mb-0">Lịch sử các hoạt động và thay đổi trên hệ thống</p>
+                </div>
+
+                {% if recent_activities %}
+                    {% for activity in recent_activities %}
+                    <div class="activity-item">
+                        <div class="activity-icon info">
+                            <i class="fas fa-{{ activity.icon if activity.icon else 'info-circle' }}"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">{{ activity.action }}</div>
+                            <div class="activity-time">{{ activity.timestamp.strftime('%d/%m/%Y %H:%M') if activity.timestamp else 'Không xác định' }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Chưa có hoạt động nào</h5>
+                    <p class="text-muted">Các hoạt động của bạn sẽ được hiển thị ở đây</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching functionality
+    const tabs = document.querySelectorAll('.profile-tab');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-tab');
+            
+            // Remove active class from all tabs and panes
+            tabs.forEach(t => t.classList.remove('active'));
+            tabPanes.forEach(pane => pane.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding pane
+            this.classList.add('active');
+            document.getElementById(targetTab).classList.add('active');
+        });
+    });
+    
+    // Avatar upload functionality (placeholder)
+    const avatarUpload = document.querySelector('.avatar-upload');
+    if (avatarUpload) {
+        avatarUpload.addEventListener('click', function() {
+            // Placeholder for future avatar upload functionality
+            alert('Chức năng tải lên ảnh đại diện sẽ được phát triển trong tương lai');
+        });
+    }
+});
+</script>
+{% endblock %}

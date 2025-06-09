@@ -1,0 +1,58 @@
+{% extends "index.html" %}
+
+{% block title %}Schedule Lab Rooms{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated and current_user.is_admin() %}
+<div class="container">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3>Schedule Lab Rooms</h3>
+        </div>
+        <div class="card-body">
+            {% if schedule %}
+            <h4>Scheduled Lab Sessions</h4>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Session</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Room</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in schedule %}
+                    <tr>
+                        <td>{{ item.session.title }}</td>
+                        <td>{{ item.session.date }}</td>
+                        <td>{{ item.session.start_time.strftime('%H:%M') }} - {{ item.session.end_time.strftime('%H:%M') }}</td>
+                        <td>{{ item.room }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <h4>Unscheduled Lab Sessions</h4>
+            <ul>
+                {% for session in unscheduled_sessions %}
+                <li>{{ session.title }} - {{ session.date }} from {{ session.start_time.strftime('%H:%M') }} to {{ session.end_time.strftime('%H:%M') }}</li>
+                {% endfor %}
+            </ul>
+            <form method="POST">
+                <button type="submit" class="btn btn-success">Schedule Sessions</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-danger mt-5">Bạn không có quyền truy cập trang này.</div>
+{% endif %}
+{% endblock %}
+
+
+
+
+
+

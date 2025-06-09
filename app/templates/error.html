@@ -1,0 +1,40 @@
+{% extends "index.html" %}
+
+{% block title %}Error{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h3><i class="fas fa-exclamation-triangle"></i> An Error Occurred</h3>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Sorry, something went wrong while processing your request.</p>
+
+                    {% if error %}
+                    <div class="alert alert-secondary">
+                        <strong>Error details:</strong> {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-4">                        <a href="{% if current_user.is_authenticated %}{% if current_user.is_admin_manager() %}{{ url_for('admin.admin_dashboard') }}{% elif current_user.is_admin() %}{{ url_for('admin.admin_dashboard') }}{% else %}{{ url_for('user.dashboard') }}{% endif %}{% else %}{{ url_for('auth.login') }}{% endif %}" class="btn btn-primary">
+                            <i class="fas fa-tachometer-alt"></i> Return to Dashboard
+                        </a>
+                        <button class="btn btn-secondary" onclick="window.history.back();">
+                            <i class="fas fa-arrow-left"></i> Go Back
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+
+
+

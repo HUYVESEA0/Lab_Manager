@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Cài đặt tài khoản{% endblock %}
+
+{% block styles %}
+<style>
+    .settings-container {
+        max-width: 800px;
+        margin: 30px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .settings-header {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .settings-section {
+        border: 1px solid #eee;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+    
+    .settings-section h4 {
+        margin-bottom: 20px;
+        color: #495057;
+    }
+    
+    .custom-control-label {
+        user-select: none;
+    }
+    
+    .form-control:focus {
+        border-color: #5c7cfa;
+        box-shadow: 0 0 0 0.2rem rgba(92, 124, 250, 0.25);
+    }
+    
+    .btn-primary {
+        background-color: #5c7cfa;
+        border-color: #5c7cfa;
+    }
+    
+    .btn-primary:hover {
+        background-color: #4263eb;
+        border-color: #4263eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container settings-container">
+    <div class="settings-header">
+        <h2><i class="fas fa-cog mr-2"></i>Cài đặt tài khoản</h2>
+        <p class="text-muted">Quản lý cài đặt và bảo mật tài khoản của bạn</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('user.settings') }}">
+        {{ form.hidden_tag() }}
+        
+        <div class="settings-section">
+            <h4><i class="fas fa-lock mr-2"></i>Bảo mật</h4>
+            
+            <div class="form-group">
+                {{ form.current_password.label(class="form-control-label") }}
+                {% if form.current_password.errors %}
+                    {{ form.current_password(class="form-control is-invalid") }}
+                    <div class="invalid-feedback">
+                        {% for error in form.current_password.errors %}
+                            <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    {{ form.current_password(class="form-control") }}
+                {% endif %}
+                <small class="form-text text-muted">Nhập mật khẩu hiện tại để xác nhận thay đổi</small>
+            </div>
+
+            <div class="form-group">
+                {{ form.new_password.label(class="form-control-label") }}
+                {% if form.new_password.errors %}
+                    {{ form.new_password(class="form-control is-invalid") }}
+                    <div class="invalid-feedback">
+                        {% for error in form.new_password.errors %}
+                            <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    {{ form.new_password(class="form-control") }}
+                {% endif %}
+                <small class="form-text text-muted">Mật khẩu mới phải có ít nhất 6 ký tự</small>
+            </div>
+
+            <div class="form-group">
+                {{ form.confirm_password.label(class="form-control-label") }}
+                {% if form.confirm_password.errors %}
+                    {{ form.confirm_password(class="form-control is-invalid") }}
+                    <div class="invalid-feedback">
+                        {% for error in form.confirm_password.errors %}
+                            <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    {{ form.confirm_password(class="form-control") }}
+                {% endif %}
+            </div>
+            
+            <div class="custom-control custom-switch mt-4">
+                {{ form.enable_2fa(class="custom-control-input") }}
+                {{ form.enable_2fa.label(class="custom-control-label") }}
+                <div class="mt-1 ml-4">
+                    <small class="text-muted">Bảo vệ tài khoản của bạn bằng xác thực hai lớp</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group mt-4">
+            {{ form.submit(class="btn btn-primary px-4") }}
+            <a href="{{ url_for('user.dashboard') }}" class="btn btn-secondary ml-2">Quay lại</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

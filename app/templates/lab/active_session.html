@@ -1,0 +1,20 @@
+{% extends "index.html" %}
+{% block content %}
+<h1>Active Lab Session</h1>
+<p>Time Elapsed: {{ time_elapsed }}</p>
+<p>Time Remaining: {{ time_remaining }}</p>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.lab_result.label }}<br>
+        {{ form.lab_result(rows=4, cols=32) }}
+    </p>
+    <p>{{ form.submit() }}</p>
+</form>
+{% endblock %}
+
+
+
+
+
+

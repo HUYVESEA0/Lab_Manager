@@ -1,0 +1,65 @@
+{% extends "index.html" %}
+
+{% block title %}Cài đặt hệ thống{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3>Cài đặt hệ thống</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                <div class="form-group">
+                    {{ form.app_name.label }}
+                    {{ form.app_name(class="form-control") }}
+                </div>
+                <div class="form-group">
+                    {{ form.app_description.label }}
+                    {{ form.app_description(class="form-control") }}
+                </div>
+                <div class="form-group">
+                    {{ form.enable_registration.label }}
+                    {{ form.enable_registration() }}
+                </div>
+                <div class="form-group">
+                    {{ form.enable_password_reset.label }}
+                    {{ form.enable_password_reset() }}
+                </div>
+                <div class="form-group">
+                    {{ form.items_per_page.label }}
+                    {{ form.items_per_page(class="form-control") }}
+                </div>
+                <button type="submit" class="btn btn-success">{{ form.submit.label }}</button>
+            </form>
+            <hr>
+            <h4>Các cài đặt hiện tại</h4>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Khóa</th>
+                        <th>Giá trị</th>
+                        <th>Mô tả</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for setting in settings %}
+                    <tr>
+                        <td>{{ setting.khoa }}</td>
+                        <td>{{ setting.gia_tri }}</td>
+                        <td>{{ setting.mo_ta }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+
+
+

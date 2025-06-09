@@ -1,0 +1,47 @@
+{% extends "index.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-3">Xác thực vào ca thực hành</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                <div class="form-group">
+                    <label for="qr_verification_code">Nhập mã xác thực hoặc quét mã QR:</label>
+                    {{ form.verification_code(class="form-control", id="qr_verification_code", placeholder="Nhập mã xác thực hoặc quét QR...") }}
+                </div>
+                <div class="form-group mt-2">
+                    <button type="button" class="btn btn-outline-primary" id="start-qr-btn">
+                        <i class="fas fa-qrcode"></i> Quét mã QR
+                    </button>
+                </div>
+                <div id="qr-reader" style="width:320px; display:none; margin-bottom:1rem;"></div>
+                <div class="form-group mt-3">
+                    <label for="password">Hoặc nhập mật khẩu (nếu được yêu cầu):</label>
+                    <input type="password" name="password" id="password" class="form-control" placeholder="Nhập mật khẩu nếu có">
+                </div>
+                <button type="submit" class="btn btn-success mt-3">Xác thực vào ca</button>
+            </form>
+        </div>
+        <div class="col-md-6 d-flex align-items-center justify-content-center">
+            <div class="text-center">
+                <img src="{{ session.qr_image_url if session.qr_image_url else url_for('static', filename='img/placeholder_qr.png') }}" alt="QR Code" style="max-width:220px; margin-bottom:1rem;">
+                <p class="text-muted">Quét mã QR này để tự động điền mã xác thực.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{{ url_for('static', filename='js/verify_qr.js') }}"></script>
+{% endblock %}
+{% endblock %}
+
+
+
+
+
+

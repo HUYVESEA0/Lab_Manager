@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Nhật ký hoạt động{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_tables.css') }}">
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/admin_tables.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_admin_manager()) %}
+<div class="container">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3>Nhật ký hoạt động</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table admin-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable">Thời gian</th>
+                            <th class="sortable">Người dùng</th>
+                            <th class="sortable">Hành động</th>
+                            <th>Chi tiết</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs.items %}
+                        <tr>
+                            <td>{{ log.thoi_gian.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>
+                                {% if log.nguoi_dung %}
+                                    {{ log.nguoi_dung.ten_nguoi_dung }}
+                                {% else %}
+                                    Ẩn danh
+                                {% endif %}
+                            </td>
+                            <td>{{ log.hanh_dong }}</td>
+                            <td>{{ log.chi_tiet }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3">            {% if logs.has_prev %}
+                <a href="{{ url_for('admin.activity_logs', page=logs.prev_num) }}" class="btn btn-secondary">Trước</a>
+            {% endif %}
+            {% if logs.has_next %}
+                <a href="{{ url_for('admin.activity_logs', page=logs.next_num) }}" class="btn btn-secondary">Tiếp</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-danger mt-5">Bạn không có quyền truy cập trang này.</div>
+{% endif %}
+{% endblock %}
+
+
+
+
+
+
