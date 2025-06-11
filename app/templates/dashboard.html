@@ -8,6 +8,50 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/system_dashboard.css') }}">
 <!-- Socket.IO for real-time updates -->
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
+<!-- API Integration Styles -->
+<style>
+    .api-status {
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        z-index: 1000;
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .api-status.show {
+        opacity: 1;
+    }
+    .api-status.connected {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .api-status.disconnected {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+    .card {
+        position: relative;
+    }
+</style>
+
 <style>
     /* Modern dashboard styling with better UX */
     :root {
@@ -401,121 +445,223 @@
 
 {% block scripts %}
 {{ super() }}
-<!-- Real-time dashboard updates -->
 <script src="{{ url_for('static', filename='js/system_dashboard.js') }}"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize real-time dashboard for users
-        if (typeof SystemDashboard !== 'undefined') {
-            window.userDashboard = new SystemDashboard();
-            // Customize for user dashboard - pass current user ID
-            {% if current_user.is_authenticated %}
-            userDashboard.setupUserDashboard({{ current_user.id }});
-            {% else %}
-            userDashboard.setupUserDashboard();
-            {% endif %}
-            
-            // Cleanup on page unload
-            window.addEventListener('beforeunload', function() {
-                if (window.userDashboard) {
-                    window.userDashboard.cleanup();
-                }
+// Enhanced Dashboard with API Integration
+class DashboardManager {
+    constructor() {
+        this.apiStatus = 'disconnected';
+        this.updateInterval = null;
+        this.currentUser = null;
+        this.init();
+    }
+
+    async init() {
+        await this.checkAPIConnection();
+        await this.loadCurrentUser();
+        await this.loadDashboardData();
+        this.startPeriodicUpdates();
+        this.setupEventListeners();
+        this.createAPIStatusIndicator();
+    }
+
+    async checkAPIConnection() {
+        try {
+            const response = await labAPI.getSystemHealth();
+            if (response.ok) {
+                this.setAPIStatus('connected');
+            } else {
+                this.setAPIStatus('disconnected');
+            }
+        } catch (error) {
+            this.setAPIStatus('disconnected');
+        }
+    }
+
+    async loadCurrentUser() {
+        try {
+            const response = await labAPI.getCurrentUser();
+            if (response.ok) {
+                const data = await response.json();
+                this.currentUser = data.user;
+                this.updateUserInfo(data.user);
+            }
+        } catch (error) {
+            console.error('Failed to load current user:', error);
+        }
+    }
+
+    async loadDashboardData() {
+        await Promise.all([
+            this.loadSystemMetrics(),
+            this.loadUserStats(),
+            this.loadRecentActivity()
+        ]);
+    }
+
+    async loadSystemMetrics() {
+        try {
+            this.showCardLoading('system-metrics');
+            const response = await labAPI.getSystemMetrics();
+            if (response.ok) {
+                const data = await response.json();
+                this.updateSystemMetrics(data);
+            }
+        } catch (error) {
+            console.error('Failed to load system metrics:', error);
+        } finally {
+            this.hideCardLoading('system-metrics');
+        }
+    }
+
+    async loadUserStats() {
+        try {
+            this.showCardLoading('user-stats');
+            const response = await labAPI.getUserStats();
+            if (response.ok) {
+                const data = await response.json();
+                this.updateUserStats(data);
+            }
+        } catch (error) {
+            console.error('Failed to load user stats:', error);
+        } finally {
+            this.hideCardLoading('user-stats');
+        }
+    }
+
+    async loadRecentActivity() {
+        // Placeholder for recent activity
+        console.log('Recent activity loading would be implemented here');
+    }
+
+    updateUserInfo(user) {
+        const userNameElements = document.querySelectorAll('[data-user-name]');
+        userNameElements.forEach(element => {
+            element.textContent = user.ten_nguoi_dung;
+        });
+
+        const userRoleElements = document.querySelectorAll('[data-user-role]');
+        userRoleElements.forEach(element => {
+            element.textContent = this.formatRole(user.vai_tro);
+        });
+
+        const userEmailElements = document.querySelectorAll('[data-user-email]');
+        userEmailElements.forEach(element => {
+            element.textContent = user.email;
+        });
+    }
+
+    updateSystemMetrics(data) {
+        // Update system metric displays
+        const metricElements = document.querySelectorAll('[data-metric]');
+        metricElements.forEach(element => {
+            const metric = element.getAttribute('data-metric');
+            if (data[metric] !== undefined) {
+                element.textContent = data[metric];
+            }
+        });
+    }
+
+    updateUserStats(data) {
+        // Update user statistic displays
+        const statElements = document.querySelectorAll('[data-stat]');
+        statElements.forEach(element => {
+            const stat = element.getAttribute('data-stat');
+            if (data[stat] !== undefined) {
+                element.textContent = data[stat];
+            }
+        });
+    }
+
+    showCardLoading(cardId) {
+        const card = document.getElementById(cardId);
+        if (card) {
+            const loadingOverlay = document.createElement('div');
+            loadingOverlay.className = 'loading-overlay';
+            loadingOverlay.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>';
+            card.appendChild(loadingOverlay);
+        }
+    }
+
+    hideCardLoading(cardId) {
+        const card = document.getElementById(cardId);
+        if (card) {
+            const loadingOverlay = card.querySelector('.loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.remove();
+            }
+        }
+    }
+
+    setAPIStatus(status) {
+        this.apiStatus = status;
+        const indicator = document.getElementById('api-status-indicator');
+        if (indicator) {
+            indicator.className = `api-status ${status} show`;
+            indicator.textContent = status === 'connected' ? 
+                '🟢 API Connected' : '🔴 API Disconnected';
+        }
+    }
+
+    createAPIStatusIndicator() {
+        const indicator = document.createElement('div');
+        indicator.id = 'api-status-indicator';
+        indicator.className = 'api-status disconnected';
+        indicator.textContent = '🔴 API Checking...';
+        document.body.appendChild(indicator);
+    }
+
+    startPeriodicUpdates() {
+        // Update every 30 seconds
+        this.updateInterval = setInterval(() => {
+            this.checkAPIConnection();
+            this.loadDashboardData();
+        }, 30000);
+    }
+
+    setupEventListeners() {
+        // Refresh button if exists
+        const refreshBtn = document.getElementById('refresh-dashboard');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                this.loadDashboardData();
+                showNotification('Dashboard refreshed', 'success');
             });
         }
-        
-        // Activity chart
-        if(document.getElementById('activityChart')) {
-            const ctx = document.getElementById('activityChart').getContext('2d');
-            const activityChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
-                    datasets: [{
-                        label: 'Hoạt động',
-                        data: [3, 5, 2, 6, 4, 7, 3],
-                        borderColor: '#3a86ff',
-                        backgroundColor: 'rgba(58, 134, 255, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 2,
-                        pointBackgroundColor: '#ffffff',
-                        pointBorderColor: '#3a86ff',
-                        pointBorderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                            padding: 10,
-                            cornerRadius: 4
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                display: true,
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            },
-                            ticks: {
-                                precision: 0
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Lab sessions chart
-        if(document.getElementById('labSessionsChart')) {
-            const ctx = document.getElementById('labSessionsChart').getContext('2d');
-            const labSessionsChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Hoàn thành', 'Đang diễn ra', 'Sắp diễn ra'],
-                    datasets: [{
-                        data: [{{ completed_labs|default(0) }}, {{ active_labs|default(1) }}, {{ upcoming_sessions|default(2) }}],
-                        backgroundColor: [
-                            '#38b000',
-                            '#3a86ff',
-                            '#ffbe0b'
-                        ],
-                        borderColor: '#ffffff',
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+            }
+        });
+    }
+
+    formatRole(role) {
+        const roles = {
+            'sinh_vien': 'Sinh viên',
+            'giang_vien': 'Giảng viên',
+            'quan_tri': 'Quản trị',
+            'quan_tri_he_thong': 'Quản trị hệ thống'
+        };
+        return roles[role] || role;
+    }
+}
+
+// Initialize dashboard when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    window.dashboardManager = new DashboardManager();
+    
+    // Initialize existing dashboard features
+    if (typeof SystemDashboard !== 'undefined') {
+        const systemDashboard = new SystemDashboard({
+            type: 'user',
+            realTime: true,
+            updateInterval: 10000
+        });
+        systemDashboard.init();
+    }
+});
 </script>
 {% endblock %}
 

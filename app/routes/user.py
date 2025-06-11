@@ -23,16 +23,26 @@ def index():
     else:
         return redirect(url_for("auth.login"))
 
+# CSRF token endpoint
+@user_bp.route('/csrf-token')
+@login_required
+def get_csrf_token():
+    """Get CSRF token for user forms"""
+    from flask_wtf.csrf import generate_csrf
+    return jsonify({'csrf_token': generate_csrf()})
+
 # Dashboard route
 @user_bp.route('/dashboard')
 @login_required
 def dashboard():
+    """User dashboard - Now uses API for data fetching"""
     session_data = {
         "visits": session.get("visits", 0),
         "last_visit": session.get("last_visit", "N/A"),
         "login_time": session.get("login_time", "N/A"),
     }
     
+    # Template will fetch data via API
     return render_template("dashboard.html", session_data=session_data)
 
 # Session manager
@@ -82,9 +92,52 @@ def clear_session():
 @user_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
+    """User profile - Enhanced with API support"""
     from datetime import datetime, timedelta
     from sqlalchemy import func
     
+    # Handle API request
+    if request.is_json:
+        try:
+            data = request.get_json()
+            
+            # Validate email uniqueness if changed
+            if 'email' in data and data['email'] != current_user.email:
+                if NguoiDung.query.filter_by(email=data['email']).first():
+                    return jsonify({'success': False, 'message': 'Email đã tồn tại'}), 400
+            
+            # Validate username uniqueness if changed
+            if 'ten_nguoi_dung' in data and data['ten_nguoi_dung'] != current_user.ten_nguoi_dung:
+                if NguoiDung.query.filter_by(ten_nguoi_dung=data['ten_nguoi_dung']).first():
+                    return jsonify({'success': False, 'message': 'Tên người dùng đã tồn tại'}), 400
+            
+            # Update user data
+            if 'ten_nguoi_dung' in data:
+                current_user.ten_nguoi_dung = data['ten_nguoi_dung']
+            if 'email' in data:
+                current_user.email = data['email']
+            if 'bio' in data and hasattr(current_user, 'bio'):
+                current_user.bio = data['bio']
+            
+            db.session.commit()
+            log_activity("Cập nhật hồ sơ", "Người dùng đã cập nhật thông tin hồ sơ cá nhân qua API")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Hồ sơ cá nhân đã được cập nhật thành công!',
+                'user': {
+                    'ten_nguoi_dung': current_user.ten_nguoi_dung,
+                    'email': current_user.email,
+                    'bio': getattr(current_user, 'bio', '') if hasattr(current_user, 'bio') else ''
+                }
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error updating profile via API: {str(e)}")
+            return jsonify({'success': False, 'message': 'Có lỗi xảy ra khi cập nhật hồ sơ'}), 500
+    
+    # Handle traditional form request
     form = ProfileForm(original_ten_nguoi_dung=current_user.ten_nguoi_dung, original_email=current_user.email)
     
     # Check if the model has a bio field
@@ -195,6 +248,57 @@ def profile():
 @user_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
+    """User settings - Enhanced with API support"""
+    
+    # Handle API request
+    if request.is_json:
+        try:
+            data = request.get_json()
+            
+            # Validate current password
+            if 'current_password' not in data:
+                return jsonify({'success': False, 'message': 'Mật khẩu hiện tại là bắt buộc'}), 400
+            
+            if not current_user.kiem_tra_mat_khau(data['current_password']):
+                return jsonify({'success': False, 'message': 'Mật khẩu hiện tại không chính xác'}), 400
+            
+            # Update password if provided
+            if 'new_password' in data and 'confirm_password' in data:
+                if data['new_password'] != data['confirm_password']:
+                    return jsonify({'success': False, 'message': 'Mật khẩu mới và xác nhận mật khẩu không khớp'}), 400
+                current_user.dat_mat_khau(data['new_password'])
+            
+            # Update 2FA setting if provided
+            if 'enable_2fa' in data:
+                two_fa_setting = CaiDatHeThong.query.filter_by(
+                    khoa=f"user_{current_user.id}_2fa_enabled"
+                ).first()
+                
+                if two_fa_setting:
+                    two_fa_setting.gia_tri = str(data['enable_2fa']).lower()
+                else:
+                    two_fa_setting = CaiDatHeThong(
+                        khoa=f"user_{current_user.id}_2fa_enabled",
+                        gia_tri=str(data['enable_2fa']).lower(),
+                        kieu="boolean",
+                        mo_ta=f"Cài đặt 2FA cho người dùng {current_user.ten_nguoi_dung}"
+                    )
+                    db.session.add(two_fa_setting)
+            
+            db.session.commit()
+            log_activity("Cập nhật cài đặt", "Người dùng đã cập nhật cài đặt tài khoản qua API")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Cài đặt tài khoản đã được cập nhật thành công!'
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error updating settings via API: {str(e)}")
+            return jsonify({'success': False, 'message': 'Có lỗi xảy ra khi cập nhật cài đặt'}), 500
+    
+    # Handle traditional form request
     form = AccountSettingsForm()
     
     if form.validate_on_submit():
@@ -255,27 +359,180 @@ def settings():
 def get_user_dashboard_data_api():
     """API endpoint to get current user's dashboard data"""
     try:
-        from ..real_time_monitor import get_system_monitor
-        from flask import jsonify
+        # Import models here to avoid circular imports
+        from ..models import DangKyCa, VaoCa, CaThucHanh, NhatKyHoatDong
         
-        monitor = get_system_monitor()
-        if monitor:
-            user_data = monitor.get_user_dashboard_data(current_user.id)
-            return jsonify(user_data)
-        else:
-            # Fallback user data
-            return jsonify({
-                'user_info': {
-                    'name': current_user.ten_nguoi_dung,
-                    'last_seen': current_user.last_seen.isoformat() if hasattr(current_user, 'last_seen') and current_user.last_seen else None,
-                    'is_active': current_user.dang_hoat_dong
-                },
-                'sessions': {
-                    'upcoming': 0,
-                    'completed': 0,
-                    'sessions_list': []
-                }
-            })
+        # Get user's lab session statistics
+        total_sessions = DangKyCa.query.filter_by(nguoi_dung_ma=current_user.id).count()
+        completed_sessions = VaoCa.query.filter_by(nguoi_dung_ma=current_user.id)\
+                                       .filter(VaoCa.thoi_gian_ra.isnot(None)).count()
+        
+        # Get upcoming sessions
+        upcoming_sessions = db.session.query(CaThucHanh)\
+                                     .join(DangKyCa)\
+                                     .filter(DangKyCa.nguoi_dung_ma == current_user.id)\
+                                     .filter(CaThucHanh.ngay >= datetime.utcnow().date())\
+                                     .order_by(CaThucHanh.ngay.asc())\
+                                     .limit(5).all()
+        
+        # Get recent activities
+        recent_activities = NhatKyHoatDong.query.filter_by(nguoi_dung_ma=current_user.id)\
+                                               .order_by(NhatKyHoatDong.thoi_gian.desc())\
+                                               .limit(5).all()
+        
+        # Calculate total lab hours
+        total_hours = 0
+        lab_entries = VaoCa.query.filter_by(nguoi_dung_ma=current_user.id)\
+                                .filter(VaoCa.thoi_gian_ra.isnot(None)).all()
+        for entry in lab_entries:
+            if entry.thoi_gian_vao and entry.thoi_gian_ra:
+                duration = entry.thoi_gian_ra - entry.thoi_gian_vao
+                total_hours += duration.total_seconds() / 3600
+        
+        return jsonify({
+            'user_info': {
+                'name': current_user.ten_nguoi_dung,
+                'email': current_user.email,
+                'role': current_user.vai_tro,
+                'is_active': getattr(current_user, 'dang_hoat_dong', True),
+                'member_since': current_user.ngay_tao.isoformat() if hasattr(current_user, 'ngay_tao') and current_user.ngay_tao else None
+            },
+            'stats': {
+                'total_sessions': total_sessions,
+                'completed_sessions': completed_sessions,
+                'total_hours': round(total_hours, 1),
+                'upcoming_sessions': len(upcoming_sessions)
+            },
+            'upcoming_sessions': [{
+                'id': session.id,
+                'title': session.tieu_de,
+                'date': session.ngay.isoformat() if session.ngay else None,
+                'time': f"{session.gio_bat_dau} - {session.gio_ket_thuc}" if session.gio_bat_dau and session.gio_ket_thuc else None,
+                'room': session.phong_thuc_hanh
+            } for session in upcoming_sessions],
+            'recent_activities': [{
+                'action': activity.hanh_dong,
+                'description': activity.chi_tiet,
+                'timestamp': activity.thoi_gian.isoformat(),
+                'icon': {
+                    'Đăng nhập': 'sign-in-alt',
+                    'Đăng xuất': 'sign-out-alt', 
+                    'Cập nhật hồ sơ': 'user-edit',
+                    'Lab check-in': 'flask',
+                    'Lab check-out': 'check-circle',
+                    'Lab registration': 'calendar-plus'
+                }.get(activity.hanh_dong, 'info-circle')
+            } for activity in recent_activities]
+        })
+        
     except Exception as e:
         current_app.logger.error(f"Error getting user dashboard data: {str(e)}")
         return jsonify({'error': 'Failed to get user dashboard data'}), 500
+
+@user_bp.route('/api/profile')
+@login_required
+def get_profile_api():
+    """API endpoint to get current user's profile data"""
+    try:
+        # Import models here to avoid circular imports
+        from ..models import DangKyCa, VaoCa, CaThucHanh, NhatKyHoatDong
+        
+        # Calculate user statistics
+        total_sessions = DangKyCa.query.filter_by(nguoi_dung_ma=current_user.id).count()
+        completed_sessions = VaoCa.query.filter_by(nguoi_dung_ma=current_user.id)\
+                                       .filter(VaoCa.thoi_gian_ra.isnot(None)).count()
+        
+        # Calculate total hours spent in lab
+        total_hours = 0
+        lab_entries = VaoCa.query.filter_by(nguoi_dung_ma=current_user.id)\
+                                .filter(VaoCa.thoi_gian_ra.isnot(None)).all()
+        for entry in lab_entries:
+            if entry.thoi_gian_vao and entry.thoi_gian_ra:
+                duration = entry.thoi_gian_ra - entry.thoi_gian_vao
+                total_hours += duration.total_seconds() / 3600
+        
+        # Days since joined
+        days_since_joined = 0
+        if hasattr(current_user, 'ngay_tao') and current_user.ngay_tao:
+            days_since_joined = (datetime.utcnow() - current_user.ngay_tao).days
+        
+        # Recent sessions
+        recent_sessions = db.session.query(CaThucHanh)\
+                                   .join(DangKyCa)\
+                                   .filter(DangKyCa.nguoi_dung_ma == current_user.id)\
+                                   .order_by(CaThucHanh.ngay.desc())\
+                                   .limit(5).all()
+        
+        # Recent activities
+        recent_activities = NhatKyHoatDong.query.filter_by(nguoi_dung_ma=current_user.id)\
+                                               .order_by(NhatKyHoatDong.thoi_gian.desc())\
+                                               .limit(10).all()
+        
+        return jsonify({
+            'user': {
+                'id': current_user.id,
+                'ten_nguoi_dung': current_user.ten_nguoi_dung,
+                'email': current_user.email,
+                'vai_tro': current_user.vai_tro,
+                'bio': getattr(current_user, 'bio', '') if hasattr(current_user, 'bio') else '',
+                'ngay_tao': current_user.ngay_tao.isoformat() if hasattr(current_user, 'ngay_tao') and current_user.ngay_tao else None,
+                'is_active': getattr(current_user, 'is_active', True)
+            },
+            'stats': {
+                'total_sessions': total_sessions,
+                'completed_sessions': completed_sessions,
+                'total_hours': round(total_hours, 1),
+                'days_since_joined': days_since_joined
+            },
+            'recent_sessions': [{
+                'id': session.id,
+                'title': session.tieu_de,
+                'date': session.ngay.isoformat() if session.ngay else None,
+                'time': f"{session.gio_bat_dau} - {session.gio_ket_thuc}" if session.gio_bat_dau and session.gio_ket_thuc else None,
+                'room': session.phong_thuc_hanh,
+                'status': 'completed'  # Could be enhanced with actual status logic
+            } for session in recent_sessions],
+            'recent_activities': [{
+                'action': activity.hanh_dong,
+                'description': activity.chi_tiet,
+                'timestamp': activity.thoi_gian.isoformat(),
+                'icon': {
+                    'Đăng nhập': 'sign-in-alt',
+                    'Đăng xuất': 'sign-out-alt',
+                    'Cập nhật hồ sơ': 'user-edit',
+                    'Lab check-in': 'flask',
+                    'Lab check-out': 'check-circle',
+                    'Lab registration': 'calendar-plus'
+                }.get(activity.hanh_dong, 'info-circle')
+            } for activity in recent_activities]
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error getting user profile data: {str(e)}")
+        return jsonify({'error': 'Failed to get user profile data'}), 500
+
+@user_bp.route('/api/settings')
+@login_required
+def get_settings_api():
+    """API endpoint to get current user's settings"""
+    try:
+        # Get 2FA setting
+        two_fa_setting = CaiDatHeThong.query.filter_by(
+            khoa=f"user_{current_user.id}_2fa_enabled"
+        ).first()
+        
+        return jsonify({
+            'settings': {
+                'enable_2fa': two_fa_setting.gia_tri.lower() == 'true' if two_fa_setting else False,
+                'email_notifications': True,  # Could be expanded with actual settings
+                'theme': 'light'  # Could be expanded with actual theme settings
+            },
+            'user': {
+                'ten_nguoi_dung': current_user.ten_nguoi_dung,
+                'email': current_user.email
+            }
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error getting user settings: {str(e)}")
+        return jsonify({'error': 'Failed to get user settings'}), 500

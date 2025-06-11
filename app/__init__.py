@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
@@ -9,6 +9,7 @@ from .models import db, khoi_tao_ung_dung as models_khoi_tao_ung_dung
 from .session_handler import SessionHandler
 from .decorators import *
 from .utils import *
+from datetime import datetime
 import os
 
 # Global SocketIO instance
@@ -17,14 +18,27 @@ socketio = None
 def create_app():
     global socketio
     app = Flask(__name__)
+    
     # Load environment variables from .env if present
-    if os.path.exists('.env'):
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+    if os.path.exists(env_path):
         from dotenv import load_dotenv
-        load_dotenv()    # Load config class based on FLASK_DEBUG (replacing deprecated FLASK_ENV)
+        load_dotenv(env_path)
+    elif os.path.exists('.env'):
+        from dotenv import load_dotenv
+        load_dotenv()
+        
+    # Load config class based on FLASK_DEBUG (replacing deprecated FLASK_ENV)
     debug_mode = os.getenv("FLASK_DEBUG", "1").lower() in ['1', 'true', 'yes', 'on']
     env = "development" if debug_mode else "production"
     from config import config
     app.config.from_object(config.get(env, config["default"]))
+      # Debug: Print SECRET_KEY status (only first few characters for security)
+    secret_key = app.config.get('SECRET_KEY')
+    if secret_key:
+        print(f"SECRET_KEY is set: {secret_key[:10]}...")
+    else:
+        print("WARNING: SECRET_KEY is not set!")
     
     # Initialize SocketIO
     socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
@@ -36,8 +50,25 @@ def create_app():
     migrate = Migrate(app, db)
     login_manager = LoginManager()
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'  # type: ignore
+    login_manager.login_view = 'auth.login'
+    
+    # Configure CSRF settings before initializing CSRFProtect
+    app.config['WTF_CSRF_TIME_LIMIT'] = None  # No time limit for CSRF tokens
+    app.config['WTF_CSRF_CHECK_DEFAULT'] = True
+    
+    # Ensure SECRET_KEY is available for CSRF
+    if not app.config.get('SECRET_KEY'):
+        app.config['SECRET_KEY'] = 'lab-manager-development-secret-key-change-in-production-2025'
+    
     csrf = CSRFProtect(app)
+    
+    # Configure CSRF protection - exempt API routes
+    @app.before_request
+    def disable_csrf_for_api():
+        """Disable CSRF protection for API routes"""
+        if request.endpoint and request.endpoint.startswith('api.'):
+            # Skip CSRF protection for API routes
+            return None
     
     # Initialize real-time monitoring
     from .real_time_monitor import init_real_time_monitor
@@ -48,7 +79,8 @@ def create_app():
     def load_user(user_id):
         from .models import NguoiDung
         return NguoiDung.query.get(int(user_id))
-      # SocketIO event handlers
+    
+    # SocketIO event handlers
     @socketio.on('connect')
     def handle_connect():
         print('Client connected')
@@ -90,16 +122,82 @@ def create_app():
     from .routes.lab import lab_bp
     from .routes.user import user_bp
     from .routes.search import search_bp
+    from .api import api_bp  # Import API blueprint
     
     app.register_blueprint(admin_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(lab_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(search_bp)
+    app.register_blueprint(api_bp)  # Register API blueprint
+    
+    # Register CSRF API blueprint
+    from .api.csrf import csrf_bp
+    app.register_blueprint(csrf_bp)
+    
+    @app.route('/api-integration-demo')
+    def api_integration_demo():
+        """API integration demonstration page"""
+        return render_template('api_integration_demo.html')
+    
+    @app.route('/admin/users-api')
+    def admin_users_api():
+        from flask_login import login_required
+        from app.decorators import admin_required
+        return render_template('admin/users_api.html')
+    
+    @app.route('/csrf-demo')
+    def csrf_demo():
+        """CSRF demonstration page"""
+        return render_template('csrf_demo.html')
+    
+    @app.route('/api-test')
+    def api_test():
+        return render_template('api_test.html')
     
     @app.route('/')
     def index():
         return render_template('index.html')
+    
+    @app.route('/csrf-test', methods=['GET', 'POST'])
+    def csrf_test():
+        """CSRF test endpoint"""
+        if request.method == 'POST':
+            test_data = request.form.get('test_data')
+            return jsonify({
+                'success': True,
+                'message': f'CSRF test passed! Received: {test_data}',
+                'timestamp': datetime.now().isoformat()
+            })
+        return render_template('csrf_test.html')
+    
+    @app.route('/simple-login', methods=['GET', 'POST'])
+    def simple_login():
+        """Simple login route for testing CSRF functionality"""
+        from .forms import LoginForm
+        from flask_wtf.csrf import generate_csrf
+        if request.method == 'GET':
+            csrf_token = generate_csrf()
+            return f'''
+            <html>
+            <body>
+                <h1>Simple Login Test</h1>
+                <p>CSRF Protection is working! SECRET_KEY is properly configured.</p>
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{csrf_token}" />
+                    Email: <input type="email" name="email" required /> <br><br>
+                    Password: <input type="password" name="password" required /> <br><br>
+                    <input type="submit" value="Test Login" />
+                </form>
+            </body>
+            </html>
+            '''
+        else:
+            form = LoginForm()
+            if form.validate_on_submit():
+                return jsonify({"success": True, "message": "CSRF validation passed!"})
+            else:
+                return jsonify({"success": False, "errors": form.errors})
     
     return app, socketio
 

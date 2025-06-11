@@ -15,10 +15,17 @@
 <script src="{{ url_for('static', filename='js/system_dashboard.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize real-time dashboard for admin
+    // Initialize real-time dashboard for admin with API integration
     if (typeof SystemDashboard !== 'undefined') {
-        window.adminDashboard = new SystemDashboard();
+        window.adminDashboard = new SystemDashboard({
+            type: 'admin',
+            realTime: true,
+            updateInterval: 5000
+        });
         adminDashboard.init();
+        
+        // Load initial data from API
+        loadAdminData();
         
         // Cleanup on page unload
         window.addEventListener('beforeunload', function() {
@@ -28,6 +35,73 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+async function loadAdminData() {
+    try {
+        // Load system metrics
+        const systemResponse = await labAPI.getSystemMetrics();
+        if (systemResponse.ok) {
+            const systemData = await systemResponse.json();
+            updateSystemMetrics(systemData);
+        }
+
+        // Load user stats
+        const userResponse = await labAPI.getUserStats();
+        if (userResponse.ok) {
+            const userData = await userResponse.json();
+            updateUserStats(userData);
+        }
+
+        // Check current user permissions
+        const currentUserResponse = await labAPI.getCurrentUser();
+        if (currentUserResponse.ok) {
+            const currentUser = await currentUserResponse.json();
+            updateUserInfo(currentUser.user);
+        }
+
+    } catch (error) {
+        console.error('Failed to load admin data:', error);
+        showNotification('Không thể tải dữ liệu admin', 'warning');
+    }
+}
+
+function updateSystemMetrics(data) {
+    // Update system status indicators
+    const statusElements = document.querySelectorAll('[data-metric]');
+    statusElements.forEach(element => {
+        const metric = element.getAttribute('data-metric');
+        if (data[metric] !== undefined) {
+            element.textContent = data[metric];
+        }
+    });
+}
+
+function updateUserStats(data) {
+    // Update user statistics
+    const userElements = document.querySelectorAll('[data-user-stat]');
+    userElements.forEach(element => {
+        const stat = element.getAttribute('data-user-stat');
+        if (data[stat] !== undefined) {
+            element.textContent = data[stat];
+        }
+    });
+}
+
+function updateUserInfo(user) {
+    // Update current user info display
+    const userNameElement = document.getElementById('current-user-name');
+    if (userNameElement) {
+        userNameElement.textContent = user.ten_nguoi_dung;
+    }
+    
+    const userRoleElement = document.getElementById('current-user-role');
+    if (userRoleElement) {
+        userRoleElement.textContent = user.vai_tro;
+    }
+}
+
+// Auto-refresh data every 30 seconds
+setInterval(loadAdminData, 30000);
 </script>
 {% endblock %}
 

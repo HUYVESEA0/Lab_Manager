@@ -8,9 +8,11 @@
 {{ super() }}
 <!-- Unified CSS Variables -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}">
+<!-- Flash Messages CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/flash_messages.css') }}">
 <!-- Admin specific styles -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_tables.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/system_dashboard.css') }}?v={{ cache_version|default('20250609001') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/system_dashboard.css') }}?v={{ cache_version|default('20250609002') }}">
 
 <!-- External dependencies -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -20,7 +22,9 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/admin_tables.js') }}"></script>
-<script src="{{ url_for('static', filename='js/system_dashboard.js') }}?v={{ cache_version|default('20250609001') }}"></script>
+<script src="{{ url_for('static', filename='js/flash_messages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/system_dashboard.js') }}?v={{ cache_version|default('20250610002') }}"></script>
+<script src="{{ url_for('static', filename='js/realtime_integration.js') }}?v={{ cache_version|default('20250610002') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -51,6 +55,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% block content %}
 {% if current_user.is_authenticated and current_user.is_admin() %}
+    <!-- Flash Messages for Admin Dashboard -->
+    {% include 'components/flash_messages.html' %}
+    
     {% block dashboard_content %}
     <div class="modern-dashboard">
         <div class="container-fluid">
@@ -63,6 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
     {% endblock %}
 {% else %}
+    {% include 'components/flash_messages.html' %}
     <div class="alert alert-danger mt-5">
         <i class="fas fa-exclamation-triangle"></i>
         Bạn không có quyền truy cập trang này.

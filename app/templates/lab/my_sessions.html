@@ -1,165 +1,121 @@
-{% extends "index.html" %}
+{% extends "base.html" %}
 
-{% block title %}Ca thực hành của tôi{% endblock %}
+{% block title %}My Lab Sessions{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h3>Ca thực hành của tôi</h3>
-        </div>
-        <div class="card-body">
-            {% if current_user.is_admin_manager() %}
-            <div class="mb-3">
-                <a href="{{ url_for('lab.admin_lab_sessions') }}" class="btn btn-info">
-                    <i class="fas fa-cog"></i> Quản lý tất cả các phiên
-                </a>
-                <a href="{{ url_for('lab.create_lab_session') }}" class="btn btn-success">
-                    <i class="fas fa-plus"></i> Tạo phiên mới
-                </a>
-            </div>
-            {% endif %}
-
-            <h4>Ca thực hành đã đăng ký</h4>
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Tên phiên</th>
-                            <th>Ngày</th>
-                            <th>Thời gian</th>
-                            <th>Địa điểm</th>
-                            <th>Trạng thái</th>
-                            {% if current_user.is_admin_manager() %}
-                            <th>Số lượng đăng ký</th>
-                            <th>Hành động</th>
-                            {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for session in sessions %}
-                        <tr>
-                            <td>{{ session.title }}</td>
-                            <td>{{ session.date }}</td>
-                            <td>{{ session.start_time.strftime('%H:%M') }} - {{ session.end_time.strftime('%H:%M') }}</td>
-                            <td>{{ session.location }}</td>
-                            <td>
-                                {% if session.is_in_progress() %}
-                                <span class="badge badge-success">Đang diễn ra</span>
-                                {% elif session.start_time > now %}
-                                <span class="badge badge-info">Sắp tới</span>
-                                {% else %}
-                                <span class="badge badge-secondary">Hoàn thành</span>
-                                {% endif %}
-                            </td>
-                            {% if current_user.is_admin_manager() %}
-                            <td>{{ session.registrations|length }}/{{ session.max_students }}</td>
-                            <td>
-                                <a href="{{ url_for('lab.edit_lab_session', session_id=session.id) }}" class="btn btn-warning btn-sm">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <a href="{{ url_for('lab.lab_session_attendees', session_id=session.id) }}" class="btn btn-info btn-sm">
-                                    <i class="fas fa-users"></i>
-                                </a>
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="{% if current_user.is_admin_manager() %}7{% else %}5{% endif %}" class="text-center">Không tìm thấy phiên nào đã đăng ký</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header bg-secondary text-white">
-            <h3>Lab History</h3>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Tên phiên</th>
-                            <th>Thời gian check-in</th>
-                            <th>Thời gian check-out</th>
-                            <th>Thời gian</th>
-                            {% if current_user.is_admin_manager() %}
-                            <th>Kết quả</th>
-                            <th>Hành động</th>
-                            {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for entry in lab_history %}
-                        <tr>
-                            <td>{{ entry.lab_session.title }}</td>
-                            <td>{{ entry.check_in_time.strftime('%Y-%m-%d %H:%M') }}</td>
-                            <td>{% if entry.check_out_time %}{{ entry.check_out_time.strftime('%Y-%m-%d %H:%M') }}{% else %}<span class="text-warning">Đang diễn ra</span>{% endif %}</td>
-                            <td>
-                                {% if entry.check_out_time %}
-                                {{ (entry.check_out_time - entry.check_in_time)|string|replace('days', 'days,')|replace('day', 'day,') }}
-                                {% else %}
-                                <span class="text-warning">Đang diễn ra</span>
-                                {% endif %}
-                            </td>
-                            {% if current_user.is_admin_manager() %}
-                            <td>
-                                {% if entry.lab_result %}
-                                <a href="#" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#resultModal{{ entry.id }}">
-                                    <i class="fas fa-file-alt"></i> Xem
-                                </a>
-                                {% else %}
-                                <span class="text-muted">Không có</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="{{ url_for('lab.lab_session_attendees', session_id=entry.session_id) }}" class="btn btn-info btn-sm">
-                                    <i class="fas fa-users"></i> Người tham gia
-                                </a>
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="{% if current_user.is_admin_manager() %}6{% else %}4{% endif %}" class="text-center">Không tìm thấy lịch sử phiên nào</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    {% if current_user.is_admin_manager() %}
-    {% for entry in lab_history %}
-    {% if entry.lab_result %}
-    <!-- Result Modal for each entry -->
-    <div class="modal fade" id="resultModal{{ entry.id }}" tabindex="-1" role="dialog" aria-labelledby="resultModalLabel{{ entry.id }}" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="resultModalLabel{{ entry.id }}">Kết quả thực hành: {{ entry.lab_session.title }}</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>My Lab Sessions</h1>
+                <div>
+                    {% if current_user.is_admin_manager() %}
+                    <a href="{{ url_for('lab.admin_lab_sessions') }}" class="btn btn-info">
+                        <i class="fas fa-cog"></i> Manage All Sessions
+                    </a>
+                    <a href="{{ url_for('lab.create_lab_session') }}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Create New Session
+                    </a>
+                    {% endif %}
+                    <button class="btn btn-outline-primary refresh-sessions" id="refresh-my-sessions">
+                        <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                 </div>
-                <div class="modal-body">
-                    <pre class="bg-light p-3"><code>{{ entry.lab_result }}</code></pre>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button></div>
             </div>
         </div>
     </div>
-    {% endif %}
-    {% endfor %}
-    {% endif %}
+
+    <!-- Registered Sessions Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">Registered Sessions</h3>
+                </div>
+                <div class="card-body">
+                    <div id="registered-sessions-container">
+                        <!-- Loading spinner -->
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading your registered sessions...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lab History Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">Lab History</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Session</th>
+                                    <th>Location</th>
+                                    <th>Check-in Time</th>
+                                    <th>Check-out Time</th>
+                                    <th>Result</th>
+                                    {% if current_user.is_admin_manager() %}
+                                    <th>Actions</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody id="lab-history-container">
+                                <!-- Loading spinner -->
+                                <tr>
+                                    <td colspan="{% if current_user.is_admin_manager() %}6{% else %}5{% endif %}" class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="sr-only">Loading...</span>
+                                        </div>
+                                        <p class="mt-2">Loading lab history...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- Result Modal Template -->
+<div class="modal fade" id="resultModal" tabindex="-1" role="dialog" aria-labelledby="resultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resultModalLabel">Lab Result</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <pre class="bg-light p-3"><code id="resultModalContent"></code></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Set page identifier for JavaScript -->
+<script>
+document.body.dataset.page = 'my-sessions';
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/lab_sessions.js') }}"></script>
 {% endblock %}
 
 

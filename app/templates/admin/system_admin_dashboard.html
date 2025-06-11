@@ -3,9 +3,26 @@
 {% set dashboard_title = "Bảng Điều Khiển Quản Trị Hệ Thống" %}
 {% set dashboard_type = "system" %}
 {% set enable_realtime = true %}
-{% set cache_version = "20250609001" %}
+{% set cache_version = "20250610001" %}
+{% set use_api = true %}
 
 {% block dashboard_content %}
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+          <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' }}"></i>
+          {{ message }}
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
 <div class="modern-dashboard">
     <div class="container-fluid">
         <!-- Enhanced Dashboard Hero Section -->
@@ -47,11 +64,11 @@
                             <i class="fas fa-users"></i>
                         </div>
                         <div class="metric-content">
-                            <div class="metric-number">{{ stats.user_count or 245 }}</div>
-                            <div class="metric-label">Tổng Người Dùng</div>
-                            <div class="metric-trend up">
+                            <div class="metric-number" id="total-users">{{ stats.user_count or 0 }}</div>
+                            <div class="metric-label">Tổng người dùng</div>
+                            <div class="metric-change positive">
                                 <i class="fas fa-arrow-up"></i> 
-                                <span>{{ stats.regular_users or 0 }} thường + {{ stats.admin_count or 0 }} admin</span>
+                                <span>{{ stats.new_users_week or 0 }} mới tuần này</span>
                             </div>
                         </div>
                         <div class="metric-progress">
@@ -65,10 +82,11 @@
                             <i class="fas fa-user-check"></i>
                         </div>
                         <div class="metric-content">
-                            <div class="metric-number">{{ stats.active_users or 89 }}</div>
-                            <div class="metric-label">Đang Hoạt Động</div>
-                            <div class="metric-trend up">
-                                <i class="fas fa-user-clock"></i> Hôm nay
+                            <div class="metric-number" id="active-users">{{ stats.active_users or 0 }}</div>
+                            <div class="metric-label">Đang hoạt động</div>
+                            <div class="metric-change positive">
+                                <i class="fas fa-arrow-up"></i> 
+                                <span>{{ stats.daily_logins or 0 }} đăng nhập hôm nay</span>
                             </div>
                         </div>
                         <div class="metric-progress">
@@ -82,10 +100,11 @@
                             <i class="fas fa-flask"></i>
                         </div>
                         <div class="metric-content">
-                            <div class="metric-number">{{ stats.lab_session_count or 1247 }}</div>
+                            <div class="metric-number" id="total-labs">{{ stats.lab_session_count or 0 }}</div>
                             <div class="metric-label">Phiên Lab</div>
-                            <div class="metric-trend up">
-                                <i class="fas fa-play"></i> {{ stats.active_lab_sessions or 0 }} hoạt động
+                            <div class="metric-change positive">
+                                <i class="fas fa-play"></i> 
+                                <span>{{ stats.active_lab_sessions or 0 }} hoạt động</span>
                             </div>
                         </div>
                         <div class="metric-progress">
@@ -99,10 +118,11 @@
                             <i class="fas fa-exclamation-triangle"></i>
                         </div>
                         <div class="metric-content">
-                            <div class="metric-number">{{ stats.critical_alerts + stats.warning_alerts or 3 }}</div>
+                            <div class="metric-number" id="system-alerts">{{ (stats.critical_alerts or 0) + (stats.warning_alerts or 0) }}</div>
                             <div class="metric-label">Cảnh Báo</div>
-                            <div class="metric-trend down">
-                                <i class="fas fa-info-circle"></i> {{ stats.critical_alerts or 0 }} nghiêm trọng
+                            <div class="metric-change negative">
+                                <i class="fas fa-info-circle"></i> 
+                                <span>{{ stats.critical_alerts or 0 }} nghiêm trọng</span>
                             </div>
                         </div>
                         <div class="metric-progress">
@@ -151,9 +171,9 @@
                                     </div>
                                     <div class="metric-details">
                                         <div class="metric-label">CPU</div>
-                                        <div class="metric-value">45%</div>
+                                        <div class="metric-value">60.7%</div>
                                         <div class="metric-bar">
-                                            <div class="bar-fill" style="width: 45%"></div>
+                                            <div class="bar-fill" style="width: 60.7%"></div>
                                         </div>
                                         <div class="metric-status good">Normal</div>
                                     </div>
@@ -165,9 +185,9 @@
                                     </div>
                                     <div class="metric-details">
                                         <div class="metric-label">RAM</div>
-                                        <div class="metric-value">75%</div>
+                                        <div class="metric-value">78.9%</div>
                                         <div class="metric-bar">
-                                            <div class="bar-fill warning" style="width: 75%"></div>
+                                            <div class="bar-fill warning" style="width: 78.9%"></div>
                                         </div>
                                         <div class="metric-status warning">High</div>
                                     </div>
@@ -179,9 +199,9 @@
                                     </div>
                                     <div class="metric-details">
                                         <div class="metric-label">Disk</div>
-                                        <div class="metric-value">60%</div>
+                                        <div class="metric-value">53.9%</div>
                                         <div class="metric-bar">
-                                            <div class="bar-fill" style="width: 60%"></div>
+                                            <div class="bar-fill" style="width: 53.9%"></div>
                                         </div>
                                         <div class="metric-status good">Normal</div>
                                     </div>
@@ -193,9 +213,9 @@
                                     </div>
                                     <div class="metric-details">
                                         <div class="metric-label">Network</div>
-                                        <div class="metric-value">85%</div>
+                                        <div class="metric-value">21.4%</div>
                                         <div class="metric-bar">
-                                            <div class="bar-fill" style="width: 85%"></div>
+                                            <div class="bar-fill" style="width: 21.4%"></div>
                                         </div>
                                         <div class="metric-status good">Active</div>
                                     </div>
@@ -236,9 +256,9 @@
                                     </div>
                                     <div class="stat-content">
                                         <div class="stat-label">Online hiện tại</div>
-                                        <div class="stat-value">24</div>
+                                        <div class="stat-value" id="online-users">{{ stats.active_users or 0 }}</div>
                                     </div>
-                                    <div class="stat-trend up">+12%</div>
+                                    <div class="stat-trend up">Live</div>
                                 </div>
                                 
                                 <div class="stat-row">
@@ -247,9 +267,9 @@
                                     </div>
                                     <div class="stat-content">
                                         <div class="stat-label">Đăng nhập hôm nay</div>
-                                        <div class="stat-value">156</div>
+                                        <div class="stat-value" id="daily-logins">{{ stats.daily_logins or 0 }}</div>
                                     </div>
-                                    <div class="stat-trend up">+8%</div>
+                                    <div class="stat-trend up">+{{ ((stats.daily_logins or 0) / (stats.user_count or 1) * 100) | round(1) }}%</div>
                                 </div>
                                 
                                 <div class="stat-row">
@@ -257,10 +277,10 @@
                                         <i class="fas fa-clock"></i>
                                     </div>
                                     <div class="stat-content">
-                                        <div class="stat-label">Phiên trung bình</div>
-                                        <div class="stat-value">32 phút</div>
+                                        <div class="stat-label">Phiên hoạt động</div>
+                                        <div class="stat-value" id="active-sessions">{{ stats.active_sessions_today or 0 }}</div>
                                     </div>
-                                    <div class="stat-trend down">-5%</div>
+                                    <div class="stat-trend up">Hôm nay</div>
                                 </div>
                             </div>
                         </div>
@@ -647,9 +667,7 @@
                 <h5 class="modal-title" id="clearLogsModalLabel">
                     <i class="fas fa-exclamation-triangle"></i> Xác nhận xóa nhật ký
                 </h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-critical mb-3">
@@ -676,8 +694,8 @@
                     <small class="form-text text-muted">Thao tác này yêu cầu xác nhận bằng văn bản</small>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i> Hủy bỏ
                 </button>
                 <form action="{{ url_for('admin.clear_logs') }}" method="POST" id="clearLogsForm">
@@ -699,9 +717,7 @@
                 <h5 class="modal-title" id="systemOperationModalLabel">
                     <i class="fas fa-exclamation-triangle"></i> Xác nhận thao tác hệ thống
                 </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close text-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-critical mb-4">
@@ -735,7 +751,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i> Hủy bỏ
                 </button>
                 <button type="button" class="btn btn-danger" id="confirmOperationBtn" disabled>

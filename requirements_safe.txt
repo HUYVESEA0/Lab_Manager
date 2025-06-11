@@ -1,0 +1,57 @@
+# Alternative requirements for systems without C++ compiler
+# Use this file if main requirements.txt fails due to compilation errors
+
+# Core Flask dependencies (these usually work)
+Flask==2.2.3
+Flask-Caching==2.3.1
+Flask-Login==0.6.2
+Flask-Migrate==4.1.0
+Flask-SQLAlchemy==3.0.3
+Flask-WTF==1.1.1
+Flask-SocketIO==5.3.6
+Werkzeug==2.2.3
+WTForms==3.0.1
+Jinja2==3.1.2
+click==8.1.8
+itsdangerous==2.1.2
+MarkupSafe==2.1.2
+blinker==1.9.0
+
+# Database
+SQLAlchemy==1.4.46
+alembic==1.15.2
+
+# Authentication & Security
+cryptography==42.0.8  # May need: pip install --only-binary=cryptography cryptography
+email-validator==2.0.0
+PyJWT==2.10.1
+
+# Utilities
+python-dotenv==1.0.0
+python-dateutil==2.9.0.post0
+pytz==2025.2
+six==1.17.0
+typing_extensions==4.13.2
+
+# Alternative HTML/XML parsing (instead of lxml)
+beautifulsoup4==4.12.2
+html5lib==1.1
+# selectolax==0.3.17  # Fast alternative if available
+
+# System monitoring (optional)
+# psutil==5.9.5  # Comment out if causing issues
+
+# Basic testing
+requests==2.31.0
+# pytest==7.4.3  # Comment out if not needed immediately
+
+# Development tools
+# pylint==3.3.7  # Comment out if causing issues
+# isort==6.0.1   # Comment out if causing issues
+
+# Notes:
+# 1. If cryptography fails: pip install --only-binary=cryptography cryptography
+# 2. If you need lxml later: pip install --only-binary=lxml lxml
+# 3. For full testing suite, install selenium separately:
+#    pip install selenium webdriver-manager
+# 4. Some packages commented out to avoid compilation issues

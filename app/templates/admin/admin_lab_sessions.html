@@ -1,66 +1,121 @@
-{% extends "index.html" %}
+{% extends "admin/admin_base.html" %}
 
-{% block title %}Quản lý ca thực hành{% endblock %}
+{% block title %}Admin - Lab Sessions Management{% endblock %}
 
 {% block content %}
-{% if current_user.is_authenticated and current_user.is_admin() %}
-<div class="container">
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h3>Quản lý ca thực hành</h3>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Lab Sessions Management</h1>
+                <div>
+                    <a href="{{ url_for('lab.create_lab_session') }}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Create New Session
+                    </a>
+                    <button class="btn btn-outline-primary refresh-sessions" id="refresh-admin-sessions">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <a href="{{ url_for('lab.create_lab_session') }}" class="btn btn-success mb-3">
-                <i class="fas fa-plus"></i> Tạo ca thực hành mới
-            </a>
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Tiêu đề</th>
-                            <th>Ngày</th>
-                            <th>Thời gian bắt đầu</th>
-                            <th>Thời gian kết thúc</th>
-                            <th>Địa điểm</th>
-                            <th>Tối đa sinh viên</th>
-                            <th>Trạng thái</th>
-                            <th>Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for session in sessions %}
-                        <tr>
-                            <td>{{ session.title }}</td>
-                            <td>{{ session.date }}</td>
-                            <td>{{ session.start_time.strftime('%H:%M') }}</td>
-                            <td>{{ session.end_time.strftime('%H:%M') }}</td>
-                            <td>{{ session.location }}</td>
-                            <td>{{ session.max_students }}</td>
-                            <td>
-                                <span class="badge
-                                    {% if session.is_active %}badge-success{% else %}badge-secondary{% endif %}">
-                                    {{ 'Đang hoạt động' if session.is_active else 'Ngừng hoạt động' }}
-                                </span>
-                            </td>
-                            <td>
-                                <a href="{{ url_for('lab.edit_lab_session', session_id=session.id) }}" class="btn btn-warning btn-sm">
-                                    <i class="fas fa-edit"></i> Chỉnh sửa
-                                </a>
-                                <a href="{{ url_for('lab.lab_session_attendees', session_id=session.id) }}" class="btn btn-info btn-sm">
-                                    <i class="fas fa-users"></i> Người tham gia
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Filters</h5>
+                </div>
+                <div class="card-body">
+                    <form id="session-filters" class="row">
+                        <div class="col-md-3">
+                            <label for="status-filter">Status:</label>
+                            <select class="form-control" id="status-filter" name="status">
+                                <option value="">All</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="room-filter">Room:</label>
+                            <input type="text" class="form-control" id="room-filter" name="room" placeholder="Filter by room">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date-filter">Date:</label>
+                            <input type="date" class="form-control" id="date-filter" name="date">
+                        </div>
+                        <div class="col-md-3">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn btn-primary btn-block">Apply Filters</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sessions List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Lab Sessions</h5>
+                </div>
+                <div class="card-body">
+                    <div id="admin-sessions-container">
+                        <!-- Loading spinner -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading lab sessions...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <nav aria-label="Sessions pagination" id="sessions-pagination" style="display: none;">
+                        <ul class="pagination justify-content-center" id="pagination-list">
+                            <!-- Pagination will be generated by JavaScript -->
+                        </ul>
+                    </nav>
+                </div>
             </div>
         </div>
     </div>
 </div>
-{% else %}
-<div class="alert alert-danger mt-5">Bạn không có quyền truy cập trang này.</div>
-{% endif %}
+
+<!-- Set page identifier for JavaScript -->
+<script>
+document.body.dataset.page = 'admin-lab-sessions';
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/lab_sessions.js') }}"></script>
+<script>
+// Enhanced admin functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Filter form handling
+    const filterForm = document.getElementById('session-filters');
+    if (filterForm) {
+        filterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(filterForm);
+            const params = new URLSearchParams();
+            
+            for (let [key, value] of formData.entries()) {
+                if (value) params.append(key, value);
+            }
+            
+            // Reload sessions with filters
+            if (window.labSessionManager) {
+                window.labSessionManager.loadAdminLabSessions(params.toString());
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
 
 

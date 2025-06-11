@@ -12,6 +12,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/flash_messages.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    
+    <!-- CSRF Meta Tag -->
+    <meta name="csrf-token" content="{{ csrf_token() }}" id="csrf-meta">
+    
     {% block styles %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -170,6 +174,291 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="{{ url_for('static', filename='js/flash_messages.js') }}"></script>
+    
+    <!-- API and CSRF Utilities -->
+    <script>
+        // Global API and CSRF utilities
+        class LabManagerAPI {
+            constructor() {
+                this.csrfToken = null;
+                this.csrfTokenTimestamp = null;
+                this.baseURL = '/api/v1';
+                this.init();
+            }
+
+            async init() {
+                await this.refreshCSRFToken();
+                // Auto-refresh token every 25 minutes
+                setInterval(() => this.refreshCSRFToken(true), 25 * 60 * 1000);
+            }
+
+            async refreshCSRFToken(forceRefresh = false) {
+                // Return cached token if available and fresh (unless force refresh)
+                if (!forceRefresh && this.csrfToken && this.csrfTokenTimestamp) {
+                    const now = Date.now();
+                    // Refresh token every 25 minutes (safety margin before 30min expiry)
+                    if (now - this.csrfTokenTimestamp < 25 * 60 * 1000) {
+                        return this.csrfToken;
+                    }
+                }
+                
+                try {
+                    // First try to get CSRF token from meta tag (only if not forcing refresh)
+                    if (!forceRefresh) {
+                        const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                        if (metaToken && metaToken !== '' && metaToken !== 'None') {
+                            this.csrfToken = metaToken;
+                            this.csrfTokenTimestamp = Date.now();
+                            return this.csrfToken;
+                        }
+                    }
+                    
+                    // Fallback to API call - try multiple endpoints
+                    const endpoints = ['/csrf-token', '/admin/csrf-token', '/lab/csrf-token'];
+                    
+                    for (const endpoint of endpoints) {
+                        try {
+                            const response = await fetch(endpoint, {
+                                credentials: 'same-origin',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                            
+                            if (response.ok) {
+                                const data = await response.json();
+                                if (data.csrf_token) {
+                                    this.csrfToken = data.csrf_token;
+                                    this.csrfTokenTimestamp = Date.now();
+                                    
+                                    // Update meta tag for future reference
+                                    const metaTag = document.querySelector('meta[name="csrf-token"]');
+                                    if (metaTag) {
+                                        metaTag.setAttribute('content', this.csrfToken);
+                                    }
+                                    
+                                    return this.csrfToken;
+                                }
+                            }
+                        } catch (endpointError) {
+                            console.warn(`CSRF endpoint ${endpoint} failed:`, endpointError);
+                            continue;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to get CSRF token:', error);
+                }
+                
+                console.warn('All CSRF token endpoints failed');
+                return null;
+            }
+
+            async request(endpoint, options = {}) {
+                const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
+                
+                const defaultOptions = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin'
+                };
+
+                // Merge options
+                const mergedOptions = { ...defaultOptions, ...options };
+                
+                // Ensure we have a fresh CSRF token for non-GET requests
+                if (mergedOptions.method !== 'GET') {
+                    await this.refreshCSRFToken();
+                    
+                    // Add CSRF token - prefer header for JSON requests
+                    if (this.csrfToken) {
+                        if (mergedOptions.body instanceof FormData) {
+                            mergedOptions.body.append('csrf_token', this.csrfToken);
+                        } else {
+                            mergedOptions.headers['X-CSRFToken'] = this.csrfToken;
+                        }
+                    }
+                }
+
+                try {
+                    const response = await fetch(url, mergedOptions);
+                    
+                    // Handle CSRF token expiry
+                    if (response.status === 400 || response.status === 403) {
+                        const responseText = await response.text();
+                        if (responseText.includes('CSRF') || responseText.includes('csrf')) {
+                            console.warn('CSRF token expired, refreshing...');
+                            await this.refreshCSRFToken(true); // Force refresh
+                            
+                            // Retry the request with new token
+                            if (this.csrfToken) {
+                                if (mergedOptions.body instanceof FormData) {
+                                    mergedOptions.body.set('csrf_token', this.csrfToken);
+                                } else {
+                                    mergedOptions.headers['X-CSRFToken'] = this.csrfToken;
+                                }
+                                return await fetch(url, mergedOptions);
+                            }
+                        }
+                    }
+                    
+                    return response;
+                } catch (error) {
+                    console.error('API request failed:', error);
+                    throw error;
+                }
+            }
+
+            async get(endpoint) {
+                return this.request(endpoint, { method: 'GET' });
+            }
+
+            async post(endpoint, data) {
+                return this.request(endpoint, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+            }
+
+            async put(endpoint, data) {
+                return this.request(endpoint, {
+                    method: 'PUT',
+                    body: JSON.stringify(data)
+                });
+            }
+
+            async delete(endpoint) {
+                return this.request(endpoint, { method: 'DELETE' });
+            }
+
+            // Authentication methods
+            async login(username, password) {
+                return this.post('/auth/login', { username, password });
+            }
+
+            async logout() {
+                return this.post('/auth/logout', {});
+            }
+
+            async getCurrentUser() {
+                return this.get('/auth/me');
+            }
+
+            // System methods
+            async getSystemHealth() {
+                return this.get('/system/health');
+            }
+
+            async getSystemMetrics() {
+                return this.get('/system/metrics');
+            }
+
+            // User methods
+            async getUserStats() {
+                return this.get('/users/stats');
+            }
+
+            async getUsers(page = 1, perPage = 20) {
+                return this.get(`/users?page=${page}&per_page=${perPage}`);
+            }
+
+            // Utility method to get CSRF token for forms
+            getCSRFTokenForForm() {
+                return this.csrfToken;
+            }
+            
+            // Method to handle CSRF errors automatically
+            async handleCSRFError(response) {
+                if (response.status === 403) {
+                    const data = await response.json().catch(() => ({}));
+                    if (data.code === 'CSRF_ERROR') {
+                        console.log('CSRF error detected, refreshing token...');
+                        await this.refreshCSRFToken(true);
+                        return true; // Indicates we handled the error
+                    }
+                }
+                return false;
+            }
+            
+            // Enhanced form submission helper
+            async submitForm(formElement, endpoint = null) {
+                const formData = new FormData(formElement);
+                
+                // Ensure CSRF token is present
+                if (!formData.has('csrf_token') && this.csrfToken) {
+                    formData.append('csrf_token', this.csrfToken);
+                }
+                
+                const url = endpoint || formElement.action || window.location.href;
+                
+                try {
+                    const response = await fetch(url, {
+                        method: formElement.method || 'POST',
+                        body: formData,
+                        credentials: 'same-origin'
+                    });
+                    
+                    // Handle CSRF errors automatically
+                    if (await this.handleCSRFError(response)) {
+                        // Retry with new token
+                        formData.set('csrf_token', this.csrfToken);
+                        return await fetch(url, {
+                            method: formElement.method || 'POST',
+                            body: formData,
+                            credentials: 'same-origin'
+                        });
+                    }
+                    
+                    return response;
+                } catch (error) {
+                    console.error('Form submission failed:', error);
+                    throw error;
+                }
+            }
+        }
+
+        // Initialize global API instance
+        window.labAPI = new LabManagerAPI();
+        
+        // Make CSRF token available globally for backward compatibility
+        window.getCSRFToken = function() {
+            return window.labAPI.getCSRFTokenForForm();
+        };
+        
+        // Enhanced form helper for any form in the app
+        window.enhanceFormWithCSRF = function(formElement) {
+            if (!formElement) return;
+            
+            formElement.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                try {
+                    const response = await window.labAPI.submitForm(formElement);
+                    
+                    // Trigger custom event for handling
+                    const event = new CustomEvent('formSubmitted', {
+                        detail: { response, form: formElement }
+                    });
+                    formElement.dispatchEvent(event);
+                    
+                } catch (error) {
+                    const event = new CustomEvent('formError', {
+                        detail: { error, form: formElement }
+                    });
+                    formElement.dispatchEvent(event);
+                }
+            });
+        };
+        
+        // Auto-enhance all forms with CSRF handling
+        document.querySelectorAll('form').forEach(form => {
+            // Skip forms that already have custom handlers
+            if (!form.hasAttribute('data-no-auto-csrf')) {
+                window.enhanceFormWithCSRF(form);
+            }
+        });
+    </script>
+    
     {% endblock %}
 </body>
 </html>

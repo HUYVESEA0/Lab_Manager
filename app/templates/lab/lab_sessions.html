@@ -1,23 +1,73 @@
-{% extends "index.html" %}
+{% extends "base.html" %}
+
+{% block title %}Lab Sessions{% endblock %}
+
 {% block content %}
-<h1>Lab Sessions</h1>
-<h2>Available Sessions</h2>
-<ul>
-    {% for session in available_sessions %}
-    <li>
-        <a href="{{ url_for('lab.register_lab_session', session_id=session.id) }}">{{ session.title }}</a>
-        - {{ session.date }} from {{ session.start_time }} to {{ session.end_time }}
-    </li>
-    {% endfor %}
-</ul>
-<h2>Registered Sessions</h2>
-<ul>
-    {% for session in registered_sessions %}
-    <li>
-        {{ session.title }} - {{ session.date }} from {{ session.start_time }} to {{ session.end_time }}
-    </li>
-    {% endfor %}
-</ul>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Lab Sessions</h1>
+                <button class="btn btn-outline-primary refresh-sessions" id="refresh-sessions">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Sessions Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">Available Sessions</h3>
+                </div>
+                <div class="card-body">
+                    <div id="available-sessions-container">
+                        <!-- Loading spinner -->
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading available sessions...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registered Sessions Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">My Registered Sessions</h3>
+                </div>
+                <div class="card-body">
+                    <div id="registered-sessions-container">
+                        <!-- Loading spinner -->
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading your registered sessions...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Set page identifier for JavaScript -->
+<script>
+document.body.dataset.page = 'lab-sessions';
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/lab_sessions.js') }}"></script>
 {% endblock %}
 
 

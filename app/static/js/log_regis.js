@@ -185,6 +185,30 @@ document.addEventListener('DOMContentLoaded', function() {
         inputElement.classList.add('is-invalid');
     }
 
+    // Enhanced CSRF and form handling utilities
+    function showSuccessMessage(message) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'success-message';
+        messageDiv.textContent = message;
+        messageDiv.style.cssText = `
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+        `;
+        
+        // Insert at top of container
+        const container = document.getElementById('container');
+        if (container) {
+            container.insertBefore(messageDiv, container.firstChild);
+            // Auto remove after 5 seconds
+            setTimeout(() => messageDiv.remove(), 5000);
+        }
+    }
+
     // If there's any direct cookie setting in JavaScript, update it like this:
     function setCookie(name, value, days) {
         let expires = "";
@@ -195,4 +219,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/; Secure; SameSite=Lax";
     }
+
+    // Initialize API when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wait for LabManagerAPI to be available
+        if (window.labAPI) {
+            console.log('LabManagerAPI is ready for form submissions');
+        } else {
+            console.warn('LabManagerAPI not found, using fallback CSRF handling');
+        }
+    });
 });

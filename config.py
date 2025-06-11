@@ -2,13 +2,14 @@ import os
 
 class Config:
     # Core Flask config
-    SECRET_KEY = os.getenv("SECRET_KEY", "your-default-secret")
+    SECRET_KEY = os.getenv("SECRET_KEY", "lab-manager-development-secret-key-change-in-production-2025")
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///app.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-    # CSRF
-    WTF_CSRF_ENABLED = True
+    
+    # CSRF Configuration
+    WTF_CSRF_ENABLED = os.getenv("WTF_CSRF_ENABLED", "true").lower() in ['true', '1', 'yes', 'on']
     WTF_CSRF_TIME_LIMIT = int(os.getenv("WTF_CSRF_TIME_LIMIT", 3600))
+    WTF_CSRF_SECRET_KEY = os.getenv("WTF_CSRF_SECRET_KEY", SECRET_KEY)
 
     # Session
     PERMANENT_SESSION_LIFETIME = int(os.getenv("PERMANENT_SESSION_LIFETIME", 1800))
