@@ -138,7 +138,7 @@ class CSRFMiddleware:
         logger.warning(f"CSRF Error: {error_message} - IP: {request.remote_addr}, Path: {request.path}")
         
         # For AJAX requests, return JSON error
-        if request.is_xhr or request.content_type == 'application/json':
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.content_type == 'application/json':
             response = jsonify({
                 'error': 'CSRF token validation failed',
                 'message': 'Please refresh the page and try again',

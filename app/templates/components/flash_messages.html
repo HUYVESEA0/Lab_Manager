@@ -8,11 +8,15 @@
     {% if messages %}
         <div class="flash-messages">
             {% for category, message in messages %}
-                <div class="flash-message {{ category }}{% if category == 'danger' and ('cảnh báo' in message.lower() or 'lỗi' in message.lower() or 'thất bại' in message.lower()) %} urgent{% endif %}" 
+                <div class="flash-message {{ category }} alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show{% if category == 'danger' and ('cảnh báo' in message.lower() or 'lỗi' in message.lower() or 'thất bại' in message.lower()) %} urgent{% endif %}" 
                      role="alert" 
                      data-category="{{ category }}"
                      data-auto-dismiss="true">
-                    {{ message }}
+                    <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' or category == 'danger' else 'check-circle' if category == 'success' else 'info-circle' }}"></i>
+                    <span class="flash-message-text">{{ message }}</span>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
             {% endfor %}
         </div>

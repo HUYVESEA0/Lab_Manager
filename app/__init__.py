@@ -5,6 +5,7 @@ from flask_migrate import Migrate
 from flask_caching import Cache
 from flask_wtf.csrf import CSRFProtect
 from flask_socketio import SocketIO, join_room, leave_room
+from flask_mail import Mail
 from .models import db, khoi_tao_ung_dung as models_khoi_tao_ung_dung
 from .session_handler import SessionHandler
 from .decorators import *
@@ -37,20 +38,81 @@ def create_app():
     secret_key = app.config.get('SECRET_KEY')
     if secret_key:
         print(f"SECRET_KEY is set: {secret_key[:10]}...")
-    else:
-        print("WARNING: SECRET_KEY is not set!")
+    else:        print("WARNING: SECRET_KEY is not set!")    # Initialize SocketIO with Redis clustering support for production
+    redis_url = None
+    if not debug_mode and os.getenv('REDIS_HOST'):
+        try:
+            # Check if this is Azure environment
+            if os.getenv('WEBSITES_PORT'):  # Azure App Service
+                # Azure Redis configuration
+                import redis
+                redis_client = redis.Redis(
+                    host=os.getenv('REDIS_HOST') or 'localhost',
+                    port=int(os.getenv('REDIS_PORT', 6380)),
+                    password=os.getenv('REDIS_PASSWORD'),
+                    ssl=os.getenv('REDIS_SSL', 'true').lower() == 'true',
+                    ssl_cert_reqs='none',
+                    decode_responses=True,
+                    socket_connect_timeout=5
+                )
+                redis_client.ping()
+                redis_url = f"redis://:{os.getenv('REDIS_PASSWORD')}@{os.getenv('REDIS_HOST')}:{os.getenv('REDIS_PORT', 6380)}"
+                print(f"SocketIO clustering enabled with Azure Redis: {os.getenv('REDIS_HOST')}")
+            else:
+                # Standard Redis configuration
+                import redis
+                redis_client = redis.Redis(
+                    host=os.getenv('REDIS_HOST', 'localhost'),
+                    port=int(os.getenv('REDIS_PORT', 6379)),
+                    db=int(os.getenv('REDIS_DB', 0)),
+                    socket_connect_timeout=2
+                )
+                redis_client.ping()
+                redis_url = f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', 6379)}/{os.getenv('REDIS_DB', 0)}"
+                print(f"SocketIO clustering enabled with Redis: {redis_url}")
+        except Exception as e:
+            print(f"Redis not available: {e}")
+            # Fallback to FakeRedis for development/testing
+            try:
+                import fakeredis
+                # Create a FakeRedis instance that persists across app instances
+                fake_redis = fakeredis.FakeRedis(decode_responses=True)
+                fake_redis.ping()  # Test connection
+                
+                # Use FakeRedis for message queue (simplified)
+                print("Using FakeRedis for SocketIO clustering (development mode)")
+                redis_url = None  # Will use threading mode but with better instance management
+            except Exception as fe:
+                print(f"FakeRedis also failed: {fe}")
+                redis_url = None
     
-    # Initialize SocketIO
-    socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
+    socketio = SocketIO(
+        app, 
+        cors_allowed_origins="*", 
+        logger=True, 
+        engineio_logger=True,
+        message_queue=redis_url,  # Enable clustering if Redis URL provided
+        async_mode='threading'  # Use threading mode for Windows compatibility
+    )
     
     # Initialize extensions
     models_khoi_tao_ung_dung(app)
     SessionHandler(app)
+    
+    # Initialize Flask-Caching properly
     cache = Cache(app)
+    
+    # Initialize Flask-Mail
+    mail = Mail(app)
+    
+    # Initialize cache manager (no need to set cache manually)
+    from .cache.cache_manager import get_cache_manager
+    cache_manager = get_cache_manager()
+    
     migrate = Migrate(app, db)
     login_manager = LoginManager()
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'
+    login_manager.login_view = "auth.login"  # type: ignore
     
     # Configure CSRF settings before initializing CSRFProtect
     app.config['WTF_CSRF_TIME_LIMIT'] = None  # No time limit for CSRF tokens
@@ -130,10 +192,13 @@ def create_app():
     app.register_blueprint(user_bp)
     app.register_blueprint(search_bp)
     app.register_blueprint(api_bp)  # Register API blueprint
-    
-    # Register CSRF API blueprint
+      # Register CSRF API blueprint
     from .api.csrf import csrf_bp
     app.register_blueprint(csrf_bp)
+    
+    # Register Cache Monitor API blueprint
+    from .api.cache_monitor import cache_monitor_bp
+    app.register_blueprint(cache_monitor_bp)
     
     @app.route('/api-integration-demo')
     def api_integration_demo():
@@ -197,9 +262,51 @@ def create_app():
             if form.validate_on_submit():
                 return jsonify({"success": True, "message": "CSRF validation passed!"})
             else:
-                return jsonify({"success": False, "errors": form.errors})
+                return jsonify({"success": False, "errors": form.errors})    # Simple health check endpoint for load balancer
+    @app.route('/healthz')
+    def health_check():
+        """Simple health check endpoint for load balancer monitoring"""
+        return jsonify({
+            'status': 'healthy',
+            'instance_id': os.getenv('INSTANCE_ID', '1'),
+            'instance_port': os.getenv('INSTANCE_PORT', '5000'),
+            'timestamp': 'running'
+        })
     
+    @app.route('/lb-status')
+    def load_balancer_status():
+        """Detailed status for load balancer"""
+        return jsonify({
+            'instance_id': os.getenv('INSTANCE_ID', '1'),
+            'ready': True,
+            'active_connections': 0,  # Implement if needed
+            'uptime': 'running'
+        })
+
+    @app.route('/health/azure')
+    def azure_health_check():
+        """Azure-specific health check"""
+        from datetime import datetime
+        
+        return jsonify({
+            'status': 'healthy',
+            'instance_id': os.getenv('WEBSITE_INSTANCE_ID', os.getenv('INSTANCE_ID', 'unknown')),
+            'site_name': os.getenv('WEBSITE_SITE_NAME', 'lab-manager'),
+            'resource_group': os.getenv('WEBSITE_RESOURCE_GROUP', 'unknown'),
+            'region': os.getenv('WEBSITE_SITE_REGION', 'unknown'),
+            'timestamp': datetime.now().isoformat(),
+            'version': '1.0.0',
+            'azure': {
+                'app_service': bool(os.getenv('WEBSITES_PORT')),
+                'redis_configured': bool(os.getenv('REDIS_HOST')),
+                'database_type': 'azure_sql' if 'database.windows.net' in os.getenv('DATABASE_URL', '') else 'sqlite'
+            }
+        })
+
     return app, socketio
 
 # Cho phép import hàm nạp dữ liệu mẫu từ app package
 from .init_sample_data import init_sample_data
+
+# Import services for dependency injection
+# from .services import UserService, LabSessionService, AdminService

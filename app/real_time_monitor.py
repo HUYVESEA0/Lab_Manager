@@ -94,25 +94,27 @@ class SystemMonitor:
             memory = psutil.virtual_memory()
             memory_percent = memory.percent
             memory_used = memory.used
-            memory_total = memory.total
-            
-            # Disk usage
+            memory_total = memory.total              # Disk usage - use shutil for better Windows compatibility
             try:
-                disk = psutil.disk_usage('/')
-                disk_percent = (disk.used / disk.total) * 100
-                disk_used = disk.used
-                disk_total = disk.total
-            except:
-                # Fallback for Windows
-                try:
-                    disk = psutil.disk_usage('C:')
-                    disk_percent = (disk.used / disk.total) * 100
-                    disk_used = disk.used
-                    disk_total = disk.total
-                except:
-                    disk_percent = 0
-                    disk_used = 0
-                    disk_total = 0
+                import os
+                import shutil
+                if os.name == 'nt':  # Windows
+                    # Use shutil instead of psutil for better Windows compatibility
+                    total, used, free = shutil.disk_usage('C:')
+                    disk_percent = (used / total) * 100
+                    disk_used = used
+                    disk_total = total
+                else:  # Unix-like
+                    total, used, free = shutil.disk_usage('/')
+                    disk_percent = (used / total) * 100
+                    disk_used = used
+                    disk_total = total
+            except Exception as e:
+                logger.error(f"Error getting disk usage: {str(e)}")
+                # Fallback values
+                disk_percent = 0
+                disk_used = 0
+                disk_total = 0
             
             # Network I/O
             try:

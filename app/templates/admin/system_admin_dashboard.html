@@ -3,26 +3,11 @@
 {% set dashboard_title = "Bảng Điều Khiển Quản Trị Hệ Thống" %}
 {% set dashboard_type = "system" %}
 {% set enable_realtime = true %}
-{% set cache_version = "20250610001" %}
+{% set cache_version = "20250616001" %}
 {% set use_api = true %}
 
 {% block dashboard_content %}
-<!-- Flash Messages -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <div class="flash-messages">
-      {% for category, message in messages %}
-        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-          <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' }}"></i>
-          {{ message }}
-          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-{% endwith %}
+<!-- Flash Messages are handled by admin_base.html -->
 <div class="modern-dashboard">
     <div class="container-fluid">
         <!-- Enhanced Dashboard Hero Section -->
@@ -324,11 +309,9 @@
                                     <div class="operation-content">
                                         <h6>Sao lưu dữ liệu</h6>
                                         <p>Tạo bản sao lưu đầy đủ hệ thống</p>
-                                        <form action="{{ url_for('admin.backup_system') }}" method="POST" style="display: inline;">
-                                            <button type="submit" class="btn btn-primary btn-sm">
-                                                <i class="fas fa-download"></i> Sao lưu
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-secondary btn-sm" disabled>
+                                            <i class="fas fa-download"></i> Sao lưu (Đang phát triển)
+                                        </button>
                                     </div>
                                 </div>
                                 
@@ -339,10 +322,9 @@
                                     <div class="operation-content">
                                         <h6>Đặt lại Database</h6>
                                         <p>Đặt lại cấu trúc và dữ liệu cơ sở dữ liệu</p>
-                                        <button class="btn btn-danger btn-sm operation-btn" 
-                                                data-operation="reset_database" 
-                                                data-url="{{ url_for('admin.reset_database') }}">
-                                            <i class="fas fa-redo"></i> Đặt Lại DB
+                                        <button class="btn btn-secondary btn-sm" disabled
+                                                title="Chức năng đang phát triển">
+                                            <i class="fas fa-redo"></i> Đặt Lại DB (Đang phát triển)
                                         </button>
                                     </div>
                                 </div>
@@ -354,10 +336,9 @@
                                     <div class="operation-content">
                                         <h6>Đặt lại Cài đặt</h6>
                                         <p>Khôi phục cài đặt hệ thống về mặc định</p>
-                                        <button class="btn btn-warning btn-sm operation-btn"
-                                                data-operation="reset_settings"
-                                                data-url="{{ url_for('admin.reset_settings') }}">
-                                            <i class="fas fa-sync"></i> Reset Settings
+                                        <button class="btn btn-secondary btn-sm" disabled
+                                                title="Chức năng đang phát triển">
+                                            <i class="fas fa-sync"></i> Reset Settings (Đang phát triển)
                                         </button>
                                     </div>
                                 </div>
@@ -382,11 +363,9 @@
                                     <div class="operation-content">
                                         <h6>Khởi động lại</h6>
                                         <p>Khởi động lại ứng dụng để áp dụng thay đổi</p>
-                                        <form action="{{ url_for('admin.restart_system') }}" method="POST" style="display: inline;">
-                                            <button type="submit" class="btn btn-secondary btn-sm">
-                                                <i class="fas fa-redo-alt"></i> Restart
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-secondary btn-sm" disabled>
+                                            <i class="fas fa-redo-alt"></i> Restart (Đang phát triển)
+                                        </button>
                                     </div>
                                 </div>
                                 
@@ -580,7 +559,7 @@
                 </div>
 
                 <!-- Database Health Section -->
-                <div class="db-status-card">
+                <div class="card db-status-card">
                     <div class="card-header">
                         <h5>
                             <i class="fas fa-database text-info"></i> 
@@ -698,12 +677,9 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i> Hủy bỏ
                 </button>
-                <form action="{{ url_for('admin.clear_logs') }}" method="POST" id="clearLogsForm">
-                    <input type="hidden" name="confirm" value="yes">
-                    <button type="submit" class="btn btn-danger" id="confirmDeleteBtn" disabled>
-                        <i class="fas fa-trash-alt"></i> Xóa tất cả nhật ký
-                    </button>
-                </form>
+                <button type="button" class="btn btn-secondary" disabled>
+                    <i class="fas fa-trash-alt"></i> Xóa nhật ký (Đang phát triển)
+                </button>
             </div>
         </div>
     </div>
@@ -811,7 +787,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Update time display
+    // Update time display - fix null element issue
     function updateTime() {
         const now = new Date();
         const timeString = now.toLocaleTimeString('vi-VN', {
@@ -820,16 +796,31 @@ document.addEventListener('DOMContentLoaded', function() {
             minute: '2-digit',
             second: '2-digit'
         });
-        document.getElementById('last-update').textContent = timeString;
+        
+        // Try both possible element IDs
+        const currentTimeEl = document.getElementById('current-time');
+        const lastUpdateEl = document.getElementById('last-update');
+        
+        if (currentTimeEl) {
+            currentTimeEl.textContent = timeString;
+        }
+        if (lastUpdateEl) {
+            lastUpdateEl.textContent = timeString;
+        }
     }
     
     // Update time immediately and then every second
     updateTime();
     setInterval(updateTime, 1000);
     
-    // Initialize real-time dashboard for admin manager
-    if (typeof SystemDashboard !== 'undefined') {
-        window.systemDashboard = new SystemDashboard();
+    // Initialize real-time dashboard for admin manager - prevent multiple initialization
+    if (typeof SystemDashboard !== 'undefined' && !window.systemDashboard) {
+        console.log('Initializing System Dashboard...');
+        window.systemDashboard = new SystemDashboard({
+            type: 'system',
+            realTime: true,
+            updateInterval: 5000
+        });
         systemDashboard.init();
         
         // Cleanup on page unload
@@ -838,6 +829,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.systemDashboard.cleanup();
             }
         });
+    } else if (window.systemDashboard) {
+        console.log('System Dashboard already initialized, skipping...');
     }
 });
 </script>

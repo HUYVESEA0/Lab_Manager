@@ -11,6 +11,8 @@ from app.api import api_bp
 from app.models import CaThucHanh as LabSession, DangKyCa as Registration, VaoCa as Entry, NguoiDung as User, db
 from app.decorators import admin_required
 from app.utils import log_activity
+from app.cache.cache_manager import cached_api, invalidate_user_cache, invalidate_model_cache
+from app.cache.cached_queries import invalidate_session_caches, invalidate_activity_caches
 from sqlalchemy import func, desc
 from datetime import datetime, timedelta
 import logging
@@ -21,8 +23,9 @@ logger = logging.getLogger(__name__)
 
 @api_bp.route('/lab-sessions', methods=['GET'])
 @login_required
+@cached_api(timeout=180, key_prefix='api_lab_sessions_list')
 def get_lab_sessions():
-    """Get lab sessions with filters"""
+    """Get lab sessions with filters and caching"""
     try:
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
@@ -96,8 +99,9 @@ def get_lab_sessions():
 
 @api_bp.route('/lab-sessions/<int:session_id>', methods=['GET'])
 @login_required
+@cached_api(timeout=300, key_prefix='api_lab_session_detail')
 def get_lab_session(session_id):
-    """Get specific lab session by ID"""
+    """Get specific lab session by ID with caching"""
     try:
         session = LabSession.query.get_or_404(session_id)
         
@@ -219,8 +223,7 @@ def register_for_session():
         
         if existing_registration:
             return jsonify({'error': 'You are already registered for this session'}), 400
-        
-        # Create registration
+          # Create registration
         registration = Registration(
             nguoi_dung_ma=current_user.id,
             ca_thuc_hanh_ma=session_id,
@@ -229,6 +232,11 @@ def register_for_session():
         
         db.session.add(registration)
         db.session.commit()
+        
+        # Invalidate related caches after registration
+        invalidate_user_cache(current_user.id)
+        invalidate_session_caches()
+        invalidate_activity_caches()
         
         log_activity("Lab registration", f"Registered for lab session {lab_session.tieu_de}")
         

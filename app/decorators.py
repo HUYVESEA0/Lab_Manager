@@ -6,7 +6,7 @@ from flask_login import current_user
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not (hasattr(current_user, 'la_quan_tri_vien') and current_user.la_quan_tri_vien()):
+        if not current_user.is_authenticated or not (hasattr(current_user, 'is_admin') and current_user.is_admin()):
             flash("Bạn cần quyền quản trị viên để truy cập trang này.", "danger")
             return redirect(url_for("index"))
         return f(*args, **kwargs)

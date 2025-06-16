@@ -4,6 +4,10 @@ from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Index
 from werkzeug.security import check_password_hash, generate_password_hash
+import secrets
+import time
+import secrets
+import time
 
 
 db = SQLAlchemy()
@@ -29,6 +33,10 @@ class NguoiDung(UserMixin, db.Model):
     ngay_tao = db.Column(db.DateTime, default=datetime.utcnow)
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
     bio = db.Column(db.Text, nullable=True)  # Thêm trường bio cho giới thiệu bản thân
+    
+    # Password reset fields
+    reset_token = db.Column(db.String(100), nullable=True)
+    reset_token_expiry = db.Column(db.Integer, nullable=True)  # Unix timestamp
 
     # Flask compatibility helpers for legacy code and templates
     def is_admin(self):
@@ -47,6 +55,47 @@ class NguoiDung(UserMixin, db.Model):
 
     def kiem_tra_mat_khau(self, mat_khau):
         return check_password_hash(self.mat_khau_hash, mat_khau)
+
+    def tao_reset_token(self):
+        """Tạo token đặt lại mật khẩu"""
+        from flask import current_app
+        self.reset_token = secrets.token_urlsafe(32)
+        # Set expiry time (default 1 hour)
+        expiry_seconds = current_app.config.get('RESET_TOKEN_EXPIRATION', 3600)
+        self.reset_token_expiry = int(time.time()) + expiry_seconds
+        return self.reset_token
+    
+    def xac_thuc_reset_token(self, token):
+        """Xác thực token đặt lại mật khẩu"""
+        if not self.reset_token or not self.reset_token_expiry:
+            return False
+        if self.reset_token != token:
+            return False
+        if int(time.time()) > self.reset_token_expiry:
+            return False
+        return True
+    
+    def xoa_reset_token(self):
+        """Xóa token đặt lại mật khẩu sau khi sử dụng"""
+        self.reset_token = None
+        self.reset_token_expiry = None
+    
+    # English method aliases for compatibility
+    def get_reset_password_token(self):
+        """Generate password reset token (English alias)"""
+        return self.tao_reset_token()        
+    @staticmethod
+    def verify_reset_password_token(token):
+        """Find and verify user by reset token"""
+        user = NguoiDung.query.filter_by(reset_token=token).first()
+        if user and user.xac_thuc_reset_token(token):
+            return user
+        return None
+        
+    @staticmethod
+    def tim_theo_reset_token(token):
+        """Tìm người dùng theo reset token"""
+        return NguoiDung.query.filter_by(reset_token=token).first()
 
     def la_quan_tri_vien(self):
         return self.vai_tro in ["quan_tri_vien", "quan_tri_he_thong"]
@@ -83,7 +132,7 @@ class NguoiDung(UserMixin, db.Model):
     @property
     def created_at(self):
         return self.ngay_tao
-
+        
     def __repr__(self):
         return f"<NguoiDung {self.ten_nguoi_dung}>"
 
@@ -222,12 +271,9 @@ class VaoCa(db.Model):
 
 def tao_chi_muc():
     Index("idx_nguoi_dung_email", NguoiDung.email)
-    Index("idx_nguoi_dung_vai_tro", NguoiDung.vai_tro)
-    Index("idx_nhat_ky_thoi_gian", NhatKyHoatDong.thoi_gian)
-    Index("idx_ca_thuc_hanh_ngay", CaThucHanh.ngay)
+    Index("idx_nguoi_dung_ten_nguoi_dung", NguoiDung.ten_nguoi_dung)
 
 def khoi_tao_ung_dung(app):
+    """Initialize database with the app"""
     db.init_app(app)
-    with app.app_context():
-        db.create_all()
-        tao_chi_muc()
+    tao_chi_muc()

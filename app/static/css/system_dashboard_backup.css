@@ -1,0 +1,3081 @@
+/* ===================================================================
+   MODERN SYSTEM DASHBOARD - COMPLETE REDESIGN
+   Design System: Clean, Modern, Professional
+   Note: Variables imported from variables.css
+   =================================================================== */
+
+/* Import centralized variables - using relative path */
+@import url('./variables.css');
+
+/* ===================================================================
+   GLOBAL DASHBOARD STYLES
+   =================================================================== */
+
+.modern-dashboard {
+    background: var(--gray-50);
+    min-height: 100vh;
+    font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.container-fluid {
+    padding: var(--spacing-xl) var(--spacing-lg);
+    max-width: 1600px; /* Increased from 1400px for better space usage */
+    margin: 0 auto;
+}
+
+/* ===================================================================
+   DASHBOARD HERO SECTION
+   =================================================================== */
+
+.dashboard-hero {
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 50%, var(--secondary-color) 100%);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-2xl);
+    margin-bottom: var(--spacing-xl);
+    color: white;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-xl);
+}
+
+.dashboard-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3Ccircle cx='10' cy='10' r='1'/%3E%3Ccircle cx='50' cy='10' r='1'/%3E%3Ccircle cx='10' cy='50' r='1'/%3E%3Ccircle cx='50' cy='50' r='1'/%3E%3C/g%3E%3C/svg%3E") repeat;
+    pointer-events: none;
+}
+
+.hero-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+    z-index: 1;
+    margin-bottom: var(--spacing-lg);
+}
+
+.hero-text h1.hero-title {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin: 0;
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.hero-text .hero-subtitle {
+    font-size: 1.125rem;
+    opacity: 0.9;
+    margin: 0;
+    font-weight: 400;
+}
+
+.hero-actions {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.hero-actions .btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    transition: all var(--transition-normal);
+}
+
+.hero-actions .btn-outline-light {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.hero-actions .btn-outline-light:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
+}
+
+.hero-actions .btn-light {
+    background: white;
+    color: var(--primary-blue);
+    border: none;
+}
+
+.hero-actions .btn-light:hover {
+    background: var(--gray-100);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.hero-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+}
+
+.system-status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-weight: 500;
+}
+
+.system-status .status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success-green);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.last-update {
+    font-size: 0.875rem;
+    opacity: 0.8;
+}
+
+/* ===================================================================
+   METRICS SECTION
+   =================================================================== */
+
+.metrics-section {
+    margin-bottom: var(--spacing-xl);
+}
+
+.metric-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--gray-200);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+    border-color: var(--primary-color);
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--primary-blue);
+    transition: all var(--transition-normal);
+}
+
+.metric-card.primary::before { 
+    background: linear-gradient(90deg, var(--primary-blue), var(--primary-blue-light)); 
+}
+.metric-card.success::before { 
+    background: linear-gradient(90deg, var(--success-green), #34d399); 
+}
+.metric-card.info::before { 
+    background: linear-gradient(90deg, var(--info-cyan), #22d3ee); 
+}
+.metric-card.warning::before { 
+    background: linear-gradient(90deg, var(--warning-orange), #fbbf24); 
+}
+
+.metric-card .metric-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--spacing-md);
+    font-size: 1.75rem;
+    color: white;
+    position: relative;
+    box-shadow: var(--shadow-md);
+}
+
+.metric-card.primary .metric-icon {
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
+}
+
+.metric-card.success .metric-icon {
+    background: linear-gradient(135deg, var(--success-green), #059669);
+}
+
+.metric-card.info .metric-icon {
+    background: linear-gradient(135deg, var(--info-cyan), #0891b2);
+}
+
+.metric-card.warning .metric-icon {
+    background: linear-gradient(135deg, var(--warning-orange), #d97706);
+}
+
+.metric-content {
+    flex: 1;
+}
+
+.metric-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--gray-800);
+    margin-bottom: var(--spacing-xs);
+    line-height: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-change {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-sm);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.metric-change.positive {
+    color: var(--success-green);
+}
+
+.metric-change.negative {
+    color: var(--danger-red);
+}
+
+.metric-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+}
+
+.metric-trend.up {
+    color: var(--success-green);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.metric-trend.down {
+    color: var(--danger-red);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.metric-progress {
+    height: 4px;
+    background: var(--gray-200);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.metric-progress .progress-bar {
+    height: 100%;
+    background: var(--primary-blue);
+    border-radius: 2px;
+    transition: width var(--transition-normal);
+}
+
+.metric-card.success .metric-progress .progress-bar { background: var(--success-green); }
+.metric-card.info .metric-progress .progress-bar { background: var(--info-cyan); }
+.metric-card.warning .metric-progress .progress-bar { background: var(--warning-orange); }
+
+/* Performance Metric Status Colors */
+.metric-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    transition: var(--transition-normal);
+}
+
+.metric-status.good {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-status.critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-red);
+}
+
+/* Progress Bar Colors */
+.bar-fill {
+    height: 4px;
+    background: var(--primary-blue);
+    border-radius: var(--radius-sm);
+    transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
+}
+
+.bar-fill.good {
+    background: var(--success-green);
+}
+
+.bar-fill.normal {
+    background: var(--primary-blue);
+}
+
+.bar-fill.warning {
+    background: var(--warning-orange);
+}
+
+.bar-fill.critical {
+    background: var(--error-red);
+}
+
+/* Database Statistics Styles */
+.db-stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.db-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    margin-right: var(--spacing-md);
+}
+
+.db-info {
+    flex: 1;
+}
+
+.db-info h6 {
+    margin-bottom: var(--spacing-xs);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.db-metric {
+    text-align: center;
+    padding: var(--spacing-sm);
+}
+
+.db-metric i {
+    font-size: 1.25rem;
+    display: block;
+}
+
+.db-metric h6 {
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.db-metric small {
+    color: var(--gray-500);
+    font-size: 0.75rem;
+}
+
+/* Animation for metric updates */
+@keyframes metricUpdate {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.metric-value.updating {
+    animation: metricUpdate 0.3s ease-in-out;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.status-indicator {
+    animation: pulse 2s infinite;
+}
+
+/* ===================================================================
+   DASHBOARD CONTENT CARDS
+   =================================================================== */
+
+.dashboard-content {
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-card {
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    border: var(--border-width) solid var(--border-color-light);
+    transition: all var(--transition-base);
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
+
+.dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-large);
+    border-color: var(--primary-color);
+}
+
+.dashboard-card:hover::before {
+    opacity: 1;
+}
+
+.dashboard-card .card-header {
+    background: var(--surface-secondary);
+    border-bottom: var(--border-width) solid var(--border-color-light);
+    padding: var(--space-6);
+    position: relative;
+}
+
+.dashboard-card .card-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--gray-800);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.dashboard-card .card-title i {
+    color: var(--primary-color);
+    font-size: var(--text-base);
+}
+
+.dashboard-card .card-subtitle {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin: var(--space-1) 0 0 0;
+    font-weight: var(--font-weight-medium);
+}
+
+.dashboard-card .card-body {
+    padding: var(--space-6);
+}
+
+/* ===================================================================
+   PERFORMANCE CARD STYLES
+   =================================================================== */
+
+.performance-card .chart-container {
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+    height: 300px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: var(--spacing-md);
+}
+
+.performance-card .chart-container canvas {
+    max-height: 100%;
+}
+
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-normal);
+}
+
+.metric-item:hover {
+    background: var(--gray-100);
+    transform: translateY(-1px);
+}
+
+.metric-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.25rem;
+}
+
+.metric-icon.cpu {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-blue);
+}
+
+.metric-icon.memory {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-icon.disk {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-icon.network {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--info-cyan);
+}
+
+.metric-details {
+    flex: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-xs);
+}
+
+.bar-fill {
+    height: 100%;
+    background: var(--primary-blue);
+    border-radius: 3px;
+    transition: all var(--transition-normal);
+}
+
+.bar-fill.good {
+    background: var(--success-green);
+}
+
+.bar-fill.normal {
+    background: var(--primary-blue);
+}
+
+.bar-fill.warning {
+    background: var(--warning-orange);
+}
+
+.bar-fill.critical {
+    background: var(--error-red);
+}
+
+.metric-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.metric-status.good {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-status.critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-red);
+}
+
+/* Database Statistics Styles */
+.db-stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.db-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    margin-right: var(--spacing-md);
+}
+
+.db-info {
+    flex: 1;
+}
+
+.db-info h6 {
+    margin-bottom: var(--spacing-xs);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.db-metric {
+    text-align: center;
+    padding: var(--spacing-sm);
+}
+
+.db-metric i {
+    font-size: 1.25rem;
+    display: block;
+}
+
+.db-metric h6 {
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.db-metric small {
+    color: var(--gray-500);
+    font-size: 0.75rem;
+}
+
+/* Animation for metric updates */
+@keyframes metricUpdate {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.metric-value.updating {
+    animation: metricUpdate 0.3s ease-in-out;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.status-indicator {
+    animation: pulse 2s infinite;
+}
+
+/* ===================================================================
+   DASHBOARD CONTENT CARDS
+   =================================================================== */
+
+.dashboard-content {
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-card {
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    border: var(--border-width) solid var(--border-color-light);
+    transition: all var(--transition-base);
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
+
+.dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-large);
+    border-color: var(--primary-color);
+}
+
+.dashboard-card:hover::before {
+    opacity: 1;
+}
+
+.dashboard-card .card-header {
+    background: var(--surface-secondary);
+    border-bottom: var(--border-width) solid var(--border-color-light);
+    padding: var(--space-6);
+    position: relative;
+}
+
+.dashboard-card .card-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--gray-800);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.dashboard-card .card-title i {
+    color: var(--primary-color);
+    font-size: var(--text-base);
+}
+
+.dashboard-card .card-subtitle {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin: var(--space-1) 0 0 0;
+    font-weight: var(--font-weight-medium);
+}
+
+.dashboard-card .card-body {
+    padding: var(--space-6);
+}
+
+/* ===================================================================
+   PERFORMANCE CARD STYLES
+   =================================================================== */
+
+.performance-card .chart-container {
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+    height: 300px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: var(--spacing-md);
+}
+
+.performance-card .chart-container canvas {
+    max-height: 100%;
+}
+
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-normal);
+}
+
+.metric-item:hover {
+    background: var(--gray-100);
+    transform: translateY(-1px);
+}
+
+.metric-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.25rem;
+}
+
+.metric-icon.cpu {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-blue);
+}
+
+.metric-icon.memory {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-icon.disk {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-icon.network {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--info-cyan);
+}
+
+.metric-details {
+    flex: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-xs);
+}
+
+.bar-fill {
+    height: 100%;
+    background: var(--primary-blue);
+    border-radius: 3px;
+    transition: all var(--transition-normal);
+}
+
+.bar-fill.good {
+    background: var(--success-green);
+}
+
+.bar-fill.normal {
+    background: var(--primary-blue);
+}
+
+.bar-fill.warning {
+    background: var(--warning-orange);
+}
+
+.bar-fill.critical {
+    background: var(--error-red);
+}
+
+.metric-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.metric-status.good {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-status.critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-red);
+}
+
+/* Database Statistics Styles */
+.db-stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.db-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    margin-right: var(--spacing-md);
+}
+
+.db-info {
+    flex: 1;
+}
+
+.db-info h6 {
+    margin-bottom: var(--spacing-xs);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.db-metric {
+    text-align: center;
+    padding: var(--spacing-sm);
+}
+
+.db-metric i {
+    font-size: 1.25rem;
+    display: block;
+}
+
+.db-metric h6 {
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.db-metric small {
+    color: var(--gray-500);
+    font-size: 0.75rem;
+}
+
+/* Animation for metric updates */
+@keyframes metricUpdate {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.metric-value.updating {
+    animation: metricUpdate 0.3s ease-in-out;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.status-indicator {
+    animation: pulse 2s infinite;
+}
+
+/* ===================================================================
+   DASHBOARD CONTENT CARDS
+   =================================================================== */
+
+.dashboard-content {
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-card {
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    border: var(--border-width) solid var(--border-color-light);
+    transition: all var(--transition-base);
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
+
+.dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-large);
+    border-color: var(--primary-color);
+}
+
+.dashboard-card:hover::before {
+    opacity: 1;
+}
+
+.dashboard-card .card-header {
+    background: var(--surface-secondary);
+    border-bottom: var(--border-width) solid var(--border-color-light);
+    padding: var(--space-6);
+    position: relative;
+}
+
+.dashboard-card .card-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--gray-800);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.dashboard-card .card-title i {
+    color: var(--primary-color);
+    font-size: var(--text-base);
+}
+
+.dashboard-card .card-subtitle {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin: var(--space-1) 0 0 0;
+    font-weight: var(--font-weight-medium);
+}
+
+.dashboard-card .card-body {
+    padding: var(--space-6);
+}
+
+/* ===================================================================
+   PERFORMANCE CARD STYLES
+   =================================================================== */
+
+.performance-card .chart-container {
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+    height: 300px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: var(--spacing-md);
+}
+
+.performance-card .chart-container canvas {
+    max-height: 100%;
+}
+
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-normal);
+}
+
+.metric-item:hover {
+    background: var(--gray-100);
+    transform: translateY(-1px);
+}
+
+.metric-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.25rem;
+}
+
+.metric-icon.cpu {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-blue);
+}
+
+.metric-icon.memory {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-icon.disk {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-icon.network {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--info-cyan);
+}
+
+.metric-details {
+    flex: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-xs);
+}
+
+.bar-fill {
+    height: 100%;
+    background: var(--primary-blue);
+    border-radius: 3px;
+    transition: all var(--transition-normal);
+}
+
+.bar-fill.good {
+    background: var(--success-green);
+}
+
+.bar-fill.normal {
+    background: var(--primary-blue);
+}
+
+.bar-fill.warning {
+    background: var(--warning-orange);
+}
+
+.bar-fill.critical {
+    background: var(--error-red);
+}
+
+.metric-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.metric-status.good {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-status.critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-red);
+}
+
+/* Database Statistics Styles */
+.db-stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.db-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    margin-right: var(--spacing-md);
+}
+
+.db-info {
+    flex: 1;
+}
+
+.db-info h6 {
+    margin-bottom: var(--spacing-xs);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.db-metric {
+    text-align: center;
+    padding: var(--spacing-sm);
+}
+
+.db-metric i {
+    font-size: 1.25rem;
+    display: block;
+}
+
+.db-metric h6 {
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.db-metric small {
+    color: var(--gray-500);
+    font-size: 0.75rem;
+}
+
+/* Animation for metric updates */
+@keyframes metricUpdate {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.metric-value.updating {
+    animation: metricUpdate 0.3s ease-in-out;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.status-indicator {
+    animation: pulse 2s infinite;
+}
+
+/* ===================================================================
+   DASHBOARD CONTENT CARDS
+   =================================================================== */
+
+.dashboard-content {
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-card {
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    border: var(--border-width) solid var(--border-color-light);
+    transition: all var(--transition-base);
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
+
+.dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-large);
+    border-color: var(--primary-color);
+}
+
+.dashboard-card:hover::before {
+    opacity: 1;
+}
+
+.dashboard-card .card-header {
+    background: var(--surface-secondary);
+    border-bottom: var(--border-width) solid var(--border-color-light);
+    padding: var(--space-6);
+    position: relative;
+}
+
+.dashboard-card .card-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--gray-800);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.dashboard-card .card-title i {
+    color: var(--primary-color);
+    font-size: var(--text-base);
+}
+
+.dashboard-card .card-subtitle {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin: var(--space-1) 0 0 0;
+    font-weight: var(--font-weight-medium);
+}
+
+.dashboard-card .card-body {
+    padding: var(--space-6);
+}
+
+/* ===================================================================
+   PERFORMANCE CARD STYLES
+   =================================================================== */
+
+.performance-card .chart-container {
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+    height: 300px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: var(--spacing-md);
+}
+
+.performance-card .chart-container canvas {
+    max-height: 100%;
+}
+
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-normal);
+}
+
+.metric-item:hover {
+    background: var(--gray-100);
+    transform: translateY(-1px);
+}
+
+.metric-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.25rem;
+}
+
+.metric-icon.cpu {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-blue);
+}
+
+.metric-icon.memory {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-icon.disk {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-icon.network {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--info-cyan);
+}
+
+.metric-details {
+    flex: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-xs);
+}
+
+.bar-fill {
+    height: 100%;
+    background: var(--primary-blue);
+    border-radius: 3px;
+    transition: all var(--transition-normal);
+}
+
+.bar-fill.good {
+    background: var(--success-green);
+}
+
+.bar-fill.normal {
+    background: var(--primary-blue);
+}
+
+.bar-fill.warning {
+    background: var(--warning-orange);
+}
+
+.bar-fill.critical {
+    background: var(--error-red);
+}
+
+.metric-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.metric-status.good {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-status.critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-red);
+}
+
+/* Database Statistics Styles */
+.db-stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.db-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    margin-right: var(--spacing-md);
+}
+
+.db-info {
+    flex: 1;
+}
+
+.db-info h6 {
+    margin-bottom: var(--spacing-xs);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.db-metric {
+    text-align: center;
+    padding: var(--spacing-sm);
+}
+
+.db-metric i {
+    font-size: 1.25rem;
+    display: block;
+}
+
+.db-metric h6 {
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.db-metric small {
+    color: var(--gray-500);
+    font-size: 0.75rem;
+}
+
+/* Animation for metric updates */
+@keyframes metricUpdate {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.metric-value.updating {
+    animation: metricUpdate 0.3s ease-in-out;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.status-indicator {
+    animation: pulse 2s infinite;
+}
+
+/* ===================================================================
+   DASHBOARD CONTENT CARDS
+   =================================================================== */
+
+.dashboard-content {
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-card {
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    border: var(--border-width) solid var(--border-color-light);
+    transition: all var(--transition-base);
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
+
+.dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-large);
+    border-color: var(--primary-color);
+}
+
+.dashboard-card:hover::before {
+    opacity: 1;
+}
+
+.dashboard-card .card-header {
+    background: var(--surface-secondary);
+    border-bottom: var(--border-width) solid var(--border-color-light);
+    padding: var(--space-6);
+    position: relative;
+}
+
+.dashboard-card .card-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--gray-800);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.dashboard-card .card-title i {
+    color: var(--primary-color);
+    font-size: var(--text-base);
+}
+
+.dashboard-card .card-subtitle {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin: var(--space-1) 0 0 0;
+    font-weight: var(--font-weight-medium);
+}
+
+.dashboard-card .card-body {
+    padding: var(--space-6);
+}
+
+/* ===================================================================
+   PERFORMANCE CARD STYLES
+   =================================================================== */
+
+.performance-card .chart-container {
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+    height: 300px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: var(--spacing-md);
+}
+
+.performance-card .chart-container canvas {
+    max-height: 100%;
+}
+
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-normal);
+}
+
+.metric-item:hover {
+    background: var(--gray-100);
+    transform: translateY(-1px);
+}
+
+.metric-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.25rem;
+}
+
+.metric-icon.cpu {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-blue);
+}
+
+.metric-icon.memory {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-icon.disk {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-icon.network {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--info-cyan);
+}
+
+.metric-details {
+    flex: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-xs);
+}
+
+.bar-fill {
+    height: 100%;
+    background: var(--primary-blue);
+    border-radius: 3px;
+    transition: all var(--transition-normal);
+}
+
+.bar-fill.good {
+    background: var(--success-green);
+}
+
+.bar-fill.normal {
+    background: var(--primary-blue);
+}
+
+.bar-fill.warning {
+    background: var(--warning-orange);
+}
+
+.bar-fill.critical {
+    background: var(--error-red);
+}
+
+.metric-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.metric-status.good {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-status.critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-red);
+}
+
+/* Database Statistics Styles */
+.db-stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.db-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    margin-right: var(--spacing-md);
+}
+
+.db-info {
+    flex: 1;
+}
+
+.db-info h6 {
+    margin-bottom: var(--spacing-xs);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.db-metric {
+    text-align: center;
+    padding: var(--spacing-sm);
+}
+
+.db-metric i {
+    font-size: 1.25rem;
+    display: block;
+}
+
+.db-metric h6 {
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.db-metric small {
+    color: var(--gray-500);
+    font-size: 0.75rem;
+}
+
+/* Animation for metric updates */
+@keyframes metricUpdate {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.metric-value.updating {
+    animation: metricUpdate 0.3s ease-in-out;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.status-indicator {
+    animation: pulse 2s infinite;
+}
+
+/* ===================================================================
+   DASHBOARD CONTENT CARDS
+   =================================================================== */
+
+.dashboard-content {
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-card {
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    border: var(--border-width) solid var(--border-color-light);
+    transition: all var(--transition-base);
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
+
+.dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-large);
+    border-color: var(--primary-color);
+}
+
+.dashboard-card:hover::before {
+    opacity: 1;
+}
+
+.dashboard-card .card-header {
+    background: var(--surface-secondary);
+    border-bottom: var(--border-width) solid var(--border-color-light);
+    padding: var(--space-6);
+    position: relative;
+}
+
+.dashboard-card .card-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--gray-800);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.dashboard-card .card-title i {
+    color: var(--primary-color);
+    font-size: var(--text-base);
+}
+
+.dashboard-card .card-subtitle {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin: var(--space-1) 0 0 0;
+    font-weight: var(--font-weight-medium);
+}
+
+.dashboard-card .card-body {
+    padding: var(--space-6);
+}
+
+/* ===================================================================
+   PERFORMANCE CARD STYLES
+   =================================================================== */
+
+.performance-card .chart-container {
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+    height: 300px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: var(--spacing-md);
+}
+
+.performance-card .chart-container canvas {
+    max-height: 100%;
+}
+
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-normal);
+}
+
+.metric-item:hover {
+    background: var(--gray-100);
+    transform: translateY(-1px);
+}
+
+.metric-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.25rem;
+}
+
+.metric-icon.cpu {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-blue);
+}
+
+.metric-icon.memory {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-icon.disk {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-icon.network {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--info-cyan);
+}
+
+.metric-details {
+    flex: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-xs);
+}
+
+.bar-fill {
+    height: 100%;
+    background: var(--primary-blue);
+    border-radius: 3px;
+    transition: all var(--transition-normal);
+}
+
+.bar-fill.good {
+    background: var(--success-green);
+}
+
+.bar-fill.normal {
+    background: var(--primary-blue);
+}
+
+.bar-fill.warning {
+    background: var(--warning-orange);
+}
+
+.bar-fill.critical {
+    background: var(--error-red);
+}
+
+.metric-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.metric-status.good {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-status.critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-red);
+}
+
+/* Database Statistics Styles */
+.db-stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.db-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    margin-right: var(--spacing-md);
+}
+
+.db-info {
+    flex: 1;
+}
+
+.db-info h6 {
+    margin-bottom: var(--spacing-xs);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.db-metric {
+    text-align: center;
+    padding: var(--spacing-sm);
+}
+
+.db-metric i {
+    font-size: 1.25rem;
+    display: block;
+}
+
+.db-metric h6 {
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.db-metric small {
+    color: var(--gray-500);
+    font-size: 0.75rem;
+}
+
+/* Animation for metric updates */
+@keyframes metricUpdate {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.metric-value.updating {
+    animation: metricUpdate 0.3s ease-in-out;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.status-indicator {
+    animation: pulse 2s infinite;
+}
+
+/* ===================================================================
+   DASHBOARD CONTENT CARDS
+   =================================================================== */
+
+.dashboard-content {
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-card {
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    border: var(--border-width) solid var(--border-color-light);
+    transition: all var(--transition-base);
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
+
+.dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-large);
+    border-color: var(--primary-color);
+}
+
+.dashboard-card:hover::before {
+    opacity: 1;
+}
+
+.dashboard-card .card-header {
+    background: var(--surface-secondary);
+    border-bottom: var(--border-width) solid var(--border-color-light);
+    padding: var(--space-6);
+    position: relative;
+}
+
+.dashboard-card .card-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--gray-800);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.dashboard-card .card-title i {
+    color: var(--primary-color);
+    font-size: var(--text-base);
+}
+
+.dashboard-card .card-subtitle {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin: var(--space-1) 0 0 0;
+    font-weight: var(--font-weight-medium);
+}
+
+.dashboard-card .card-body {
+    padding: var(--space-6);
+}
+
+/* ===================================================================
+   PERFORMANCE CARD STYLES
+   =================================================================== */
+
+.performance-card .chart-container {
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+    height: 300px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: var(--spacing-md);
+}
+
+.performance-card .chart-container canvas {
+    max-height: 100%;
+}
+
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-normal);
+}
+
+.metric-item:hover {
+    background: var(--gray-100);
+    transform: translateY(-1px);
+}
+
+.metric-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.25rem;
+}
+
+.metric-icon.cpu {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-blue);
+}
+
+.metric-icon.memory {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-icon.disk {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-icon.network {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--info-cyan);
+}
+
+.metric-details {
+    flex: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-xs);
+}
+
+.bar-fill {
+    height: 100%;
+    background: var(--primary-blue);
+    border-radius: 3px;
+    transition: all var(--transition-normal);
+}
+
+.bar-fill.good {
+    background: var(--success-green);
+}
+
+.bar-fill.normal {
+    background: var(--primary-blue);
+}
+
+.bar-fill.warning {
+    background: var(--warning-orange);
+}
+
+.bar-fill.critical {
+    background: var(--error-red);
+}
+
+.metric-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.metric-status.good {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-status.critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-red);
+}
+
+/* Database Statistics Styles */
+.db-stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.db-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    margin-right: var(--spacing-md);
+}
+
+.db-info {
+    flex: 1;
+}
+
+.db-info h6 {
+    margin-bottom: var(--spacing-xs);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.db-metric {
+    text-align: center;
+    padding: var(--spacing-sm);
+}
+
+.db-metric i {
+    font-size: 1.25rem;
+    display: block;
+}
+
+.db-metric h6 {
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.db-metric small {
+    color: var(--gray-500);
+    font-size: 0.75rem;
+}
+
+/* Animation for metric updates */
+@keyframes metricUpdate {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.metric-value.updating {
+    animation: metricUpdate 0.3s ease-in-out;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.status-indicator {
+    animation: pulse 2s infinite;
+}
+
+/* ===================================================================
+   DASHBOARD CONTENT CARDS
+   =================================================================== */
+
+.dashboard-content {
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-card {
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    border: var(--border-width) solid var(--border-color-light);
+    transition: all var(--transition-base);
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
+
+.dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-large);
+    border-color: var(--primary-color);
+}
+
+.dashboard-card:hover::before {
+    opacity: 1;
+}
+
+.dashboard-card .card-header {
+    background: var(--surface-secondary);
+    border-bottom: var(--border-width) solid var(--border-color-light);
+    padding: var(--space-6);
+    position: relative;
+}
+
+.dashboard-card .card-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--gray-800);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.dashboard-card .card-title i {
+    color: var(--primary-color);
+    font-size: var(--text-base);
+}
+
+.dashboard-card .card-subtitle {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin: var(--space-1) 0 0 0;
+    font-weight: var(--font-weight-medium);
+}
+
+.dashboard-card .card-body {
+    padding: var(--space-6);
+}
+
+/* ===================================================================
+   PERFORMANCE CARD STYLES
+   =================================================================== */
+
+.performance-card .chart-container {
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+    height: 300px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: var(--spacing-md);
+}
+
+.performance-card .chart-container canvas {
+    max-height: 100%;
+}
+
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-normal);
+}
+
+.metric-item:hover {
+    background: var(--gray-100);
+    transform: translateY(-1px);
+}
+
+.metric-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.25rem;
+}
+
+.metric-icon.cpu {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-blue);
+}
+
+.metric-icon.memory {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-icon.disk {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-icon.network {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--info-cyan);
+}
+
+.metric-details {
+    flex: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-xs);
+}
+
+.bar-fill {
+    height: 100%;
+    background: var(--primary-blue);
+    border-radius: 3px;
+    transition: all var(--transition-normal);
+}
+
+.bar-fill.good {
+    background: var(--success-green);
+}
+
+.bar-fill.normal {
+    background: var(--primary-blue);
+}
+
+.bar-fill.warning {
+    background: var(--warning-orange);
+}
+
+.bar-fill.critical {
+    background: var(--error-red);
+}
+
+.metric-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.metric-status.good {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-status.critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-red);
+}
+
+/* Database Statistics Styles */
+.db-stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.db-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    margin-right: var(--spacing-md);
+}
+
+.db-info {
+    flex: 1;
+}
+
+.db-info h6 {
+    margin-bottom: var(--spacing-xs);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.db-metric {
+    text-align: center;
+    padding: var(--spacing-sm);
+}
+
+.db-metric i {
+    font-size: 1.25rem;
+    display: block;
+}
+
+.db-metric h6 {
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.db-metric small {
+    color: var(--gray-500);
+    font-size: 0.75rem;
+}
+
+/* Animation for metric updates */
+@keyframes metricUpdate {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.metric-value.updating {
+    animation: metricUpdate 0.3s ease-in-out;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.status-indicator {
+    animation: pulse 2s infinite;
+}
+
+/* ===================================================================
+   DASHBOARD CONTENT CARDS
+   =================================================================== */
+
+.dashboard-content {
+    margin-bottom: var(--spacing-xl);
+}
+
+.dashboard-card {
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    border: var(--border-width) solid var(--border-color-light);
+    transition: all var(--transition-base);
+    overflow: hidden;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
+
+.dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-large);
+    border-color: var(--primary-color);
+}
+
+.dashboard-card:hover::before {
+    opacity: 1;
+}
+
+.dashboard-card .card-header {
+    background: var(--surface-secondary);
+    border-bottom: var(--border-width) solid var(--border-color-light);
+    padding: var(--space-6);
+    position: relative;
+}
+
+.dashboard-card .card-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--gray-800);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.dashboard-card .card-title i {
+    color: var(--primary-color);
+    font-size: var(--text-base);
+}
+
+.dashboard-card .card-subtitle {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin: var(--space-1) 0 0 0;
+    font-weight: var(--font-weight-medium);
+}
+
+.dashboard-card .card-body {
+    padding: var(--space-6);
+}
+
+/* ===================================================================
+   PERFORMANCE CARD STYLES
+   =================================================================== */
+
+.performance-card .chart-container {
+    margin-bottom: var(--spacing-xl);
+    position: relative;
+    height: 300px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: var(--spacing-md);
+}
+
+.performance-card .chart-container canvas {
+    max-height: 100%;
+}
+
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-normal);
+}
+
+.metric-item:hover {
+    background: var(--gray-100);
+    transform: translateY(-1px);
+}
+
+.metric-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    font-size: 1.25rem;
+}
+
+.metric-icon.cpu {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-blue);
+}
+
+.metric-icon.memory {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-icon.disk {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-icon.network {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--info-cyan);
+}
+
+.metric-details {
+    flex: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-xs);
+}
+
+.metric-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-xs);
+}
+
+.bar-fill {
+    height: 100%;
+    background: var(--primary-blue);
+    border-radius: 3px;
+    transition: all var(--transition-normal);
+}
+
+.bar-fill.good {
+    background: var(--success-green);
+}
+
+.bar-fill.normal {
+    background: var(--primary-blue);
+}
+
+.bar-fill.warning {
+    background: var(--warning-orange);
+}
+
+.bar-fill.critical {
+    background: var(--error-red);
+}
+
+.metric-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.metric-status.good {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-green);
+}
+
+.metric-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-orange);
+}
+
+.metric-status.critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error-red);
+}
+
+/* Database Statistics Styles */
+.db-stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.db-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    margin-right: var(--spacing-md);
+}
+
+.db-info {
+    flex: 1;
+}
+
+.db-info h6 {
+    margin-bottom: var(--spacing-xs);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.db-metric {
+    text-align: center;
+    padding: var(--spacing-sm);
+}
+
+.db-metric i {
+    font-size: 1.25rem;
+    display: block;
+}
+
+.db-metric h6 {
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.db-metric small {
+    color: var(--gray-500);
+    font-size: 0.75rem;
+}
+
+/* Animation for metric updates */
+@keyframes metricUpdate {
+    0% {
+        transform: scale

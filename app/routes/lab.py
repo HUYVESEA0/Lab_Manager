@@ -1,4 +1,3 @@
-
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import login_required, current_user
 from flask_wtf.csrf import generate_csrf
@@ -6,6 +5,11 @@ from datetime import datetime, timedelta, time
 from ..forms import SessionRegistrationForm, LabVerificationForm, LabResultForm, LabSessionForm
 from ..models import CaThucHanh, DangKyCa, VaoCa, NguoiDung, db
 from ..utils import log_activity
+from ..cache.cache_manager import cached_route, cached_api, invalidate_user_cache, invalidate_model_cache
+from ..cache.cached_queries import (
+    get_total_sessions, get_active_sessions_count, get_sessions_today,
+    invalidate_session_caches, invalidate_activity_caches
+)
 import random, string
 from sqlalchemy import func
 
@@ -25,8 +29,9 @@ def csrf_token():
 
 @lab_bp.route('/sessions')
 @login_required
+@cached_route(timeout=180, key_prefix='lab_sessions_page')
 def lab_sessions():
-    """Show available lab sessions - template expects data from API"""
+    """Show available lab sessions with caching - template expects data from API"""
     return render_template("lab/lab_sessions.html")
 
 @lab_bp.route('/register/<int:session_id>', methods=['GET', 'POST'])
@@ -49,11 +54,16 @@ def register_lab_session(session_id):
     form = SessionRegistrationForm()
     form.session_id.data = session_id
     
-    if form.validate_on_submit():
-        # Traditional form submission - create registration directly
+    if form.validate_on_submit():        # Traditional form submission - create registration directly
         registration = DangKyCa(nguoi_dung_ma=current_user.id, ca_thuc_hanh_ma=session_id, ghi_chu=form.notes.data)
         db.session.add(registration)
         db.session.commit()
+        
+        # Invalidate related caches after lab registration
+        invalidate_user_cache(current_user.id)
+        invalidate_session_caches()
+        invalidate_activity_caches()
+        
         log_activity("Lab registration", f"Registered for lab session {ca_thuc_hanh.tieu_de}")
         flash("Đăng ký ca thực hành thành công!", "success")
         return redirect(url_for("lab.lab_sessions"))
@@ -139,8 +149,9 @@ def lab_session_active(entry_id):
 
 @lab_bp.route('/my-sessions')
 @login_required
+@cached_route(timeout=120, key_prefix='user_lab_sessions')
 def my_lab_sessions():
-    """Show user's lab sessions - template expects data from API"""
+    """Show user's lab sessions with caching - template expects data from API"""
     return render_template("lab/my_sessions.html")
 
 # --- ADMIN LAB ROUTES ---

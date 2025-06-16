@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from datetime import datetime
-from ..forms import LoginForm, RegistrationForm
-from ..models import NguoiDung
+from ..forms import LoginForm, RegistrationForm, ResetPasswordRequestForm, ResetPasswordForm
+from ..models import NguoiDung, db
 from ..utils import log_activity, clear_auth_session
 
 auth_bp = Blueprint('auth', __name__)
@@ -65,6 +65,55 @@ def login():
         else:
             return redirect(url_for("user.dashboard"))
     return render_template("auth/log_regis.html", login_form=login_form, reg_form=reg_form, form=login_form, register=False, title="Đăng nhập")
+
+@auth_bp.route('/reset-password-request', methods=['GET', 'POST'])
+def reset_password_request():
+    """Handle password reset request"""
+    if current_user.is_authenticated:
+        return redirect(url_for('user.dashboard'))
+    
+    form = ResetPasswordRequestForm()
+    if form.validate_on_submit():
+        email = form.email.data
+        if email:
+            email = email.lower().strip()
+            user = NguoiDung.query.filter_by(email=email).first()
+        else:
+            user = None
+        
+        if user:
+            from ..utils import send_password_reset_email
+            if send_password_reset_email(user):
+                flash('Đã gửi hướng dẫn đặt lại mật khẩu đến email của bạn.', 'info')
+            else:
+                flash('Có lỗi xảy ra khi gửi email. Vui lòng thử lại sau.', 'danger')
+        else:
+            # Don't reveal if email exists or not for security
+            flash('Đã gửi hướng dẫn đặt lại mật khẩu đến email của bạn.', 'info')
+        
+        return redirect(url_for('auth.login'))
+    
+    return render_template('auth/reset_password_request.html', title='Đặt lại mật khẩu', form=form)
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Handle password reset with token"""
+    if current_user.is_authenticated:
+        return redirect(url_for('user.dashboard'))
+    
+    user = NguoiDung.verify_reset_password_token(token)
+    if not user:
+        flash('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.', 'danger')
+        return redirect(url_for('auth.reset_password_request'))
+    
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        user.set_password(form.password.data)
+        db.session.commit()
+        flash('Mật khẩu của bạn đã được đặt lại thành công.', 'success')
+        return redirect(url_for('auth.login'))
+    
+    return render_template('auth/reset_password.html', title='Đặt lại mật khẩu', form=form)
 
 @auth_bp.route('/logout')
 @login_required

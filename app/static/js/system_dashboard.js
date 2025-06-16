@@ -21,9 +21,8 @@ class SystemDashboard {
         this.type = options.type || 'basic';
         this.realTime = options.realTime !== false;
         this.isSocketConnected = false;
-    }
-
-    // Add cleanup method
+        this.isInitialized = false;
+    }// Add cleanup method
     cleanup() {
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
@@ -31,11 +30,47 @@ class SystemDashboard {
         if (this.socket) {
             this.socket.disconnect();
         }
-        this.isRealTimeActive = false;
+          // Destroy all charts properly
+        Object.keys(this.charts).forEach(chartKey => {
+            if (this.charts[chartKey]) {
+                try {
+                    this.charts[chartKey].destroy();
+                } catch (error) {
+                    console.warn(`Error destroying chart ${chartKey}:`, error);
+                }
+                this.charts[chartKey] = null;
+            }
+        });
+        
+        // Also destroy any existing Chart.js instances on known canvas elements
+        const canvases = ['performanceChart', 'userActivityChart', 'systemStatsChart'];
+        canvases.forEach(canvasId => {
+            const canvas = document.getElementById(canvasId);
+            if (canvas) {
+                const existingChart = Chart.getChart(canvas);
+                if (existingChart) {
+                    try {
+                        existingChart.destroy();
+                        console.log(`Destroyed existing chart on ${canvasId}`);
+                    } catch (error) {
+                        console.warn(`Error destroying chart on ${canvasId}:`, error);
+                    }
+                }
+            }
+        });
+          this.isRealTimeActive = false;
+        this.isInitialized = false;
         console.log('Dashboard cleanup completed');
-    }
-
-    init() {
+    }    init() {
+        // Only initialize if not already initialized
+        if (this.isInitialized) {
+            console.log('Dashboard already initialized, skipping...');
+            return;
+        }
+        
+        // Clean up any existing instance first
+        this.cleanup();
+        
         // Wait for Chart.js to be loaded
         this.waitForChartJS().then(() => {
             console.log('Chart.js loaded, initializing dashboard...');
@@ -46,9 +81,9 @@ class SystemDashboard {
             this.setupAnimations();
             this.setupNotifications();            this.setupProgressBars();
             this.setupInteractiveElements();
-            this.initializeEnhancedFeatures();
-            this.updateCurrentTime();
+            this.initializeEnhancedFeatures();            this.updateCurrentTime();
             
+            this.isInitialized = true;
             console.log('System Dashboard initialized successfully - using real-time data');
         }).catch(error => {
             console.error('Failed to initialize dashboard:', error);
@@ -86,13 +121,31 @@ class SystemDashboard {
             second: '2-digit'
         });
         
-        const timeElement = document.getElementById('current-time');
-        if (timeElement) {
-            timeElement.textContent = timeStr;
+        // Try multiple possible element IDs and check if they exist
+        const timeElements = [
+            'current-time',
+            'last-update',
+            'system-time',
+            'dashboard-time'
+        ];
+        
+        let updated = false;
+        timeElements.forEach(elementId => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = timeStr;
+                updated = true;
+            }
+        });
+        
+        if (!updated) {
+            console.debug('No time element found to update');
         }
         
-        // Update every second
-        setTimeout(() => this.updateCurrentTime(), 1000);
+        // Update every second only if dashboard is still active
+        if (this.isInitialized) {
+            setTimeout(() => this.updateCurrentTime(), 1000);
+        }
     }
 
     initializeSocketIO() {
@@ -180,7 +233,8 @@ class SystemDashboard {
         }
         this.isRealTimeActive = false;    }    async fetchSystemMetrics() {
         try {
-            const response = await fetch('/api/v1/system/metrics');
+            // Use demo endpoint for testing when not authenticated
+            const response = await fetch('/api/v1/system/metrics-demo');
             if (response.ok) {
                 const data = await response.json();
                 this.updateSystemMetrics(data);
@@ -190,8 +244,21 @@ class SystemDashboard {
             }
         } catch (error) {
             console.warn('⚠️ Could not fetch system metrics:', error);
-            this.showNotification('Không thể tải dữ liệu hệ thống', 'warning');
-            // Don't use fallback data - let the template show existing values
+            // Try authenticated endpoint as fallback
+            try {
+                const authResponse = await fetch('/api/v1/system/metrics');
+                if (authResponse.ok) {
+                    const authData = await authResponse.json();
+                    this.updateSystemMetrics(authData);
+                    console.log('✅ Fetched authenticated system metrics:', authData);
+                } else {
+                    throw new Error(`Authenticated endpoint failed: ${authResponse.status}`);
+                }
+            } catch (authError) {
+                console.warn('⚠️ Both endpoints failed:', authError);
+                this.showNotification('Không thể tải dữ liệu hệ thống', 'warning');
+                // Don't use fallback data - let the template show existing values
+            }
         }
     }async fetchUserActivity() {
         try {
@@ -431,142 +498,161 @@ class SystemDashboard {
         this.initializeUserActivityChart();
         
         console.log('Charts initialized:', this.charts);
-    }
-
-    initializePerformanceChart() {
+    }    initializePerformanceChart() {
         const ctx = document.getElementById('performanceChart');
-        if (ctx && typeof Chart !== 'undefined') {
-            try {
-                this.charts.performanceChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            label: 'CPU Usage (%)',
-                            data: [],
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }, {
-                            label: 'Memory Usage (%)',
-                            data: [],
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }, {
-                            label: 'Disk Usage (%)',
-                            data: [],
-                            borderColor: '#f59e0b',
-                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: {
-                            intersect: false,
-                            mode: 'index',
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 100,
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.05)'
-                                }
-                            },
-                            x: {
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.05)'
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                                labels: {
-                                    usePointStyle: true,
-                                    padding: 20
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: 'System Performance (Real-time)',
-                                font: {
-                                    size: 16,
-                                    weight: 'bold'
-                                }
-                            }
-                        }
-                    }
-                });
-                console.log('Performance chart initialized');
-            } catch (error) {
-                console.error('Error initializing performance chart:', error);
-            }
-        } else {
+        if (!ctx || typeof Chart === 'undefined') {
             console.warn('Performance chart canvas not found or Chart.js not available');
+            return;
         }
-    }
 
-    initializeUserActivityChart() {
-        const ctx = document.getElementById('userActivityChart');
-        if (ctx && typeof Chart !== 'undefined') {
-            try {
-                this.charts.userActivityChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['00', '02', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22'],
-                        datasets: [{
-                            label: 'Active Users',
-                            data: [12, 8, 15, 25, 42, 38, 45, 52, 48, 35, 28, 18],
-                            backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                            borderColor: 'rgba(59, 130, 246, 1)',
-                            borderWidth: 1,
-                            borderRadius: 4,
-                        }]
+        try {
+            // Get chart instance that might already exist on this canvas
+            const existingChart = Chart.getChart(ctx);
+            if (existingChart) {
+                console.log('Destroying existing performance chart...');
+                existingChart.destroy();
+            }
+            
+            // Clear any reference we might have
+            if (this.charts.performanceChart) {
+                this.charts.performanceChart = null;
+            }
+            
+            this.charts.performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'CPU Usage (%)',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Memory Usage (%)',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Disk Usage (%)',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.05)'
-                                }
-                            },
-                            x: {
-                                grid: {
-                                    display: false
-                                }
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
                             }
                         },
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            title: {
-                                display: true,
-                                text: 'User Activity by Hour',
-                                font: {
-                                    size: 14,
-                                    weight: 'bold'
-                                }
+                        x: {
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'System Performance (Real-time)',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
                             }
                         }
                     }
-                });
-                console.log('User activity chart initialized');
-            } catch (error) {
-                console.error('Error initializing user activity chart:', error);
-            }
-        } else {
+                }
+            });
+            console.log('Performance chart initialized');
+        } catch (error) {
+            console.error('Error initializing performance chart:', error);
+        }    }    initializeUserActivityChart() {
+        const ctx = document.getElementById('userActivityChart');
+        if (!ctx || typeof Chart === 'undefined') {
             console.warn('User activity chart canvas not found or Chart.js not available');
+            return;
+        }        try {
+            // Get chart instance that might already exist on this canvas
+            const existingChart = Chart.getChart(ctx);
+            if (existingChart) {
+                console.log('Destroying existing user activity chart...');
+                existingChart.destroy();
+            }
+            
+            // Clear any reference we might have
+            if (this.charts.userActivityChart) {
+                this.charts.userActivityChart = null;
+            }
+            
+            this.charts.userActivityChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['00', '02', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22'],
+                    datasets: [{
+                        label: 'Active Users',
+                        data: [12, 8, 15, 25, 42, 38, 45, 52, 48, 35, 28, 18],
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'User Activity by Hour',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('User activity chart initialized');
+        } catch (error) {
+            console.error('Error initializing user activity chart:', error);
         }
     }
 
@@ -807,15 +893,26 @@ function refreshActivity() {
     }
 }
 
-// Initialize dashboard when DOM is loaded
+// Initialize dashboard when DOM is loaded - but only if not already initialized
 document.addEventListener('DOMContentLoaded', function() {
-    window.systemDashboard = new SystemDashboard();
-    window.systemDashboard.init();
+    // Only initialize if we don't already have a dashboard instance
+    if (!window.systemDashboard) {
+        console.log('Initializing global system dashboard...');
+        window.systemDashboard = new SystemDashboard({
+            type: 'global',
+            realTime: true,
+            updateInterval: 10000
+        });
+        window.systemDashboard.init();
+    } else {
+        console.log('System dashboard already exists, skipping global initialization...');
+    }
 });
 
 // Handle page unload
 window.addEventListener('beforeunload', function() {
-    if (window.dashboard) {
-        window.dashboard.stopPolling();
+    if (window.systemDashboard) {
+        window.systemDashboard.cleanup();
+        window.systemDashboard = null;
     }
 });

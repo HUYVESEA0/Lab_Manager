@@ -10,9 +10,11 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}">
 <!-- Flash Messages CSS -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/flash_messages.css') }}">
+<!-- Flash Messages Fix CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/flash_messages_fix.css') }}">
 <!-- Admin specific styles -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_tables.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/system_dashboard.css') }}?v={{ cache_version|default('20250609002') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/system_dashboard.css') }}?v={{ cache_version|default('20250616001') }}">
 
 <!-- External dependencies -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -23,7 +25,8 @@
 {{ super() }}
 <script src="{{ url_for('static', filename='js/admin_tables.js') }}"></script>
 <script src="{{ url_for('static', filename='js/flash_messages.js') }}"></script>
-<script src="{{ url_for('static', filename='js/system_dashboard.js') }}?v={{ cache_version|default('20250610002') }}"></script>
+<script src="{{ url_for('static', filename='js/flash_messages_debug.js') }}"></script>
+<script src="{{ url_for('static', filename='js/system_dashboard.js') }}?v={{ cache_version|default('20250616001') }}"></script>
 <script src="{{ url_for('static', filename='js/realtime_integration.js') }}?v={{ cache_version|default('20250610002') }}"></script>
 
 <script>
@@ -71,9 +74,9 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endblock %}
 {% else %}
     {% include 'components/flash_messages.html' %}
-    <div class="alert alert-danger mt-5">
+    <div class="alert alert-danger mt-5" role="alert">
         <i class="fas fa-exclamation-triangle"></i>
-        Bạn không có quyền truy cập trang này.
+        <strong>Truy cập bị từ chối:</strong> Bạn không có quyền truy cập trang này.
     </div>
 {% endif %}
 {% endblock %}

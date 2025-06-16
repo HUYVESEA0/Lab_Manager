@@ -6,48 +6,68 @@ from ..forms import CreateUserForm, UserEditForm, SystemSettingsForm
 from ..models import NguoiDung, CaThucHanh, NhatKyHoatDong, CaiDatHeThong, db
 from ..utils import log_activity
 from ..real_time_monitor import get_system_monitor
+from ..cache.cache_manager import cached_route, cached_api, invalidate_user_cache, invalidate_model_cache
+from ..cache.cached_queries import (
+    get_dashboard_statistics, get_recent_activities, get_total_users,
+    get_total_sessions, invalidate_user_caches, invalidate_session_caches,
+    invalidate_activity_caches
+)
 import random
 import psutil
 import time
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+# Import cache from app
+from flask import current_app
+
+def get_cache():
+    """Get cache instance from current app"""
+    return current_app.extensions.get('cache')
+
 @admin_bp.route('/')
 @login_required
 @admin_required
+@cached_route(timeout=300, key_prefix='admin_dashboard')
 def admin_dashboard():
-    """Admin dashboard - Now uses API for data fetching"""
-    try:
-        from datetime import datetime
-        
-        # Render template with minimal data - frontend will fetch via API
-        return render_template(
-            "admin/system_admin_dashboard.html" if current_user.is_admin_manager() else "admin/admin_dashboard.html",
-            is_admin_manager=current_user.is_admin_manager(),
-            current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            # Minimal placeholder data - will be replaced by API calls
-            stats={},
-            users=[],
-            recent_users=[],
-            recent_logs=[],
-            recent_lab_sessions=[]
-        )
-    except Exception as e:
-        # Log the error and show a user-friendly message
-        current_app.logger.error(f"Error in admin dashboard: {str(e)}")
-        flash("Có lỗi xảy ra khi tải bảng điều khiển. Vui lòng thử lại.", "error")
-        # Return a minimal dashboard with basic stats
-        from datetime import datetime
-        return render_template(
-            "admin/system_admin_dashboard.html" if current_user.is_admin_manager() else "admin/admin_dashboard.html",
-            users=[],
-            recent_users=[],
-            stats={},
-            recent_logs=[],
-            recent_lab_sessions=[],
-            is_admin_manager=current_user.is_admin_manager(),
-            current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        )
+    """Admin dashboard with role-based template rendering"""
+    # Get dashboard statistics
+    dashboard_stats = get_dashboard_statistics()
+    
+    # Transform the data structure to match template expectations
+    stats = {
+        'user_count': dashboard_stats['users']['total'],
+        'lab_session_count': dashboard_stats['sessions']['total'],
+        'activity_count': dashboard_stats.get('activity', {}).get('total', 0),
+        'active_users': dashboard_stats['users'].get('active', 0),
+        'active_lab_sessions': dashboard_stats['sessions'].get('active', 0),
+        'active_sessions_today': dashboard_stats['sessions'].get('today', 0)
+    }
+    
+    # Get recent users for the dashboard
+    users = NguoiDung.query.order_by(NguoiDung.ngay_tao.desc()).limit(5).all()
+    
+    # Get recent activity logs
+    recent_logs = NhatKyHoatDong.query.order_by(NhatKyHoatDong.thoi_gian.desc()).limit(5).all()
+    
+    # Get recent lab sessions
+    recent_lab_sessions = CaThucHanh.query.order_by(CaThucHanh.ngay.desc()).limit(5).all()
+    
+    # Determine template based on user role
+    if current_user.vai_tro == "quan_tri_he_thong":
+        template = "admin/system_admin_dashboard.html"
+    elif current_user.vai_tro == "quan_tri_vien":
+        template = "admin/admin_dashboard.html"
+    else:
+        # Regular user should not access admin routes, but redirect to user dashboard
+        flash("Bạn không có quyền truy cập khu vực này.", "warning")
+        return redirect(url_for('user.dashboard'))
+    
+    return render_template(template, 
+                         stats=stats,
+                         users=users,
+                         recent_logs=recent_logs,
+                         recent_lab_sessions=recent_lab_sessions)
 
 @admin_bp.route('/csrf-token')
 @login_required
@@ -60,9 +80,10 @@ def get_csrf_token():
 @admin_bp.route('/users')
 @login_required
 @admin_required
+@cached_route(timeout=600, key_prefix='admin_users_page')
 def admin_users():
-    """Admin users page - Uses API-based user management template"""
-    return render_template("admin/users_api.html")
+    """Admin users page with caching"""
+    return render_template("admin/users.html")
 
 @admin_bp.route('/create-user', methods=['GET', 'POST'])
 @login_required
@@ -86,8 +107,7 @@ def create_user():
             
             if NguoiDung.query.filter_by(ten_nguoi_dung=data['ten_nguoi_dung']).first():
                 return jsonify({'success': False, 'message': 'Tên người dùng đã tồn tại'}), 400
-            
-            # Create user
+              # Create user
             nguoi_dung = NguoiDung(
                 ten_nguoi_dung=data['ten_nguoi_dung'],
                 email=data['email'],
@@ -96,6 +116,9 @@ def create_user():
             nguoi_dung.dat_mat_khau(data['mat_khau'])
             db.session.add(nguoi_dung)
             db.session.commit()
+            
+            # Invalidate user-related caches after creating user
+            invalidate_user_caches()
             
             log_activity("Tạo người dùng", f"Tạo người dùng {data['ten_nguoi_dung']} qua API")
             
@@ -117,14 +140,18 @@ def create_user():
     
     # Handle traditional form request
     if form.validate_on_submit():
-        nguoi_dung = NguoiDung(
-            ten_nguoi_dung=form.ten_nguoi_dung.data,
+        nguoi_dung = NguoiDung(            ten_nguoi_dung=form.ten_nguoi_dung.data,
             email=form.email.data,
             vai_tro=form.vai_tro.data
         )
         nguoi_dung.dat_mat_khau(form.mat_khau.data)
         db.session.add(nguoi_dung)
         db.session.commit()
+        
+        # Invalidate user-related caches after creating user
+        invalidate_user_caches()
+        invalidate_activity_caches()
+        
         log_activity("Tạo người dùng", f"Tạo người dùng {form.ten_nguoi_dung.data}")
         flash(f"Người dùng {form.ten_nguoi_dung.data} đã được tạo thành công!", "success")
         return redirect(url_for("admin.admin_users"))
@@ -424,6 +451,7 @@ def xoa_nguoi_dung(user_id):
 @admin_bp.route('/activity-logs/<int:page>')
 @login_required
 @admin_required
+@cached_route(timeout=120, key_prefix='admin_activity_logs')
 def activity_logs(page=1):
     """View activity logs with pagination"""
     per_page = CaiDatHeThong.lay_gia_tri("items_per_page", 25)
@@ -435,7 +463,34 @@ def activity_logs(page=1):
 @admin_bp.route('/lab-sessions')
 @login_required
 @admin_required
+@cached_route(timeout=180, key_prefix='admin_lab_sessions_page')
 def admin_lab_sessions():
-    """Show lab sessions management page"""
+    """Show lab sessions management page with caching"""
     lab_sessions = CaThucHanh.query.order_by(CaThucHanh.ngay.desc()).all()
     return render_template("admin/admin_lab_sessions.html", lab_sessions=lab_sessions)
+
+@admin_bp.route('/test-dashboard')
+def test_dashboard():
+    """Test dashboard without authentication for debugging"""
+    # Fake stats for testing
+    fake_stats = {
+        'user_count': 156,
+        'active_users': 23,
+        'lab_session_count': 45,
+        'active_lab_sessions': 8,
+        'critical_alerts': 2,
+        'warning_alerts': 3,
+        'new_users_week': 12,
+        'daily_logins': 45,
+        'active_sessions_today': 23,
+        'activities_today': 234,
+        'db_usage_percent': 65,
+        'db_size': '8.5 MB'
+    }
+    
+    return render_template(
+        'admin/system_admin_dashboard.html',
+        stats=fake_stats,
+        dashboard_title="Test System Dashboard (No Auth)",
+        cache_version="test001"
+    )

@@ -11,10 +11,20 @@ class Config:
     WTF_CSRF_TIME_LIMIT = int(os.getenv("WTF_CSRF_TIME_LIMIT", 3600))
     WTF_CSRF_SECRET_KEY = os.getenv("WTF_CSRF_SECRET_KEY", SECRET_KEY)
 
-    # Session
-    PERMANENT_SESSION_LIFETIME = int(os.getenv("PERMANENT_SESSION_LIFETIME", 1800))
+    # Email Configuration
+    MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+    MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
+    MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() in ['true', '1', 'yes', 'on']
+    MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "false").lower() in ['true', '1', 'yes', 'on']
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+    MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "noreply@labmanager.com")
+    
+    # Password Reset Configuration
+    RESET_TOKEN_EXPIRATION = int(os.getenv("RESET_TOKEN_EXPIRATION", 3600))  # 1 hour in seconds
 
-    # Caching
+    # Session
+    PERMANENT_SESSION_LIFETIME = int(os.getenv("PERMANENT_SESSION_LIFETIME", 1800))    # Caching
     CACHE_TYPE = os.getenv("CACHE_TYPE", "simple")
     CACHE_DEFAULT_TIMEOUT = int(os.getenv("CACHE_DEFAULT_TIMEOUT", 300))
 

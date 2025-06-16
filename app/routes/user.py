@@ -5,6 +5,11 @@ from datetime import datetime
 from ..models import db, NguoiDung, CaiDatHeThong
 from ..utils import log_activity
 from ..forms import ProfileForm, AccountSettingsForm
+from ..cache.cache_manager import cached_route, cached_api, invalidate_user_cache, invalidate_model_cache
+from ..cache.cached_queries import (
+    get_dashboard_statistics, get_recent_activities, get_total_users,
+    invalidate_user_caches, invalidate_activity_caches
+)
 from sqlalchemy.exc import NoResultFound
 
 user_bp = Blueprint('user', __name__)
@@ -34,20 +39,22 @@ def get_csrf_token():
 # Dashboard route
 @user_bp.route('/dashboard')
 @login_required
+@cached_route(timeout=180, key_prefix='user_dashboard')
 def dashboard():
-    """User dashboard - Now uses API for data fetching"""
+    """User dashboard with caching - Uses API for data fetching"""
     session_data = {
         "visits": session.get("visits", 0),
         "last_visit": session.get("last_visit", "N/A"),
         "login_time": session.get("login_time", "N/A"),
     }
     
-    # Template will fetch data via API
+    # Template will fetch data via API which is also cached
     return render_template("dashboard.html", session_data=session_data)
 
-# Session manager
+# Session manager  
 @user_bp.route('/session-manager')
 @login_required
+@cached_route(timeout=300, key_prefix='user_session_manager')
 def session_manager():
     return render_template("session_manager.html", session=session)
 
@@ -91,6 +98,7 @@ def clear_session():
 
 @user_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
+@cached_route(timeout=300, key_prefix='user_profile', unless=lambda: request.method == 'POST')
 def profile():
     """User profile - Enhanced with API support"""
     from datetime import datetime, timedelta
@@ -110,8 +118,7 @@ def profile():
             if 'ten_nguoi_dung' in data and data['ten_nguoi_dung'] != current_user.ten_nguoi_dung:
                 if NguoiDung.query.filter_by(ten_nguoi_dung=data['ten_nguoi_dung']).first():
                     return jsonify({'success': False, 'message': 'Tên người dùng đã tồn tại'}), 400
-            
-            # Update user data
+              # Update user data
             if 'ten_nguoi_dung' in data:
                 current_user.ten_nguoi_dung = data['ten_nguoi_dung']
             if 'email' in data:
@@ -120,6 +127,11 @@ def profile():
                 current_user.bio = data['bio']
             
             db.session.commit()
+            
+            # Invalidate user-specific caches after profile update
+            invalidate_user_cache(current_user.id)
+            invalidate_user_caches()
+            
             log_activity("Cập nhật hồ sơ", "Người dùng đã cập nhật thông tin hồ sơ cá nhân qua API")
             
             return jsonify({
@@ -146,12 +158,16 @@ def profile():
     if form.validate_on_submit():
         current_user.ten_nguoi_dung = form.ten_nguoi_dung.data
         current_user.email = form.email.data
-        
-        # Only update bio if the field exists
+          # Only update bio if the field exists
         if has_bio_field and form.bio.data is not None:
             current_user.bio = form.bio.data
             
         db.session.commit()
+        
+        # Invalidate user-specific caches after profile update
+        invalidate_user_cache(current_user.id)
+        invalidate_user_caches()
+        
         log_activity("Cập nhật hồ sơ", "Người dùng đã cập nhật thông tin hồ sơ cá nhân")
         flash("Hồ sơ cá nhân đã được cập nhật thành công!", "success")
         return redirect(url_for('user.profile'))
@@ -279,13 +295,17 @@ def settings():
                 else:
                     two_fa_setting = CaiDatHeThong(
                         khoa=f"user_{current_user.id}_2fa_enabled",
-                        gia_tri=str(data['enable_2fa']).lower(),
-                        kieu="boolean",
+                        gia_tri=str(data['enable_2fa']).lower(),                        kieu="boolean",
                         mo_ta=f"Cài đặt 2FA cho người dùng {current_user.ten_nguoi_dung}"
                     )
                     db.session.add(two_fa_setting)
             
             db.session.commit()
+            
+            # Invalidate user-specific caches after settings update
+            invalidate_user_cache(current_user.id)
+            invalidate_user_caches()
+            
             log_activity("Cập nhật cài đặt", "Người dùng đã cập nhật cài đặt tài khoản qua API")
             
             return jsonify({
@@ -325,13 +345,17 @@ def settings():
                 # Create a new setting
                 two_fa_setting = CaiDatHeThong(
                     khoa=f"user_{current_user.id}_2fa_enabled",
-                    gia_tri=str(form.enable_2fa.data).lower(),
-                    kieu="boolean",
+                    gia_tri=str(form.enable_2fa.data).lower(),                    kieu="boolean",
                     mo_ta=f"Cài đặt 2FA cho người dùng {current_user.ten_nguoi_dung}"
                 )
                 db.session.add(two_fa_setting)
                 
             db.session.commit()
+            
+            # Invalidate user-specific caches after settings update
+            invalidate_user_cache(current_user.id)
+            invalidate_user_caches()
+            
             log_activity("Cập nhật cài đặt", "Người dùng đã cập nhật cài đặt tài khoản")
             flash("Cài đặt tài khoản đã được cập nhật thành công!", "success")
             return redirect(url_for('user.settings'))
@@ -356,8 +380,9 @@ def settings():
 
 @user_bp.route('/api/dashboard-data')
 @login_required
+@cached_api(timeout=120, key_prefix='user_dashboard_data', vary_on_user=True)
 def get_user_dashboard_data_api():
-    """API endpoint to get current user's dashboard data"""
+    """API endpoint to get current user's dashboard data with caching"""
     try:
         # Import models here to avoid circular imports
         from ..models import DangKyCa, VaoCa, CaThucHanh, NhatKyHoatDong
@@ -431,8 +456,9 @@ def get_user_dashboard_data_api():
 
 @user_bp.route('/api/profile')
 @login_required
+@cached_api(timeout=300, key_prefix='user_profile_data', vary_on_user=True)
 def get_profile_api():
-    """API endpoint to get current user's profile data"""
+    """API endpoint to get current user's profile data with caching"""
     try:
         # Import models here to avoid circular imports
         from ..models import DangKyCa, VaoCa, CaThucHanh, NhatKyHoatDong
@@ -513,8 +539,9 @@ def get_profile_api():
 
 @user_bp.route('/api/settings')
 @login_required
+@cached_api(timeout=600, key_prefix='user_settings_data', vary_on_user=True)
 def get_settings_api():
-    """API endpoint to get current user's settings"""
+    """API endpoint to get current user's settings with caching"""
     try:
         # Get 2FA setting
         two_fa_setting = CaiDatHeThong.query.filter_by(

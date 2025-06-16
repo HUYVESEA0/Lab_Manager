@@ -24,24 +24,23 @@
     z-index: 9999;
 }
 
-/* Common styles for all flash messages */
+/* Common styles for all flash messages - Bootstrap compatible */
 .flash-message,
 .alert {
-    padding: 18px 25px 18px 55px;
+    padding: 15px 45px 15px 50px; /* Adjusted padding for icon and close button */
     margin-bottom: 16px;
-    border-radius: var(--border-radius, 12px);
+    border-radius: var(--border-radius, 8px);
     position: relative;
     overflow: hidden;
-    box-shadow: var(--box-shadow, 0 6px 20px rgba(0, 0, 0, 0.12));
-    border: none;
+    box-shadow: var(--box-shadow, 0 4px 12px rgba(0, 0, 0, 0.1));
+    border: 1px solid transparent;
     font-weight: 500;
-    font-size: 15px;
-    line-height: 1.6;
-    animation: flashSlideIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+    font-size: 14px;
+    line-height: 1.5;
+    animation: flashSlideIn 0.5s ease-out forwards;
     display: flex;
     align-items: center;
-    min-height: 60px;
-    cursor: pointer;
+    min-height: 50px;
     transition: all 0.3s ease;
 }
 
@@ -77,9 +76,28 @@
         flashFadeOut 0.4s ease-in 5s forwards;
 }
 
-/* Icon styling for all flash messages */
-.flash-message:before,
-.alert:before {
+/* Icon styling for flash messages with FontAwesome */
+.flash-message > i,
+.alert > i {
+    margin-right: 10px;
+    font-size: 1.1em;
+    opacity: 0.9;
+    flex-shrink: 0;
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Message text styling */
+.flash-message-text {
+    flex: 1;
+    margin-left: 30px; /* Account for icon space */
+}
+
+/* Legacy icon support with :before pseudo-element */
+.flash-message:not(:has(> i)):before,
+.alert:not(:has(> i)):before {
     font-family: 'Font Awesome 5 Free';
     font-weight: 900;
     margin-right: 15px;
@@ -303,27 +321,44 @@
     color: #f8f9fa;
 }
 
-/* Dismissible alert close button */
+/* Bootstrap dismissible alert close button */
 .alert-dismissible .close,
+.flash-message.alert-dismissible .close,
 .flash-message .close {
     position: absolute;
-    top: 0;
-    right: 0;
-    padding: 15px 20px;
+    top: 50%;
+    right: 15px;
+    transform: translateY(-50%);
+    padding: 0;
     color: inherit;
     background: none;
     border: none;
-    font-size: 1.2em;
+    font-size: 1.5em;
     cursor: pointer;
-    opacity: 0.7;
+    opacity: 0.6;
     transition: opacity 0.3s ease;
+    line-height: 1;
+    z-index: 2;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .alert-dismissible .close:hover,
+.flash-message.alert-dismissible .close:hover,
 .flash-message .close:hover {
     opacity: 1;
+    text-decoration: none;
 }
 
+/* Ensure text doesn't overlap close button */
+.alert-dismissible,
+.flash-message.alert-dismissible,
+.flash-message {
+    padding-right: 50px;
+}
 /* Fade animation for dismissible alerts */
 .alert.fade {
     transition: opacity 0.15s linear;

@@ -52,21 +52,16 @@
             <span>hoặc sử dụng tài khoản của bạn</span>            {{ login_form.email(placeholder="Email hoặc tên người dùng", id="login_email") }}
             {% for error in login_form.email.errors %}
                 <span class="error-message">{{ error }}</span>
-            {% endfor %}
-
-            {{ login_form.password(placeholder="Password", id="login_password") }}
+            {% endfor %}            {{ login_form.password(placeholder="Password", id="login_password") }}
             {% for error in login_form.password.errors %}
                 <span class="error-message">{{ error }}</span>
             {% endfor %}
 
-            <!-- API Login Toggle -->
-            <div class="form-check">
-                <input type="checkbox" class="form-check-input" id="useAPILogin">                <label class="form-check-label" for="useAPILogin">
-                    Sử dụng API Login (Không cần CSRF)
-                </label>
+            <!-- Reset password link -->
+            <div class="mt-2 text-center">
+                <a href="{{ url_for('auth.reset_password_request') }}" class="forgot-password-link">Quên mật khẩu?</a>
             </div>
 
-            <!-- <a href="{{ url_for('auth.reset_password_request') }}">Quên mật khẩu?</a> -->
             {{ login_form.submit(id="btn_login", value="Đăng nhập") }}
         </form>
     </div>
@@ -114,91 +109,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (registerCsrf) registerCsrf.id = "register_csrf_token";
     }
 });
-
-// Enhanced login with API support
-document.addEventListener('DOMContentLoaded', function() {
-    const loginForm = document.getElementById('login-form');
-    const useAPILogin = document.getElementById('useAPILogin');
-    
-    if (loginForm) {
-        loginForm.addEventListener('submit', async function(e) {
-            if (useAPILogin.checked) {
-                e.preventDefault();
-                await handleAPILogin();
-            }
-            // If API login is not checked, let the form submit normally with CSRF
-        });
-    }
-});
-
-async function handleAPILogin() {
-    const username = document.getElementById('login_ten_nguoi_dung').value;
-    const password = document.getElementById('login_password').value;
-    
-    if (!username || !password) {
-        showNotification('Vui lòng nhập đầy đủ thông tin', 'warning');
-        return;
-    }
-
-    try {
-        // Show loading state
-        const submitBtn = document.getElementById('btn_login');
-        const originalText = submitBtn.value;
-        submitBtn.value = 'Đang đăng nhập...';
-        submitBtn.disabled = true;
-
-        const response = await labAPI.login(username, password);
-        
-        if (response.ok) {
-            const data = await response.json();
-            showNotification('Đăng nhập thành công!', 'success');
-            
-            // Redirect to dashboard after successful login
-            setTimeout(() => {
-                window.location.href = '/user/dashboard';
-            }, 1000);
-        } else {
-            const error = await response.json();
-            throw new Error(error.error || 'Đăng nhập thất bại');
-        }
-    } catch (error) {
-        console.error('API Login error:', error);
-        showNotification(error.message || 'Đã xảy ra lỗi khi đăng nhập', 'danger');
-        
-        // Restore button state
-        const submitBtn = document.getElementById('btn_login');
-        submitBtn.value = 'Đăng nhập';
-        submitBtn.disabled = false;
-    }
-}
-
-// Utility function for notifications (if not available globally)
-function showNotification(message, type = 'info') {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type} alert-dismissible fade show`;
-    notification.style.position = 'fixed';
-    notification.style.top = '20px';
-    notification.style.right = '20px';
-    notification.style.zIndex = '9999';
-    notification.style.minWidth = '300px';
-    notification.innerHTML = `
-        ${message}
-        <button type="button" class="close" onclick="this.parentElement.remove()">
-            <span>&times;</span>
-        </button>
-    `;
-    
-    // Add to page
-    document.body.appendChild(notification);
-    
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
-        }
-    }, 5000);
-}
 </script>
 {% endblock %}
 

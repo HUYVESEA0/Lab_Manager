@@ -10,7 +10,7 @@ from app import create_app
 from app.models import db, NguoiDung
 
 def check_users():
-    app = create_app()
+    app, socketio = create_app()
     with app.app_context():
         users = NguoiDung.query.all()
         if users:
@@ -23,9 +23,7 @@ def check_users():
             sample_user = NguoiDung(
                 ten_nguoi_dung="testuser",
                 email="test@example.com",
-                vai_tro="nguoi_dung",
-                ho_ten="Test User",
-                bio="This is a test user account for testing the enhanced profile page."
+                vai_tro="nguoi_dung"
             )
             sample_user.dat_mat_khau("password123")
             db.session.add(sample_user)

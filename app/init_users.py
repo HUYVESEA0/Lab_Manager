@@ -28,7 +28,7 @@ def create_user_from_env():
             "role": "nguoi_dung"
         }
     ]
-    app = create_app()
+    app, socketio = create_app()
     with app.app_context():
         for u in users:
             if not u["username"] or not u["email"] or not u["password"]:

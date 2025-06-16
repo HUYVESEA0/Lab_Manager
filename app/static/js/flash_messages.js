@@ -11,14 +11,30 @@ function initializeFlashMessages() {
     const flashMessages = document.querySelectorAll('.flash-message, .alert');
     
     flashMessages.forEach(function(message) {
-        // Add auto-dismiss class for automatic removal
-        if (!message.classList.contains('persistent')) {
+        // Skip already initialized messages
+        if (message.hasAttribute('data-flash-initialized')) {
+            return;
+        }
+        message.setAttribute('data-flash-initialized', 'true');
+        
+        // Add auto-dismiss class for automatic removal (unless it's persistent)
+        if (!message.classList.contains('persistent') && !message.classList.contains('alert-dismissible')) {
             message.classList.add('auto-dismiss');
         }
         
-        // Add dismissible functionality
-        if (!message.classList.contains('no-dismiss')) {
+        // Ensure close button functionality
+        const closeButton = message.querySelector('.close');
+        if (closeButton) {
+            closeButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                dismissMessage(message);
+            });
+        }
+        
+        // Add dismissible functionality for non-Bootstrap alerts (for clicking on message)
+        if (!message.classList.contains('no-dismiss') && !closeButton) {
             message.classList.add('dismissible');
+            message.style.cursor = 'pointer';
             message.addEventListener('click', function() {
                 dismissMessage(this);
             });
@@ -31,10 +47,14 @@ function initializeFlashMessages() {
             }
         }
         
-        // Auto dismiss after timeout (unless persistent)
-        if (message.classList.contains('auto-dismiss')) {
+        // Auto dismiss after timeout (unless persistent or has Bootstrap dismiss button)
+        const shouldAutoDismiss = message.classList.contains('auto-dismiss') || 
+                                 (!message.classList.contains('persistent') && 
+                                  !message.classList.contains('alert-dismissible'));
+        
+        if (shouldAutoDismiss) {
             setTimeout(function() {
-                if (!message.classList.contains('closed')) {
+                if (!message.classList.contains('closed') && message.parentNode) {
                     dismissMessage(message);
                 }
             }, getAutoDismissTime(message));

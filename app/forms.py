@@ -220,3 +220,37 @@ class AccountSettingsForm(FlaskForm):
     )
     enable_2fa = BooleanField("Kích hoạt xác thực hai lớp")
     submit = SubmitField("Cập nhật cài đặt")
+
+class ResetPasswordRequestForm(FlaskForm):
+    """Form để yêu cầu đặt lại mật khẩu"""
+    email = StringField(
+        "Email",
+        validators=[
+            DataRequired(message="Email không được để trống"),
+            Email(message="Vui lòng nhập địa chỉ email hợp lệ"),
+        ],
+    )
+    submit = SubmitField("Gửi yêu cầu đặt lại mật khẩu")
+
+    def validate_email(self, email):
+        nguoi_dung = NguoiDung.query.filter_by(email=email.data.lower().strip()).first()
+        if not nguoi_dung:
+            raise ValidationError("Email này không tồn tại trong hệ thống.")
+
+class ResetPasswordForm(FlaskForm):
+    """Form để đặt mật khẩu mới"""
+    password = PasswordField(
+        "Mật khẩu mới",
+        validators=[
+            DataRequired(message="Mật khẩu không được để trống"),
+            Length(min=6, message="Mật khẩu phải có ít nhất 6 ký tự"),
+        ],
+    )
+    confirm_password = PasswordField(
+        "Xác nhận mật khẩu mới",
+        validators=[
+            DataRequired(message="Xác nhận mật khẩu không được để trống"),
+            EqualTo("password", message="Mật khẩu và xác nhận mật khẩu phải giống nhau"),
+        ],
+    )
+    submit = SubmitField("Đặt lại mật khẩu")
