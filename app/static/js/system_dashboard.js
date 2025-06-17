@@ -89,17 +89,34 @@ class SystemDashboard {
             console.error('Failed to initialize dashboard:', error);
             this.showNotification('Lỗi khởi tạo dashboard', 'error');
         });
-    }
-
-    // Wait for Chart.js to be available
+    }    // Wait for Chart.js to be available with enhanced validation
     waitForChartJS() {
         return new Promise((resolve, reject) => {
             let attempts = 0;
             const maxAttempts = 50; // 5 seconds timeout
             
             const checkChartJS = () => {
-                if (typeof Chart !== 'undefined') {
-                    resolve();
+                if (typeof Chart !== 'undefined' && Chart.Chart) {
+                    // Additional check for Chart.js readiness
+                    try {
+                        // Test Chart.js functionality
+                        const testCanvas = document.createElement('canvas');
+                        const testChart = new Chart(testCanvas, {
+                            type: 'line',
+                            data: { labels: [], datasets: [] },
+                            options: { responsive: false, animation: false }
+                        });
+                        testChart.destroy();
+                        resolve();
+                    } catch (error) {
+                        console.warn('Chart.js test failed:', error);
+                        if (attempts < maxAttempts) {
+                            attempts++;
+                            setTimeout(checkChartJS, 100);
+                        } else {
+                            reject(new Error('Chart.js functionality test failed'));
+                        }
+                    }
                 } else if (attempts < maxAttempts) {
                     attempts++;
                     setTimeout(checkChartJS, 100);
@@ -110,7 +127,7 @@ class SystemDashboard {
             
             checkChartJS();
         });
-    }    updateCurrentTime() {
+    }updateCurrentTime() {
         const now = new Date();
         const timeStr = now.toLocaleString('vi-VN', {
             year: 'numeric',
@@ -210,18 +227,21 @@ class SystemDashboard {
         this.startPolling();
         
         console.log('Real-time updates started');
-    }
-
-    startPolling() {
+    }    startPolling() {
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
         }
         
         this.pollingInterval = setInterval(() => {
-            if (this.isRealTimeActive) {
-                this.fetchSystemMetrics();
-                this.fetchUserActivity();
-                this.fetchPerformanceMetrics();
+            if (this.isRealTimeActive && this.isInitialized) {
+                // Only fetch data if charts are properly initialized
+                if (Object.keys(this.charts).some(key => this.charts[key] !== null)) {
+                    this.fetchSystemMetrics();
+                    this.fetchUserActivity();
+                    this.fetchPerformanceMetrics();
+                } else {
+                    console.warn('⚠️ No active charts found, skipping data fetch');
+                }
             }
         }, this.updateInterval);
     }
@@ -290,27 +310,45 @@ class SystemDashboard {
             this.showNotification('Không thể tải dữ liệu hiệu suất', 'warning');
             // Don't use fallback data - keep existing values
         }
-    }updateSystemMetrics(data) {
+    }    updateSystemMetrics(data) {
+        console.log('Updating metrics with data:', data);
+        
+        // Handle nested API response structure
+        const systemData = data.system || {};
+        const appData = data.application || {};
+        
         // Update main metric cards
         const totalUsersEl = document.getElementById('total-users');
         const activeUsersEl = document.getElementById('active-users');
         const totalLabsEl = document.getElementById('total-labs');
         const systemAlertsEl = document.getElementById('system-alerts');
         
-        if (totalUsersEl) totalUsersEl.textContent = data.total_users || data.online_users || 0;
-        if (activeUsersEl) activeUsersEl.textContent = data.online_users || 0;
-        if (totalLabsEl) totalLabsEl.textContent = data.active_sessions || 0;
+        if (totalUsersEl) totalUsersEl.textContent = appData.total_users || data.total_users || 0;
+        if (activeUsersEl) activeUsersEl.textContent = appData.active_users || data.online_users || 0;
+        if (totalLabsEl) totalLabsEl.textContent = appData.total_sessions || data.active_sessions || 0;
         if (systemAlertsEl) systemAlertsEl.textContent = data.system_alerts || 0;
         
-        // Update performance metrics with visual effects
-        this.updateMetricCard('cpu', data.cpu_usage || 0, '%');
-        this.updateMetricCard('memory', data.memory_usage || 0, '%');
-        this.updateMetricCard('disk', data.disk_usage || 0, '%');
-        this.updateMetricCard('network', data.network_usage || 0, '%');
-
-        // Update performance chart
-        if (this.charts.performanceChart && data.timestamp) {
-            this.addDataToChart(this.charts.performanceChart, data);
+        // Update performance metrics with correct nested data structure
+        this.updateMetricCard('cpu', systemData.cpu_usage || 0, '%');
+        this.updateMetricCard('memory', systemData.memory_usage || 0, '%');
+        this.updateMetricCard('disk', systemData.disk_usage || 0, '%');
+        this.updateMetricCard('network', systemData.network_usage || 0, '%');        // Update performance chart with enhanced validation
+        if (this.charts.performanceChart && data.timestamp && this.isChartReady(this.charts.performanceChart)) {
+            // Pass system data directly to chart update
+            const chartData = {
+                timestamp: data.timestamp,
+                cpu_usage: systemData.cpu_usage || 0,
+                memory_usage: systemData.memory_usage || 0,
+                disk_usage: systemData.disk_usage || 0,
+                network_usage: systemData.network_usage || 0
+            };
+            this.addDataToChart(this.charts.performanceChart, chartData);
+        } else {
+            console.warn('⚠️ Performance chart not available or missing timestamp:', {
+                chart: !!this.charts.performanceChart,
+                timestamp: !!data.timestamp,
+                ready: this.charts.performanceChart ? this.isChartReady(this.charts.performanceChart) : false
+            });
         }
 
         // Update online users in activity section
@@ -323,27 +361,44 @@ class SystemDashboard {
         const activeSessionsElement = document.getElementById('active-sessions');
         if (activeSessionsElement && data.active_sessions !== undefined) {
             activeSessionsElement.textContent = data.active_sessions;
-        }
-
-        // Update user activity chart
-        if (this.charts.userActivityChart && data.hourly_activity) {
+        }        // Update user activity chart
+        if (this.charts.userActivityChart && data.hourly_activity && this.isChartReady(this.charts.userActivityChart)) {
             this.updateUserActivityChart(data.hourly_activity);
+        } else if (this.charts.userActivityChart && data.hourly_activity) {
+            console.warn('⚠️ User activity chart exists but not ready for updates');
         }
-    }
-
-    updateMetricCard(type, value, unit = '%') {
+    }updateMetricCard(type, value, unit = '%') {
+        console.log(`Updating ${type} metric to ${value}${unit}`);
+        
+        // Target the correct HTML structure based on the template
         const metricItem = document.querySelector(`.metric-item .metric-icon.${type}`);
-        if (!metricItem) return;
+        if (!metricItem) {
+            console.warn(`Metric icon not found for type: ${type}`);
+            return;
+        }
         
         const metricContainer = metricItem.closest('.metric-item');
-        if (!metricContainer) return;
+        if (!metricContainer) {
+            console.warn(`Metric container not found for type: ${type}`);
+            return;
+        }
         
-        const valueElement = metricContainer.querySelector('.metric-value');
-        const barFill = metricContainer.querySelector('.bar-fill');
-        const statusElement = metricContainer.querySelector('.metric-status');
+        // Target the metric-details container which contains metric-value
+        const metricDetails = metricContainer.querySelector('.metric-details');
+        if (!metricDetails) {
+            console.warn(`Metric details not found for type: ${type}`);
+            return;
+        }
+        
+        const valueElement = metricDetails.querySelector('.metric-value');
+        const barFill = metricDetails.querySelector('.bar-fill');
+        const statusElement = metricDetails.querySelector('.metric-status');
         
         if (valueElement) {
             valueElement.textContent = `${value.toFixed(1)}${unit}`;
+            console.log(`Updated ${type} value display to ${value.toFixed(1)}${unit}`);
+        } else {
+            console.warn(`Value element not found for type: ${type}`);
         }
         
         if (barFill) {
@@ -362,6 +417,7 @@ class SystemDashboard {
             } else {
                 barFill.classList.add('good');
             }
+            console.log(`Updated ${type} progress bar to ${value}%`);
         }
         
         if (statusElement) {
@@ -376,11 +432,14 @@ class SystemDashboard {
                 statusElement.classList.add('good');
                 statusElement.textContent = 'Normal';
             }
+            console.log(`Updated ${type} status to ${statusElement.textContent}`);
         }
     }    updateUserActivity(data) {
-        // Update user activity chart
-        if (this.charts.userActivityChart && data.hourly_activity) {
+        // Update user activity chart with enhanced validation
+        if (this.charts.userActivityChart && data.hourly_activity && this.isChartReady(this.charts.userActivityChart)) {
             this.updateUserActivityChart(data.hourly_activity);
+        } else if (this.charts.userActivityChart && data.hourly_activity) {
+            console.warn('⚠️ User activity chart exists but not ready for updates');
         }
         
         // Update online users count in activity section
@@ -428,8 +487,7 @@ class SystemDashboard {
         if (progressBar) {
             progressBar.style.width = `${Math.min(value, 100)}%`;
             
-            // Update color based on value
-            progressBar.className = 'progress-bar';
+            // Update color based on value            progressBar.className = 'progress-bar';
             if (value > 80) {
                 progressBar.classList.add('bg-danger');
             } else if (value > 60) {
@@ -441,32 +499,173 @@ class SystemDashboard {
     }
 
     addDataToChart(chart, data) {
-        if (!chart || !data.timestamp) return;
-
-        const time = new Date(data.timestamp).toLocaleTimeString();
+        // Enhanced validation
+        if (!chart) {
+            console.warn('⚠️ Chart instance is null or undefined');
+            return;
+        }
         
-        // Add new data point
-        chart.data.labels.push(time);
+        if (!data || !data.timestamp) {
+            console.warn('⚠️ Invalid data or missing timestamp:', data);
+            return;
+        }
         
-        if (chart.data.datasets[0]) {
-            chart.data.datasets[0].data.push(data.cpu_usage || 0);
+        // Check if chart is properly initialized
+        if (!chart.data || !chart.data.labels || !chart.data.datasets) {
+            console.warn('⚠️ Chart data structure is not properly initialized');
+            return;
         }
-        if (chart.data.datasets[1]) {
-            chart.data.datasets[1].data.push(data.memory_usage || 0);
-        }
-        if (chart.data.datasets[2]) {
-            chart.data.datasets[2].data.push(data.disk_usage || 0);
+          // Check if chart canvas still exists in DOM
+        if (!chart.canvas) {
+            console.warn('⚠️ Chart canvas is null or undefined');
+            this.removeDeadChartReference(chart);
+            return;
         }
 
-        // Keep only last 20 data points
-        if (chart.data.labels.length > 20) {
-            chart.data.labels.shift();
-            chart.data.datasets.forEach(dataset => {
-                dataset.data.shift();
+        // More robust DOM check - verify canvas is still attached to document
+        if (!document.contains(chart.canvas)) {
+            console.warn('⚠️ Chart canvas no longer exists in DOM');
+            this.removeDeadChartReference(chart);
+            return;
+        }
+
+        // Verify chart canvas is visible and has dimensions
+        if (chart.canvas.offsetWidth === 0 || chart.canvas.offsetHeight === 0) {
+            console.warn('⚠️ Chart canvas has no visible dimensions, skipping update');
+            return;
+        }
+
+        // Additional check for Chart.js readiness
+        if (typeof Chart === 'undefined') {
+            console.warn('⚠️ Chart.js library not available');
+            return;
+        }
+
+        // Check if chart is destroyed
+        if (chart.destroyed) {
+            console.warn('⚠️ Chart has been destroyed');
+            this.removeDeadChartReference(chart);
+            return;
+        }
+
+        try {
+            const time = new Date(data.timestamp).toLocaleTimeString();
+            
+            // Add new data point
+            chart.data.labels.push(time);
+            
+            // Safely add data to datasets with additional validation
+            if (chart.data.datasets[0] && Array.isArray(chart.data.datasets[0].data)) {
+                chart.data.datasets[0].data.push(data.cpu_usage || 0);
+            }
+            if (chart.data.datasets[1] && Array.isArray(chart.data.datasets[1].data)) {
+                chart.data.datasets[1].data.push(data.memory_usage || 0);
+            }
+            if (chart.data.datasets[2] && Array.isArray(chart.data.datasets[2].data)) {
+                chart.data.datasets[2].data.push(data.disk_usage || 0);
+            }
+
+            // Keep only last 20 data points
+            if (chart.data.labels.length > 20) {
+                chart.data.labels.shift();
+                chart.data.datasets.forEach(dataset => {
+                    if (Array.isArray(dataset.data)) {
+                        dataset.data.shift();
+                    }
+                });
+            }
+
+            // Safely update chart with error handling for Chart.js internal errors
+            if (chart.update && typeof chart.update === 'function') {
+                chart.update('none'); // Update without animation for real-time feel
+                console.log('✅ Chart updated successfully with new data');
+            } else {
+                console.warn('⚠️ Chart update method not available');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error updating chart:', error);
+            
+            // If error is related to fullSize or chart configuration, reinitialize
+            if (error.message && error.message.includes('fullSize')) {
+                console.log('🔄 Attempting to reinitialize chart due to fullSize error...');
+                this.reinitializeChart(chart);
+            }
+            
+            // Don't throw the error, just log it to prevent breaking the dashboard
+        }
+    }
+
+    // Method to reinitialize a chart if it encounters errors
+    reinitializeChart(chart) {
+        try {
+            const canvasId = chart.canvas?.id;
+            if (!canvasId) {
+                console.warn('⚠️ Cannot reinitialize chart - no canvas ID');
+                return;
+            }
+
+            console.log(`🔄 Reinitializing chart: ${canvasId}`);
+            
+            // Destroy the problematic chart
+            if (chart && typeof chart.destroy === 'function') {
+                chart.destroy();
+            }
+
+            // Clear the reference
+            Object.keys(this.charts).forEach(key => {
+                if (this.charts[key] === chart) {
+                    this.charts[key] = null;
+                }
             });
-        }
 
-        chart.update('none'); // Update without animation for real-time feel
+            // Reinitialize based on canvas ID
+            setTimeout(() => {
+                if (canvasId === 'performanceChart') {
+                    this.initializePerformanceChart();
+                } else if (canvasId === 'userActivityChart') {
+                    this.initializeUserActivityChart();
+                } else if (canvasId === 'systemStatsChart') {
+                    // Add system stats chart initialization if needed
+                    console.log('System stats chart reinitialization not implemented');
+                }
+            }, 100);
+
+        } catch (error) {
+            console.error('❌ Error reinitializing chart:', error);
+        }
+    }
+
+    // Helper method to check if a chart is ready for updates
+    isChartReady(chart) {
+        if (!chart) return false;
+        
+        // Check if chart exists and is properly initialized
+        if (!chart.canvas || !chart.data || chart.destroyed) {
+            return false;
+        }
+        
+        // Check if canvas is still in DOM
+        if (!document.contains(chart.canvas)) {
+            return false;
+        }
+        
+        // Check if canvas has visible dimensions
+        if (chart.canvas.offsetWidth === 0 || chart.canvas.offsetHeight === 0) {
+            return false;
+        }
+        
+        return true;
+    }
+
+    removeDeadChartReference(chart) {
+        // Remove the chart reference since canvas is gone
+        Object.keys(this.charts).forEach(key => {
+            if (this.charts[key] === chart) {
+                this.charts[key] = null;
+                console.log(`🧹 Removed dead chart reference: ${key}`);
+            }
+        });
     }
 
     initializeAOS() {
@@ -500,8 +699,13 @@ class SystemDashboard {
         console.log('Charts initialized:', this.charts);
     }    initializePerformanceChart() {
         const ctx = document.getElementById('performanceChart');
-        if (!ctx || typeof Chart === 'undefined') {
-            console.warn('Performance chart canvas not found or Chart.js not available');
+        if (!ctx) {
+            console.warn('⚠️ Performance chart canvas element not found');
+            return;
+        }
+        
+        if (typeof Chart === 'undefined') {
+            console.warn('⚠️ Chart.js library not available');
             return;
         }
 
@@ -509,7 +713,7 @@ class SystemDashboard {
             // Get chart instance that might already exist on this canvas
             const existingChart = Chart.getChart(ctx);
             if (existingChart) {
-                console.log('Destroying existing performance chart...');
+                console.log('🔄 Destroying existing performance chart...');
                 existingChart.destroy();
             }
             
@@ -518,7 +722,10 @@ class SystemDashboard {
                 this.charts.performanceChart = null;
             }
             
-            this.charts.performanceChart = new Chart(ctx, {
+            console.log('🎨 Creating new performance chart...');
+            
+            // Enhanced chart configuration with error prevention
+            const config = {
                 type: 'line',
                 data: {
                     labels: [],
@@ -571,7 +778,10 @@ class SystemDashboard {
                             position: 'top',
                             labels: {
                                 usePointStyle: true,
-                                padding: 20
+                                padding: 20,
+                                font: {
+                                    size: 12
+                                }
                             }
                         },
                         title: {
@@ -582,22 +792,55 @@ class SystemDashboard {
                                 weight: 'bold'
                             }
                         }
+                    },
+                    // Add error handling for Chart.js internal operations
+                    onResize: function(chart, size) {
+                        try {
+                            // Safe resize handler
+                            if (chart && chart.canvas && chart.canvas.parentNode) {
+                                // Chart.js will handle the resize automatically
+                            }
+                        } catch (error) {
+                            console.warn('Chart resize error:', error);
+                        }
                     }
                 }
-            });
-            console.log('Performance chart initialized');
+            };
+            
+            this.charts.performanceChart = new Chart(ctx, config);
+            
+            // Validate chart creation
+            if (this.charts.performanceChart && this.charts.performanceChart.data) {
+                console.log('✅ Performance chart initialized successfully');
+            } else {
+                console.error('❌ Performance chart initialization failed');
+                this.charts.performanceChart = null;
+            }
         } catch (error) {
-            console.error('Error initializing performance chart:', error);
-        }    }    initializeUserActivityChart() {
+            console.error('❌ Error initializing performance chart:', error);
+            this.charts.performanceChart = null;
+              // Show user-friendly error
+            this.showNotification('Không thể khởi tạo biểu đồ hiệu suất', 'warning');
+        }
+    }
+
+    initializeUserActivityChart() {
         const ctx = document.getElementById('userActivityChart');
-        if (!ctx || typeof Chart === 'undefined') {
-            console.warn('User activity chart canvas not found or Chart.js not available');
+        if (!ctx) {
+            console.warn('⚠️ User activity chart canvas element not found');
             return;
-        }        try {
+        }
+        
+        if (typeof Chart === 'undefined') {
+            console.warn('⚠️ Chart.js library not available for user activity chart');
+            return;
+        }
+
+        try {
             // Get chart instance that might already exist on this canvas
             const existingChart = Chart.getChart(ctx);
             if (existingChart) {
-                console.log('Destroying existing user activity chart...');
+                console.log('🔄 Destroying existing user activity chart...');
                 existingChart.destroy();
             }
             
@@ -630,8 +873,7 @@ class SystemDashboard {
                             }
                         },
                         x: {
-                            grid: {
-                                display: false
+                            grid: {                                display: false
                             }
                         }
                     },
@@ -650,16 +892,46 @@ class SystemDashboard {
                     }
                 }
             });
-            console.log('User activity chart initialized');
+            
+            // Validate chart creation
+            if (this.charts.userActivityChart && this.charts.userActivityChart.data) {
+                console.log('✅ User activity chart initialized successfully');
+            } else {
+                console.error('❌ User activity chart initialization failed');
+                this.charts.userActivityChart = null;
+            }
         } catch (error) {
-            console.error('Error initializing user activity chart:', error);
+            console.error('❌ Error initializing user activity chart:', error);
+            this.charts.userActivityChart = null;
         }
-    }
-
-    updateUserActivityChart(hourlyData) {
-        if (this.charts.userActivityChart && hourlyData) {
+    }    updateUserActivityChart(hourlyData) {
+        if (!this.charts.userActivityChart) {
+            console.warn('⚠️ User activity chart not available');
+            return;
+        }
+        
+        if (!this.isChartReady(this.charts.userActivityChart)) {
+            console.warn('⚠️ User activity chart not ready for updates');
+            return;
+        }
+        
+        if (!hourlyData) {
+            console.warn('⚠️ No hourly data provided for user activity chart');
+            return;
+        }
+        
+        try {
             this.charts.userActivityChart.data.datasets[0].data = hourlyData;
-            this.charts.userActivityChart.update();
+            this.charts.userActivityChart.update('none');
+            console.log('✅ User activity chart updated');
+        } catch (error) {
+            console.error('❌ Error updating user activity chart:', error);
+            
+            // Attempt to reinitialize if chart update fails
+            if (error.message && (error.message.includes('canvas') || error.message.includes('destroyed'))) {
+                console.log('🔄 Attempting to reinitialize user activity chart...');
+                this.reinitializeChart(this.charts.userActivityChart);
+            }
         }
     }
 

@@ -466,8 +466,39 @@ def activity_logs(page=1):
 @cached_route(timeout=180, key_prefix='admin_lab_sessions_page')
 def admin_lab_sessions():
     """Show lab sessions management page with caching"""
-    lab_sessions = CaThucHanh.query.order_by(CaThucHanh.ngay.desc()).all()
+    lab_sessions = CaThucHanh.query.order_by(CaThucHanh.thoi_gian_bat_dau.desc()).all()
     return render_template("admin/admin_lab_sessions.html", lab_sessions=lab_sessions)
+
+@admin_bp.route('/system')
+@login_required
+@admin_required
+def system_dashboard():
+    """System monitoring dashboard with real-time metrics"""
+    # Get real system stats
+    dashboard_stats = get_dashboard_statistics()
+    
+    # Transform the data structure to match template expectations
+    stats = {
+        'user_count': dashboard_stats['users']['total'],
+        'active_users': dashboard_stats['users'].get('active', 0),
+        'lab_session_count': dashboard_stats['sessions']['total'],
+        'active_lab_sessions': dashboard_stats['sessions'].get('active', 0),
+        'critical_alerts': 0,  # You can implement this later
+        'warning_alerts': 0,   # You can implement this later
+        'new_users_week': dashboard_stats['users'].get('weekly', 0),
+        'daily_logins': dashboard_stats['users'].get('today', 0),
+        'active_sessions_today': dashboard_stats['sessions'].get('today', 0),
+        'activities_today': dashboard_stats.get('activity', {}).get('today', 0),
+        'db_usage_percent': 0,  # You can implement this later
+        'db_size': 'N/A'        # You can implement this later
+    }
+    
+    return render_template(
+        'admin/system_admin_dashboard.html',
+        stats=stats,
+        dashboard_title="System Monitor Dashboard",
+        cache_version="v1.0"
+    )
 
 @admin_bp.route('/test-dashboard')
 def test_dashboard():
@@ -488,9 +519,78 @@ def test_dashboard():
         'db_size': '8.5 MB'
     }
     
+    # Use the dedicated simple test template
+    return render_template(
+        'admin/test_dashboard_simple.html',
+        stats=fake_stats,
+        dashboard_title="Test System Dashboard (No Auth)",
+        cache_version="test005"
+    )
+
+@admin_bp.route('/test-dashboard-full')
+def test_dashboard_full():
+    """Test full dashboard template without authentication"""
+    from flask_login import AnonymousUserMixin
+    
+    # Mock current_user for template
+    class MockUser:
+        def is_authenticated(self):
+            return True
+        def is_admin(self):
+            return True
+    
+    # Fake stats for testing
+    fake_stats = {
+        'user_count': 156,
+        'active_users': 23,
+        'lab_session_count': 45,
+        'active_lab_sessions': 8,
+        'critical_alerts': 2,
+        'warning_alerts': 3,
+        'new_users_week': 12,
+        'daily_logins': 45,
+        'active_sessions_today': 23,
+        'activities_today': 234,
+        'db_usage_percent': 65,
+        'db_size': '8.5 MB'
+    }
+    
+    # Render with mocked user context
+    from flask import g
+    g.current_user = MockUser()
+    
     return render_template(
         'admin/system_admin_dashboard.html',
         stats=fake_stats,
-        dashboard_title="Test System Dashboard (No Auth)",
-        cache_version="test001"
+        dashboard_title="Test Full Dashboard (Mocked Auth)",
+        cache_version="test003"
     )
+
+@admin_bp.route('/debug-api')
+def debug_api():
+    """Debug route to test API directly"""
+    import requests
+    try:
+        response = requests.get('http://localhost:5000/api/v1/system/metrics-demo')
+        return f"""
+        <h1>API Debug</h1>
+        <h2>Status: {response.status_code}</h2>
+        <h3>Response:</h3>
+        <pre>{response.text}</pre>
+        <h3>Test in Browser:</h3>
+        <script>
+        console.log('Testing fetch...');
+        fetch('/api/v1/system/metrics-demo')
+            .then(r => r.json())
+            .then(data => {{
+                console.log('Success:', data);
+                document.body.innerHTML += '<div style="color: green;">✅ API Working! CPU: ' + data.system.cpu_usage + '%</div>';
+            }})
+            .catch(error => {{
+                console.error('Error:', error);
+                document.body.innerHTML += '<div style="color: red;">❌ Error: ' + error.message + '</div>';
+            }});
+        </script>
+        """
+    except Exception as e:
+        return f"<h1>Error: {e}</h1>"

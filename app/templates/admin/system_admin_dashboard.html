@@ -51,13 +51,6 @@
                         <div class="metric-content">
                             <div class="metric-number" id="total-users">{{ stats.user_count or 0 }}</div>
                             <div class="metric-label">Tổng người dùng</div>
-                            <div class="metric-change positive">
-                                <i class="fas fa-arrow-up"></i> 
-                                <span>{{ stats.new_users_week or 0 }} mới tuần này</span>
-                            </div>
-                        </div>
-                        <div class="metric-progress">
-                            <div class="progress-bar" style="width: 85%"></div>
                         </div>
                     </div>
                 </div>
@@ -69,13 +62,6 @@
                         <div class="metric-content">
                             <div class="metric-number" id="active-users">{{ stats.active_users or 0 }}</div>
                             <div class="metric-label">Đang hoạt động</div>
-                            <div class="metric-change positive">
-                                <i class="fas fa-arrow-up"></i> 
-                                <span>{{ stats.daily_logins or 0 }} đăng nhập hôm nay</span>
-                            </div>
-                        </div>
-                        <div class="metric-progress">
-                            <div class="progress-bar" style="width: 92%"></div>
                         </div>
                     </div>
                 </div>
@@ -87,13 +73,6 @@
                         <div class="metric-content">
                             <div class="metric-number" id="total-labs">{{ stats.lab_session_count or 0 }}</div>
                             <div class="metric-label">Phiên Lab</div>
-                            <div class="metric-change positive">
-                                <i class="fas fa-play"></i> 
-                                <span>{{ stats.active_lab_sessions or 0 }} hoạt động</span>
-                            </div>
-                        </div>
-                        <div class="metric-progress">
-                            <div class="progress-bar" style="width: 78%"></div>
                         </div>
                     </div>
                 </div>
@@ -105,13 +84,6 @@
                         <div class="metric-content">
                             <div class="metric-number" id="system-alerts">{{ (stats.critical_alerts or 0) + (stats.warning_alerts or 0) }}</div>
                             <div class="metric-label">Cảnh Báo</div>
-                            <div class="metric-change negative">
-                                <i class="fas fa-info-circle"></i> 
-                                <span>{{ stats.critical_alerts or 0 }} nghiêm trọng</span>
-                            </div>
-                        </div>
-                        <div class="metric-progress">
-                            <div class="progress-bar" style="width: 15%"></div>
                         </div>
                     </div>
                 </div>
@@ -280,104 +252,125 @@
         <div class="operations-section">
             <div class="row g-4">
                 <div class="col-12">
-                    <div class="dashboard-card operations-card">
-                        <div class="card-header danger">
-                            <div class="header-content">
-                                <h5 class="card-title">
-                                    <i class="fas fa-tools"></i>
-                                    Thao Tác Hệ Thống
-                                </h5>
-                                <p class="card-subtitle">Các chức năng quản trị quan trọng - Sử dụng cẩn thận</p>
-                            </div>
+                    <div class="operations-card">
+                        <div class="card-header">
+                            <h5 class="card-title">
+                                <i class="fas fa-tools"></i>
+                                Thao Tác Hệ Thống
+                            </h5>
                             <div class="warning-badge">
-                                <i class="fas fa-exclamation-triangle"></i>
                                 Cẩn trọng
                             </div>
                         </div>
-                        <div class="card-body">
-                            <div class="alert alert-danger border-0 mb-4" role="alert">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                <strong>CẢNH BÁO QUAN TRỌNG:</strong> Các thao tác dưới đây có thể ảnh hưởng nghiêm trọng đến hệ thống. 
-                                Hãy đảm bảo bạn đã tạo bản sao lưu và hiểu rõ hậu quả trước khi thực hiện.
-                            </div>
-                            
-                            <div class="operations-grid">
-                                <div class="operation-item">
-                                    <div class="operation-icon backup">
-                                        <i class="fas fa-download"></i>
+                        <div class="card-body p-0">
+                            <ul class="operation-list">
+                                <li class="operation-item">
+                                    <div class="operation-info">
+                                        <div class="operation-icon backup">
+                                            <i class="fas fa-download"></i>
+                                        </div>
+                                        <div class="operation-details">
+                                            <h6>Sao lưu dữ liệu</h6>
+                                            <p>Tạo bản sao lưu đầy đủ hệ thống và cơ sở dữ liệu</p>
+                                        </div>
                                     </div>
-                                    <div class="operation-content">
-                                        <h6>Sao lưu dữ liệu</h6>
-                                        <p>Tạo bản sao lưu đầy đủ hệ thống</p>
-                                        <button type="button" class="btn btn-secondary btn-sm" disabled>
-                                            <i class="fas fa-download"></i> Sao lưu (Đang phát triển)
+                                    <div class="operation-actions">
+                                        <button type="button" class="operation-btn btn-primary" disabled>
+                                            <i class="fas fa-download"></i> Sao lưu
                                         </button>
                                     </div>
-                                </div>
+                                </li>
                                 
-                                <div class="operation-item">
-                                    <div class="operation-icon database">
-                                        <i class="fas fa-database"></i>
+                                <li class="operation-item">
+                                    <div class="operation-info">
+                                        <div class="operation-icon reset">
+                                            <i class="fas fa-database"></i>
+                                        </div>
+                                        <div class="operation-details">
+                                            <h6>Đặt lại Database</h6>
+                                            <p>Đặt lại cấu trúc và dữ liệu cơ sở dữ liệu về trạng thái ban đầu</p>
+                                        </div>
                                     </div>
-                                    <div class="operation-content">
-                                        <h6>Đặt lại Database</h6>
-                                        <p>Đặt lại cấu trúc và dữ liệu cơ sở dữ liệu</p>
-                                        <button class="btn btn-secondary btn-sm" disabled
-                                                title="Chức năng đang phát triển">
-                                            <i class="fas fa-redo"></i> Đặt Lại DB (Đang phát triển)
+                                    <div class="operation-actions">
+                                        <button class="operation-btn btn-danger" disabled>
+                                            <i class="fas fa-redo"></i> Đặt lại DB
                                         </button>
                                     </div>
-                                </div>
+                                </li>
                                 
-                                <div class="operation-item">
-                                    <div class="operation-icon settings">
-                                        <i class="fas fa-cog"></i>
+                                <li class="operation-item">
+                                    <div class="operation-info">
+                                        <div class="operation-icon settings">
+                                            <i class="fas fa-cog"></i>
+                                        </div>
+                                        <div class="operation-details">
+                                            <h6>Đặt lại Cài đặt</h6>
+                                            <p>Khôi phục các cài đặt hệ thống về giá trị mặc định</p>
+                                        </div>
                                     </div>
-                                    <div class="operation-content">
-                                        <h6>Đặt lại Cài đặt</h6>
-                                        <p>Khôi phục cài đặt hệ thống về mặc định</p>
-                                        <button class="btn btn-secondary btn-sm" disabled
-                                                title="Chức năng đang phát triển">
-                                            <i class="fas fa-sync"></i> Reset Settings (Đang phát triển)
+                                    <div class="operation-actions">
+                                        <button class="operation-btn btn-warning" disabled>
+                                            <i class="fas fa-sync"></i> Reset Settings
                                         </button>
                                     </div>
-                                </div>
+                                </li>
                                 
-                                <div class="operation-item">
-                                    <div class="operation-icon logs">
-                                        <i class="fas fa-file-alt"></i>
+                                <li class="operation-item">
+                                    <div class="operation-info">
+                                        <div class="operation-icon logs">
+                                            <i class="fas fa-file-alt"></i>
+                                        </div>
+                                        <div class="operation-details">
+                                            <h6>Xóa nhật ký</h6>
+                                            <p>Xóa các tệp nhật ký cũ để giải phóng không gian đĩa</p>
+                                        </div>
                                     </div>
-                                    <div class="operation-content">
-                                        <h6>Xóa nhật ký</h6>
-                                        <p>Xóa các tệp nhật ký cũ để giải phóng không gian</p>
-                                        <button class="btn btn-info btn-sm" data-toggle="modal" data-target="#clearLogsModal">
+                                    <div class="operation-actions">
+                                        <button class="operation-btn btn-primary" data-toggle="modal" data-target="#clearLogsModal">
                                             <i class="fas fa-trash"></i> Xóa logs
                                         </button>
                                     </div>
-                                </div>
+                                </li>
                                 
-                                <div class="operation-item">
-                                    <div class="operation-icon restart">
-                                        <i class="fas fa-redo"></i>
+                                <li class="operation-item">
+                                    <div class="operation-info">
+                                        <div class="operation-icon restart">
+                                            <i class="fas fa-redo"></i>
+                                        </div>
+                                        <div class="operation-details">
+                                            <h6>Khởi động lại</h6>
+                                            <p>Khởi động lại ứng dụng để áp dụng các thay đổi mới</p>
+                                        </div>
                                     </div>
-                                    <div class="operation-content">
-                                        <h6>Khởi động lại</h6>
-                                        <p>Khởi động lại ứng dụng để áp dụng thay đổi</p>
-                                        <button type="button" class="btn btn-secondary btn-sm" disabled>
-                                            <i class="fas fa-redo-alt"></i> Restart (Đang phát triển)
+                                    <div class="operation-actions">
+                                        <button type="button" class="operation-btn btn-secondary" disabled>
+                                            <i class="fas fa-redo-alt"></i> Restart
                                         </button>
                                     </div>
-                                </div>
+                                </li>
                                 
-                                <div class="operation-item">
-                                    <div class="operation-icon reset">
-                                        <i class="fas fa-exclamation-triangle"></i>
+                                <li class="operation-item">
+                                    <div class="operation-info">
+                                        <div class="operation-icon reset">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                        </div>
+                                        <div class="operation-details">
+                                            <h6>Reset hệ thống</h6>
+                                            <p>Đặt lại toàn bộ hệ thống về trạng thái ban đầu (Nguy hiểm!)</p>
+                                        </div>
                                     </div>
-                                    <div class="operation-content">
-                                        <h6>Reset hệ thống</h6>
-                                        <p>Đặt lại toàn bộ hệ thống về trạng thái ban đầu</p>
-                                        <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#systemOperationModal">
+                                    <div class="operation-actions">
+                                        <button class="operation-btn btn-danger">
                                             <i class="fas fa-exclamation-triangle"></i> Reset
+                                        </button>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
                                         </button>
                                     </div>
                                 </div>
@@ -815,13 +808,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize real-time dashboard for admin manager - prevent multiple initialization
     if (typeof SystemDashboard !== 'undefined' && !window.systemDashboard) {
-        console.log('Initializing System Dashboard...');
-        window.systemDashboard = new SystemDashboard({
-            type: 'system',
-            realTime: true,
-            updateInterval: 5000
-        });
-        systemDashboard.init();
+        console.log('✅ SystemDashboard class found, initializing...');
+        try {
+            window.systemDashboard = new SystemDashboard({
+                type: 'system',
+                realTime: true,
+                updateInterval: 5000
+            });
+            console.log('✅ SystemDashboard instance created');
+            
+            systemDashboard.init();
+            console.log('✅ SystemDashboard initialized successfully');
+        } catch (error) {
+            console.error('❌ Error initializing SystemDashboard:', error);
+            alert('Lỗi khởi tạo dashboard: ' + error.message);
+        }
         
         // Cleanup on page unload
         window.addEventListener('beforeunload', function() {
@@ -830,8 +831,57 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     } else if (window.systemDashboard) {
-        console.log('System Dashboard already initialized, skipping...');
+        console.log('ℹ️ System Dashboard already initialized, skipping...');
+    } else {
+        console.error('❌ SystemDashboard class not found! Check if system_dashboard.js is loaded correctly.');
+        
+        // Fallback: Load simple dashboard script
+        console.log('🔄 Loading simple dashboard fallback...');
+        const script = document.createElement('script');
+        script.src = '{{ url_for("static", filename="js/simple_dashboard.js") }}';
+        script.onload = function() {
+            console.log('✅ Simple dashboard script loaded');
+        };
+        script.onerror = function() {
+            console.error('❌ Failed to load simple dashboard script');
+            alert('Lỗi: Không thể tải dashboard script. Vui lòng kiểm tra kết nối mạng.');
+        };
+        document.head.appendChild(script);
     }
+    
+    // Test API directly to debug
+    console.log('🧪 Testing API endpoint directly...');
+    fetch('/api/v1/system/metrics-demo')
+        .then(response => {
+            console.log('📊 Direct API test:', response.status, response.statusText);
+            return response.json();
+        })
+        .then(data => {
+            console.log('✅ Direct API data:', data);
+            
+            // Test Chart.js availability
+            console.log('📈 Chart.js available:', typeof Chart !== 'undefined');
+            console.log('📈 Chart.js version:', typeof Chart !== 'undefined' ? Chart.version : 'N/A');
+            
+            // Test canvas elements
+            const performanceCanvas = document.getElementById('performanceChart');
+            const activityCanvas = document.getElementById('userActivityChart');
+            console.log('🎨 Performance canvas found:', !!performanceCanvas);
+            console.log('🎨 Activity canvas found:', !!activityCanvas);
+            
+            // Try to update one metric manually for testing
+            const cpuElement = document.querySelector('#cpu-value, .metric-value:first-child, [data-metric="cpu"] .metric-value');
+            if (cpuElement) {
+                cpuElement.textContent = data.system.cpu_usage + '%';
+                console.log('✅ Updated CPU value manually');
+            } else {
+                console.warn('⚠️ CPU element not found');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Direct API test failed:', error);
+            alert('API Test Error: ' + error.message);
+        });
 });
 </script>
 {% endblock %}
