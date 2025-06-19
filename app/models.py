@@ -35,6 +35,16 @@ class NguoiDung(UserMixin, db.Model):
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
     bio = db.Column(db.Text, nullable=True)  # Thêm trường bio cho giới thiệu bản thân
     
+    # Email verification fields
+    is_verified = db.Column(db.Boolean, default=False)
+    verification_token = db.Column(db.String(100), nullable=True)
+    verification_token_expiry = db.Column(db.Integer, nullable=True)
+      # Account status
+    active = db.Column(db.Boolean, default=True)
+    failed_login_attempts = db.Column(db.Integer, default=0)
+    last_failed_login = db.Column(db.DateTime, nullable=True)
+    account_locked_until = db.Column(db.DateTime, nullable=True)
+    
     # Password reset fields
     reset_token = db.Column(db.String(100), nullable=True)
     reset_token_expiry = db.Column(db.Integer, nullable=True)  # Unix timestamp    # Flask compatibility helpers for legacy code and templates

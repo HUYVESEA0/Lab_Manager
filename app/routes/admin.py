@@ -610,3 +610,43 @@ def debug_api():
         """
     except Exception as e:
         return f"<h1>Error: {e}</h1>"
+
+@admin_bp.route('/bulk-create-users', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def bulk_create_users():
+    """Tạo người dùng hàng loạt"""
+    from ..forms import BulkUserCreationForm
+    import json
+    from flask import current_app
+    
+    form = BulkUserCreationForm()
+    
+    if form.validate_on_submit():
+        try:
+            users_data = json.loads(form.users_data.data or '[]')
+            
+            # Use API endpoint for bulk creation
+            with current_app.test_client() as client:
+                response = client.post('/api/users/bulk-create', 
+                    json={'users': users_data},
+                    headers={'Authorization': f'Bearer {session.get("csrf_token", "")}'})
+                
+                if response.status_code == 200:
+                    result = response.get_json()
+                    summary = result.get('summary', {})
+                    
+                    flash(f"Đã tạo {summary.get('success', 0)} người dùng thành công. "
+                          f"Có {summary.get('errors', 0)} lỗi.", "success" if summary.get('errors', 0) == 0 else "warning")
+                    
+                    return redirect(url_for('admin.admin_users'))
+                else:
+                    flash("Có lỗi xảy ra khi tạo người dùng hàng loạt.", "danger")
+                    
+        except json.JSONDecodeError:
+            flash("Dữ liệu JSON không hợp lệ.", "danger")
+        except Exception as e:
+            current_app.logger.error(f"Error in bulk user creation: {str(e)}")
+            flash("Có lỗi xảy ra khi tạo người dùng hàng loạt.", "danger")
+    
+    return render_template("admin/bulk_create_users.html", form=form)

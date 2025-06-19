@@ -1,0 +1,261 @@
+{% extends "auth_layout.html" %}
+
+{% block title %}Đăng ký tài khoản{% endblock %}
+
+{% block auth_content %}
+<div class="auth-container">
+    <div class="auth-header">
+        <h2><i class="fas fa-user-plus"></i> Tạo tài khoản mới</h2>
+        <p>Đăng ký để truy cập vào hệ thống quản lý Lab</p>
+    </div>
+
+    <form method="POST" class="auth-form" id="registerForm">
+        {{ form.hidden_tag() }}
+        
+        <!-- Username Field -->
+        <div class="form-group">
+            {{ form.ten_nguoi_dung.label(class="form-label") }}
+            {{ form.ten_nguoi_dung(class="form-control", placeholder="Nhập tên người dùng") }}
+            {% if form.ten_nguoi_dung.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.ten_nguoi_dung.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <small class="form-text text-muted">
+                Chỉ được chứa chữ cái, số và dấu gạch dưới (3-20 ký tự)
+            </small>
+        </div>
+
+        <!-- Email Field -->
+        <div class="form-group">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control", placeholder="Nhập địa chỉ email") }}
+            {% if form.email.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.email.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Password Field -->
+        <div class="form-group">
+            {{ form.password.label(class="form-label") }}
+            <div class="password-input-container">
+                {{ form.password(class="form-control", placeholder="Nhập mật khẩu", id="password") }}
+                <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                    <i class="fas fa-eye" id="password-eye"></i>
+                </button>
+            </div>
+            {% if form.password.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.password.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <!-- Password Strength Indicator -->
+            <div class="password-strength" id="passwordStrength">
+                <div class="strength-bar">
+                    <div class="strength-fill" id="strengthFill"></div>
+                </div>
+                <small class="strength-text" id="strengthText">Độ mạnh mật khẩu</small>
+            </div>
+            
+            <small class="form-text text-muted">
+                Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt
+            </small>
+        </div>
+
+        <!-- Confirm Password Field -->
+        <div class="form-group">
+            {{ form.confirm_password.label(class="form-label") }}
+            <div class="password-input-container">
+                {{ form.confirm_password(class="form-control", placeholder="Nhập lại mật khẩu", id="confirmPassword") }}
+                <button type="button" class="password-toggle" onclick="togglePassword('confirmPassword')">
+                    <i class="fas fa-eye" id="confirmPassword-eye"></i>
+                </button>
+            </div>
+            {% if form.confirm_password.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.confirm_password.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Bio Field -->
+        <div class="form-group">
+            {{ form.bio.label(class="form-label") }}
+            {{ form.bio(class="form-control", rows="3") }}
+            {% if form.bio.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.bio.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Terms and Conditions -->
+        <div class="form-group">
+            <div class="form-check">
+                {{ form.terms_accepted(class="form-check-input") }}
+                {{ form.terms_accepted.label(class="form-check-label") }}
+            </div>
+            {% if form.terms_accepted.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.terms_accepted.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Submit Button -->
+        <div class="form-group">
+            {{ form.submit(class="btn btn-primary btn-block btn-auth") }}
+        </div>
+    </form>
+
+    <div class="auth-footer">
+        <p>Đã có tài khoản? <a href="{{ url_for('auth.login') }}" class="auth-link">Đăng nhập ngay</a></p>
+    </div>
+</div>
+
+<style>
+.password-input-container {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+}
+
+.password-toggle:hover {
+    color: #007bff;
+}
+
+.password-strength {
+    margin-top: 0.5rem;
+}
+
+.strength-bar {
+    width: 100%;
+    height: 4px;
+    background-color: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.strength-fill {
+    height: 100%;
+    width: 0%;
+    transition: all 0.3s ease;
+    border-radius: 2px;
+}
+
+.strength-weak { background-color: #dc3545; }
+.strength-fair { background-color: #ffc107; }
+.strength-good { background-color: #fd7e14; }
+.strength-strong { background-color: #28a745; }
+
+.strength-text {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+}
+</style>
+
+<script>
+function togglePassword(fieldId) {
+    const field = document.getElementById(fieldId);
+    const eye = document.getElementById(fieldId + '-eye');
+    
+    if (field.type === 'password') {
+        field.type = 'text';
+        eye.classList.remove('fa-eye');
+        eye.classList.add('fa-eye-slash');
+    } else {
+        field.type = 'password';
+        eye.classList.remove('fa-eye-slash');
+        eye.classList.add('fa-eye');
+    }
+}
+
+function checkPasswordStrength(password) {
+    let strength = 0;
+    let text = 'Rất yếu';
+    
+    if (password.length >= 8) strength++;
+    if (/[a-z]/.test(password)) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    
+    const strengthFill = document.getElementById('strengthFill');
+    const strengthText = document.getElementById('strengthText');
+    
+    switch (strength) {
+        case 0:
+        case 1:
+            strengthFill.className = 'strength-fill strength-weak';
+            strengthFill.style.width = '20%';
+            text = 'Rất yếu';
+            break;
+        case 2:
+            strengthFill.className = 'strength-fill strength-weak';
+            strengthFill.style.width = '40%';
+            text = 'Yếu';
+            break;
+        case 3:
+            strengthFill.className = 'strength-fill strength-fair';
+            strengthFill.style.width = '60%';
+            text = 'Khá';
+            break;
+        case 4:
+            strengthFill.className = 'strength-fill strength-good';
+            strengthFill.style.width = '80%';
+            text = 'Tốt';
+            break;
+        case 5:
+            strengthFill.className = 'strength-fill strength-strong';
+            strengthFill.style.width = '100%';
+            text = 'Rất mạnh';
+            break;
+    }
+    
+    strengthText.textContent = 'Độ mạnh: ' + text;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordField = document.getElementById('password');
+    const confirmPasswordField = document.getElementById('confirmPassword');
+    
+    passwordField.addEventListener('input', function() {
+        checkPasswordStrength(this.value);
+    });
+    
+    // Real-time password confirmation validation
+    confirmPasswordField.addEventListener('input', function() {
+        if (this.value && passwordField.value && this.value !== passwordField.value) {
+            this.setCustomValidity('Mật khẩu không khớp');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+});
+</script>
+{% endblock %}

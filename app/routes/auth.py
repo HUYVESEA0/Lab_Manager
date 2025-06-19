@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from datetime import datetime
-from ..forms import LoginForm, RegistrationForm, ResetPasswordRequestForm, ResetPasswordForm
+from ..forms import LoginForm, RegistrationForm, AdvancedRegistrationForm, ResetPasswordRequestForm, ResetPasswordForm
 from ..models import NguoiDung, db
 from ..utils import log_activity, clear_auth_session
+from ..services.user_service import UserService
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -129,4 +130,60 @@ def logout():
         logout_user()
         clear_auth_session()
         flash(f"Bạn đã đăng xuất lúc {logout_time}", "info")
+    return redirect(url_for('auth.login'))
+
+@auth_bp.route('/register-advanced', methods=['GET', 'POST'])
+def register_advanced():
+    """Đăng ký nâng cao với validation mạnh"""
+    if current_user.is_authenticated:
+        return redirect(url_for('user.dashboard'))
+    
+    form = AdvancedRegistrationForm()
+    if form.validate_on_submit():
+        try:
+            user_service = UserService()
+            
+            user_data = {
+                'ten_nguoi_dung': form.ten_nguoi_dung.data,
+                'email': form.email.data.lower().strip() if form.email.data else '',
+                'mat_khau': form.password.data,
+                'bio': form.bio.data or '',
+                'vai_tro': 'nguoi_dung'
+            }
+            
+            result, status_code = user_service.create_user(user_data)
+            
+            if status_code == 200:
+                flash("Tài khoản của bạn đã được tạo thành công! Bạn có thể đăng nhập ngay bây giờ.", "success")
+                return redirect(url_for('auth.login'))
+            else:
+                flash(result.get('message', 'Có lỗi xảy ra khi tạo tài khoản'), "danger")
+                
+        except Exception as e:
+            flash("Có lỗi xảy ra khi tạo tài khoản. Vui lòng thử lại.", "danger")
+    
+    return render_template("auth/register_advanced.html", form=form, title="Đăng ký tài khoản")
+
+@auth_bp.route('/verify-email/<token>')
+def verify_email(token):
+    """Xác thực email"""
+    try:
+        user = NguoiDung.query.filter_by(verification_token=token).first()
+        
+        if not user:
+            flash("Token xác thực không hợp lệ hoặc đã hết hạn.", "danger")
+            return redirect(url_for('auth.login'))
+        
+        if user.xac_thuc_verification_token(token):
+            user.xac_thuc_email()
+            db.session.commit()
+            
+            log_activity("Xác thực email", f"Email {user.email} đã được xác thực", user)
+            flash("Email của bạn đã được xác thực thành công!", "success")
+        else:
+            flash("Token xác thực không hợp lệ hoặc đã hết hạn.", "danger")
+            
+    except Exception as e:
+        flash("Có lỗi xảy ra khi xác thực email.", "danger")
+    
     return redirect(url_for('auth.login'))

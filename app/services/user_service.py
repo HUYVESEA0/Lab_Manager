@@ -47,15 +47,30 @@ class UserService(BaseService):
             return None
     
     def create_user(self, data: Dict) -> Tuple[Dict, int]:
-        """Tạo user mới"""
+        """Tạo user mới với validation nâng cao"""
         try:
             # Validate required fields
             required_fields = ['ten_nguoi_dung', 'email', 'mat_khau']
             self.validate_required_fields(data, required_fields)
             
+            # Advanced password validation
+            password = data['mat_khau']
+            if not self._validate_password_strength(password):
+                raise ServiceError(
+                    "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt", 
+                    400
+                )
+            
             # Validate email format
             if not self._validate_email(data['email']):
                 raise ServiceError("Email không hợp lệ", 400)
+            
+            # Validate username format
+            if not self._validate_username(data['ten_nguoi_dung']):
+                raise ServiceError(
+                    "Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới, từ 3-20 ký tự", 
+                    400
+                )
             
             # Check for existing user
             if self.get_user_by_email(data['email']):
@@ -67,13 +82,13 @@ class UserService(BaseService):
             # Create user
             user_data = {
                 'ten_nguoi_dung': data['ten_nguoi_dung'],
-                'email': data['email'],
+                'email': data['email'].lower().strip(),
                 'vai_tro': data.get('vai_tro', 'nguoi_dung'),
                 'bio': data.get('bio', '')
             }
             
             user = self.create_model_instance(self.model, user_data)
-            user.dat_mat_khau(data['mat_khau'])
+            user.dat_mat_khau(password)
             
             self.db.session.add(user)
             self.safe_commit()
@@ -90,7 +105,8 @@ class UserService(BaseService):
                         'id': user.id,
                         'ten_nguoi_dung': user.ten_nguoi_dung,
                         'email': user.email,
-                        'vai_tro': user.vai_tro
+                        'vai_tro': user.vai_tro,
+                        'ngay_tao': user.ngay_tao.isoformat() if user.ngay_tao else None
                     }
                 }
             )
@@ -262,3 +278,58 @@ class UserService(BaseService):
         """Validate email format"""
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return re.match(pattern, email) is not None
+    
+    def _validate_password_strength(self, password: str) -> bool:
+        """Validate password strength"""
+        if len(password) < 8:
+            return False
+        
+        has_upper = any(c.isupper() for c in password)
+        has_lower = any(c.islower() for c in password)
+        has_digit = any(c.isdigit() for c in password)
+        has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password)
+        
+        return has_upper and has_lower and has_digit and has_special
+    
+    def _validate_username(self, username: str) -> bool:
+        """Validate username format"""
+        if not username or len(username) < 3 or len(username) > 20:
+            return False
+        
+        # Only allow letters, numbers, and underscores
+        import re
+        pattern = r'^[a-zA-Z0-9_]+$'
+        return bool(re.match(pattern, username))
+    
+    def create_user_with_verification(self, data: Dict) -> Tuple[Dict, int]:
+        """Tạo user với email verification"""
+        try:
+            # Create user but mark as unverified
+            user_data = data.copy()
+            user_data['is_verified'] = False
+            
+            result, status_code = self.create_user(user_data)
+            
+            if status_code == 200:
+                user_id = result['data']['user']['id']
+                # Generate verification token
+                verification_token = self._generate_verification_token(user_id)
+                
+                # Send verification email (implement this separately)
+                # self._send_verification_email(user_id, verification_token)
+                
+                result['data']['verification_required'] = True
+                result['message'] = "Tài khoản đã được tạo. Vui lòng kiểm tra email để xác thực."
+            
+            return result, status_code
+            
+        except Exception as e:
+            return self.handle_database_error(e, "tạo người dùng với xác thực")
+    
+    def _generate_verification_token(self, user_id: int) -> str:
+        """Generate email verification token"""
+        import secrets
+        token = secrets.token_urlsafe(32)
+        # Store token in database or cache
+        # Implementation depends on your preference
+        return token

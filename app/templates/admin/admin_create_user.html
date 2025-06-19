@@ -697,8 +697,11 @@ class CreateUserWizard {
         
         document.body.appendChild(error);
         
+        // Auto remove after 5 seconds
         setTimeout(() => {
-            error.remove();
+            if (error.parentNode) {
+                error.remove();
+            }
         }, 5000);
     }
 }
@@ -707,5 +710,8 @@ class CreateUserWizard {
 document.addEventListener('DOMContentLoaded', function() {
     new CreateUserWizard();
 });
+
+// Include user creation manager
 </script>
+<script src="{{ url_for('static', filename='js/user-creation.js') }}"></script>
 {% endblock %}

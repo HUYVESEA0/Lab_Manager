@@ -1,0 +1,280 @@
+{% extends "index.html" %}
+
+{% block title %}Tạo người dùng hàng loạt{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .bulk-creation-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .bulk-header {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+    }
+    
+    .bulk-content {
+        background: white;
+        border-radius: 0 0 12px 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        padding: 2rem;
+    }
+    
+    .json-editor {
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 1rem;
+        resize: vertical;
+    }
+    
+    .format-help {
+        background-color: #e3f2fd;
+        border: 1px solid #bbdefb;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .example-json {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 0.75rem;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.875rem;
+        white-space: pre-wrap;
+        margin-top: 0.5rem;
+    }
+    
+    .validation-status {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        border-radius: 6px;
+        display: none;
+    }
+    
+    .validation-success {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+    
+    .validation-error {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+    
+    .btn-validate {
+        margin-right: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bulk-creation-container">
+    <div class="bulk-header">
+        <h2><i class="fas fa-users-cog"></i> Tạo người dùng hàng loạt</h2>
+        <p>Tạo nhiều người dùng cùng một lúc bằng định dạng JSON</p>
+    </div>
+    
+    <div class="bulk-content">
+        <div class="format-help">
+            <h5><i class="fas fa-info-circle"></i> Hướng dẫn định dạng</h5>
+            <p>Dữ liệu phải là một mảng JSON chứa các object người dùng. Mỗi người dùng cần có các trường sau:</p>
+            <ul>
+                <li><code>ten_nguoi_dung</code>: Tên người dùng (3-20 ký tự, chỉ chữ cái, số và dấu gạch dưới)</li>
+                <li><code>email</code>: Địa chỉ email hợp lệ</li>
+                <li><code>mat_khau</code>: Mật khẩu mạnh (ít nhất 8 ký tự, có chữ hoa, thường, số và ký tự đặc biệt)</li>
+                <li><code>vai_tro</code>: Vai trò (nguoi_dung, quan_tri_vien, quan_tri_he_thong)</li>
+                <li><code>bio</code>: Giới thiệu (tùy chọn)</li>
+            </ul>
+            
+            <div class="example-json">
+[
+  {
+    "ten_nguoi_dung": "user1",
+    "email": "user1@example.com",
+    "mat_khau": "SecurePass123!",
+    "vai_tro": "nguoi_dung",
+    "bio": "Sinh viên khoa CNTT"
+  },
+  {
+    "ten_nguoi_dung": "admin1",
+    "email": "admin1@example.com", 
+    "mat_khau": "AdminPass456@",
+    "vai_tro": "quan_tri_vien",
+    "bio": "Quản trị viên hệ thống"
+  }
+]</div>
+        </div>
+        
+        <form method="POST" id="bulkForm">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                {{ form.users_data.label(class="form-label") }}
+                {{ form.users_data(class="form-control json-editor", rows="15") }}
+                {% if form.users_data.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.users_data.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="validation-status" id="validationStatus">
+                <div id="validationMessage"></div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn btn-info btn-validate" onclick="validateJSON()">
+                    <i class="fas fa-check-circle"></i> Kiểm tra định dạng
+                </button>
+                
+                <button type="button" class="btn btn-secondary" onclick="loadExample()">
+                    <i class="fas fa-file-alt"></i> Tải ví dụ
+                </button>
+                
+                <button type="button" class="btn btn-warning" onclick="clearData()">
+                    <i class="fas fa-trash"></i> Xóa dữ liệu
+                </button>
+                
+                {{ form.submit(class="btn btn-primary", id="submitBtn", disabled=true) }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function validateJSON() {
+    const textarea = document.getElementById('users_data');
+    const status = document.getElementById('validationStatus');
+    const message = document.getElementById('validationMessage');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    try {
+        const data = JSON.parse(textarea.value);
+        
+        if (!Array.isArray(data)) {
+            throw new Error('Dữ liệu phải là một mảng JSON');
+        }
+        
+        if (data.length === 0) {
+            throw new Error('Mảng không được để trống');
+        }
+        
+        const requiredFields = ['ten_nguoi_dung', 'email', 'mat_khau', 'vai_tro'];
+        const validRoles = ['nguoi_dung', 'quan_tri_vien', 'quan_tri_he_thong'];
+        
+        for (let i = 0; i < data.length; i++) {
+            const user = data[i];
+            
+            if (typeof user !== 'object' || user === null) {
+                throw new Error(`Người dùng thứ ${i + 1} phải là một object`);
+            }
+            
+            for (const field of requiredFields) {
+                if (!user[field] || typeof user[field] !== 'string') {
+                    throw new Error(`Người dùng thứ ${i + 1} thiếu trường '${field}' hoặc không phải chuỗi`);
+                }
+            }
+            
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(user.email)) {
+                throw new Error(`Người dùng thứ ${i + 1}: Email không hợp lệ`);
+            }
+            
+            // Validate username format
+            const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+            if (!usernameRegex.test(user.ten_nguoi_dung)) {
+                throw new Error(`Người dùng thứ ${i + 1}: Tên người dùng không hợp lệ`);
+            }
+            
+            // Validate password strength
+            const password = user.mat_khau;
+            if (password.length < 8) {
+                throw new Error(`Người dùng thứ ${i + 1}: Mật khẩu phải có ít nhất 8 ký tự`);
+            }
+            
+            const hasUpper = /[A-Z]/.test(password);
+            const hasLower = /[a-z]/.test(password);
+            const hasDigit = /[0-9]/.test(password);
+            const hasSpecial = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password);
+            
+            if (!(hasUpper && hasLower && hasDigit && hasSpecial)) {
+                throw new Error(`Người dùng thứ ${i + 1}: Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt`);
+            }
+            
+            // Validate role
+            if (!validRoles.includes(user.vai_tro)) {
+                throw new Error(`Người dùng thứ ${i + 1}: Vai trò không hợp lệ`);
+            }
+        }
+        
+        // Success
+        status.className = 'validation-status validation-success';
+        status.style.display = 'block';
+        message.innerHTML = `<i class="fas fa-check-circle"></i> Dữ liệu hợp lệ! Tìm thấy ${data.length} người dùng.`;
+        submitBtn.disabled = false;
+        
+    } catch (error) {
+        status.className = 'validation-status validation-error';
+        status.style.display = 'block';
+        message.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${error.message}`;
+        submitBtn.disabled = true;
+    }
+}
+
+function loadExample() {
+    const example = [
+        {
+            "ten_nguoi_dung": "sinhvien1",
+            "email": "sinhvien1@university.edu",
+            "mat_khau": "Student123!",
+            "vai_tro": "nguoi_dung",
+            "bio": "Sinh viên năm 3 khoa CNTT"
+        },
+        {
+            "ten_nguoi_dung": "giaovien1", 
+            "email": "giaovien1@university.edu",
+            "mat_khau": "Teacher456@",
+            "vai_tro": "quan_tri_vien",
+            "bio": "Giảng viên khoa CNTT"
+        }
+    ];
+    
+    document.getElementById('users_data').value = JSON.stringify(example, null, 2);
+    validateJSON();
+}
+
+function clearData() {
+    if (confirm('Bạn có chắc chắn muốn xóa tất cả dữ liệu?')) {
+        document.getElementById('users_data').value = '';
+        document.getElementById('validationStatus').style.display = 'none';
+        document.getElementById('submitBtn').disabled = true;
+    }
+}
+
+// Auto-validate when user types
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('users_data');
+    let timeout;
+    
+    textarea.addEventListener('input', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(validateJSON, 1000); // Validate after 1 second of no typing
+    });
+});
+</script>
+{% endblock %}

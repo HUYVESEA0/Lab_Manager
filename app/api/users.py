@@ -13,10 +13,117 @@ from app.models import NguoiDung as User, db
 from app.decorators import admin_required
 from app.cache.cache_manager import cached_api, invalidate_user_cache, invalidate_model_cache
 from app.cache.cached_queries import get_total_users, invalidate_user_caches
+from app.services.user_service import UserService
 from datetime import datetime, timedelta
 import logging
 
 logger = logging.getLogger(__name__)
+
+@api_bp.route('/users/register', methods=['POST'])
+def register_user():
+    """Public endpoint for user registration"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+        
+        user_service = UserService()
+        result, status_code = user_service.create_user(data)
+        
+        if status_code == 200:
+            return jsonify(result), 201
+        else:
+            return jsonify(result), status_code
+            
+    except Exception as e:
+        logger.error(f"Error in user registration: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': 'Internal server error'
+        }), 500
+
+@api_bp.route('/users/create', methods=['POST'])
+@login_required
+@admin_required
+def create_user_admin():
+    """Admin endpoint for creating users with advanced options"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+        
+        user_service = UserService()
+        result, status_code = user_service.create_user(data)
+        
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"Error in admin user creation: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': 'Internal server error'
+        }), 500
+
+@api_bp.route('/users/bulk-create', methods=['POST'])
+@login_required
+@admin_required
+def bulk_create_users():
+    """Bulk create multiple users"""
+    try:
+        data = request.get_json()
+        if not data or 'users' not in data:
+            return jsonify({'success': False, 'message': 'No users data provided'}), 400
+        
+        users_data = data['users']
+        if not isinstance(users_data, list):
+            return jsonify({'success': False, 'message': 'Users data must be a list'}), 400
+        
+        user_service = UserService()
+        results = []
+        success_count = 0
+        error_count = 0
+        
+        for user_data in users_data:
+            try:
+                result, status_code = user_service.create_user(user_data)
+                if status_code == 200:
+                    success_count += 1
+                    results.append({
+                        'success': True,
+                        'user': result.get('data', {}).get('user', {}),
+                        'message': result.get('message', '')
+                    })
+                else:
+                    error_count += 1
+                    results.append({
+                        'success': False,
+                        'user_data': user_data,
+                        'message': result.get('message', 'Unknown error')
+                    })
+            except Exception as e:
+                error_count += 1
+                results.append({
+                    'success': False,
+                    'user_data': user_data,
+                    'message': str(e)
+                })
+        
+        return jsonify({
+            'success': True,
+            'summary': {
+                'total': len(users_data),
+                'success': success_count,
+                'errors': error_count
+            },
+            'results': results
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in bulk user creation: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': 'Internal server error'
+        }), 500
 
 @api_bp.route('/users', methods=['GET'])
 @login_required
@@ -128,3 +235,43 @@ def toggle_user_status(user_id):
         logger.error(f"Error toggling user status: {str(e)}")
         db.session.rollback()
         return jsonify({'error': 'Failed to update user status'}), 500
+
+@api_bp.route('/users/check-username', methods=['POST'])
+def check_username_availability():
+    """Check if username is available"""
+    try:
+        data = request.get_json()
+        if not data or 'username' not in data:
+            return jsonify({'error': 'Username is required'}), 400
+        
+        username = data['username']
+        user = User.query.filter_by(ten_nguoi_dung=username).first()
+        
+        return jsonify({
+            'available': user is None,
+            'username': username
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking username availability: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@api_bp.route('/users/check-email', methods=['POST'])
+def check_email_availability():
+    """Check if email is available"""
+    try:
+        data = request.get_json()
+        if not data or 'email' not in data:
+            return jsonify({'error': 'Email is required'}), 400
+        
+        email = data['email'].lower().strip()
+        user = User.query.filter_by(email=email).first()
+        
+        return jsonify({
+            'available': user is None,
+            'email': email
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking email availability: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
