@@ -2,12 +2,13 @@
 from datetime import datetime
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Index
+from sqlalchemy.sql.schema import Index
 from werkzeug.security import check_password_hash, generate_password_hash
 import secrets
 import time
 import secrets
 import time
+import json
 
 
 db = SQLAlchemy()
@@ -240,19 +241,174 @@ class CaThucHanh(db.Model):
     ma_xac_thuc = db.Column(db.String(10), nullable=False)
     nguoi_tao_ma = db.Column(db.Integer, db.ForeignKey("nguoi_dung.id"), nullable=False)
     ngay_tao = db.Column(db.DateTime, default=datetime.utcnow)
-    dang_ky = db.relationship("DangKyCa", backref="ca_thuc_hanh", lazy=True)
-    vao_ca = db.relationship("VaoCa", backref="ca_thuc_hanh", lazy=True)
+    
+    # Enhanced fields
+    tags = db.Column(db.Text, nullable=True)  # JSON array of tags
+    anh_bia = db.Column(db.String(255), nullable=True)  # Cover image
+    muc_do_kho = db.Column(db.String(20), default="trung_binh")  # easy, medium, hard
+    yeu_cau_thiet_bi = db.Column(db.Text, nullable=True)  # JSON array of required equipment
+    ghi_chu_noi_bo = db.Column(db.Text, nullable=True)  # Internal notes for admins
+    cho_phep_dang_ky_tre = db.Column(db.Boolean, default=False)  # Allow late registration
+    tu_dong_xac_nhan = db.Column(db.Boolean, default=True)  # Auto-approve registrations
+    thong_bao_truoc = db.Column(db.Integer, default=60)  # Notification minutes before start
+    trang_thai = db.Column(db.String(20), default="scheduled")  # scheduled, ongoing, completed, cancelled
+    diem_so_toi_da = db.Column(db.Integer, default=100)  # Maximum score
+    thoi_gian_lam_bai = db.Column(db.Integer, nullable=True)  # Time limit in minutes
+    
+    # Relationships
+    dang_ky = db.relationship("DangKyCa", backref="ca_thuc_hanh", lazy=True, cascade="all, delete-orphan")
+    vao_ca = db.relationship("VaoCa", backref="ca_thuc_hanh", lazy=True, cascade="all, delete-orphan")
+    tai_lieu = db.relationship("TaiLieuCa", backref="ca_thuc_hanh", lazy=True, cascade="all, delete-orphan")
+    danh_gia = db.relationship("DanhGiaCa", backref="ca_thuc_hanh", lazy=True, cascade="all, delete-orphan")
 
     def co_the_dang_ky(self):
-        return self.dang_hoat_dong and self.ngay >= datetime.utcnow().date() and self.gio_bat_dau > datetime.utcnow()
+        if not self.dang_hoat_dong:
+            return False
+        if self.trang_thai != "scheduled":
+            return False
+        now = datetime.utcnow()
+        if self.cho_phep_dang_ky_tre:
+            return self.gio_ket_thuc > now
+        return self.gio_bat_dau > now
 
     def dang_dien_ra(self):
         now = datetime.utcnow()
-        return self.gio_bat_dau <= now <= self.gio_ket_thuc
+        return (self.gio_bat_dau <= now <= self.gio_ket_thuc and 
+                self.trang_thai == "ongoing")
 
     def da_day(self):
         return len(self.dang_ky) >= self.so_luong_toi_da
 
+    def get_tags(self):
+        """Get tags as list"""
+        if self.tags:
+            try:
+                return json.loads(self.tags)
+            except:
+                return []
+        return []
+
+    def set_tags(self, tag_list):
+        """Set tags from list"""
+        self.tags = json.dumps(tag_list) if tag_list else None
+
+    def get_equipment(self):
+        """Get required equipment as list"""
+        if self.yeu_cau_thiet_bi:
+            try:
+                return json.loads(self.yeu_cau_thiet_bi)
+            except:
+                return []
+        return []
+
+    def set_equipment(self, equipment_list):
+        """Set required equipment from list"""
+        self.yeu_cau_thiet_bi = json.dumps(equipment_list) if equipment_list else None
+
+    def get_completion_rate(self):
+        """Calculate completion rate"""
+        total_registered = len(self.dang_ky)
+        if total_registered == 0:
+            return 0
+        completed = len([entry for entry in self.vao_ca if entry.thoi_gian_ra])
+        return (completed / total_registered) * 100
+
+    def get_average_score(self):
+        """Calculate average score"""
+        scores = [entry.diem_so for entry in self.vao_ca if entry.diem_so is not None]
+        return sum(scores) / len(scores) if scores else 0
+
+# New models for enhanced features
+
+class MauCaThucHanh(db.Model):
+    """Lab session templates"""
+    __tablename__ = 'mau_ca_thuc_hanh'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    ten_mau = db.Column(db.String(100), nullable=False)
+    mo_ta = db.Column(db.Text, nullable=True)
+    tieu_de_mac_dinh = db.Column(db.String(100), nullable=False)
+    mo_ta_mac_dinh = db.Column(db.Text, nullable=False)
+    thoi_gian_thuc_hien = db.Column(db.Integer, default=120)  # Duration in minutes
+    so_luong_toi_da_mac_dinh = db.Column(db.Integer, default=20)
+    tags_mac_dinh = db.Column(db.Text, nullable=True)
+    yeu_cau_thiet_bi_mac_dinh = db.Column(db.Text, nullable=True)
+    muc_do_kho = db.Column(db.String(20), default="trung_binh")
+    diem_so_toi_da = db.Column(db.Integer, default=100)
+    nguoi_tao_ma = db.Column(db.Integer, db.ForeignKey("nguoi_dung.id"), nullable=False)
+    ngay_tao = db.Column(db.DateTime, default=datetime.utcnow)
+    kich_hoat = db.Column(db.Boolean, default=True)
+
+class TaiLieuCa(db.Model):
+    """Session materials/files"""
+    __tablename__ = 'tai_lieu_ca'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    ca_thuc_hanh_ma = db.Column(db.Integer, db.ForeignKey("ca_thuc_hanh.id"), nullable=False)
+    ten_tep = db.Column(db.String(255), nullable=False)
+    duong_dan_tep = db.Column(db.String(500), nullable=False)
+    kich_thuoc_tep = db.Column(db.Integer, nullable=True)
+    loai_tep = db.Column(db.String(50), nullable=True)
+    mo_ta = db.Column(db.Text, nullable=True)
+    nguoi_tai_len = db.Column(db.Integer, db.ForeignKey("nguoi_dung.id"), nullable=False)
+    ngay_tai_len = db.Column(db.DateTime, default=datetime.utcnow)
+    kich_hoat = db.Column(db.Boolean, default=True)
+
+class ThietBi(db.Model):
+    """Equipment/Resource management"""
+    __tablename__ = 'thiet_bi'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    ten_thiet_bi = db.Column(db.String(100), nullable=False)
+    mo_ta = db.Column(db.Text, nullable=True)
+    so_luong_co_san = db.Column(db.Integer, default=1)
+    trang_thai = db.Column(db.String(20), default="available")  # available, in_use, maintenance
+    vi_tri = db.Column(db.String(100), nullable=True)
+    ghi_chu = db.Column(db.Text, nullable=True)
+    ngay_tao = db.Column(db.DateTime, default=datetime.utcnow)
+
+class DatThietBi(db.Model):
+    """Equipment booking for sessions"""
+    __tablename__ = 'dat_thiet_bi'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    ca_thuc_hanh_ma = db.Column(db.Integer, db.ForeignKey("ca_thuc_hanh.id"), nullable=False)
+    thiet_bi_ma = db.Column(db.Integer, db.ForeignKey("thiet_bi.id"), nullable=False)
+    so_luong_dat = db.Column(db.Integer, default=1)
+    nguoi_dat = db.Column(db.Integer, db.ForeignKey("nguoi_dung.id"), nullable=False)
+    ngay_dat = db.Column(db.DateTime, default=datetime.utcnow)
+    trang_thai = db.Column(db.String(20), default="pending")  # pending, confirmed, cancelled
+    
+    # Relationships
+    thiet_bi = db.relationship("ThietBi", backref="dat_thiet_bi")
+    ca_thuc_hanh = db.relationship("CaThucHanh", backref="dat_thiet_bi")
+
+class DanhGiaCa(db.Model):
+    """Session feedback and ratings"""
+    __tablename__ = 'danh_gia_ca'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    ca_thuc_hanh_ma = db.Column(db.Integer, db.ForeignKey("ca_thuc_hanh.id"), nullable=False)
+    nguoi_danh_gia = db.Column(db.Integer, db.ForeignKey("nguoi_dung.id"), nullable=False)
+    diem_danh_gia = db.Column(db.Integer, nullable=False)  # 1-5 stars
+    nhan_xet = db.Column(db.Text, nullable=True)
+    ngay_danh_gia = db.Column(db.DateTime, default=datetime.utcnow)
+
+class ThongBao(db.Model):
+    """Notification system"""
+    __tablename__ = 'thong_bao'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nguoi_nhan = db.Column(db.Integer, db.ForeignKey("nguoi_dung.id"), nullable=False)
+    tieu_de = db.Column(db.String(200), nullable=False)
+    noi_dung = db.Column(db.Text, nullable=False)
+    loai = db.Column(db.String(50), default="info")  # info, warning, success, error
+    lien_ket = db.Column(db.String(500), nullable=True)
+    da_doc = db.Column(db.Boolean, default=False)
+    ngay_tao = db.Column(db.DateTime, default=datetime.utcnow)
+    ngay_doc = db.Column(db.DateTime, nullable=True)
+
+# Enhanced existing models
 class DangKyCa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nguoi_dung_ma = db.Column(db.Integer, db.ForeignKey("nguoi_dung.id"), nullable=False)
@@ -260,6 +416,11 @@ class DangKyCa(db.Model):
     ghi_chu = db.Column(db.Text, nullable=True)
     trang_thai_tham_gia = db.Column(db.String(20), default="da_dang_ky")
     ngay_dang_ky = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Enhanced fields
+    uu_tien = db.Column(db.Integer, default=0)  # Priority level
+    da_xac_nhan = db.Column(db.Boolean, default=True)  # Registration confirmed
+    ngay_xac_nhan = db.Column(db.DateTime, nullable=True)
 
 class VaoCa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -268,6 +429,14 @@ class VaoCa(db.Model):
     thoi_gian_vao = db.Column(db.DateTime, default=datetime.utcnow)
     thoi_gian_ra = db.Column(db.DateTime, nullable=True)
     ket_qua = db.Column(db.Text, nullable=True)
+    
+    # Enhanced fields
+    diem_so = db.Column(db.Integer, nullable=True)  # Score/Grade
+    nhan_xet_gv = db.Column(db.Text, nullable=True)  # Teacher comments
+    tep_nop_bai = db.Column(db.String(500), nullable=True)  # Submitted files
+    trang_thai_nop = db.Column(db.String(20), default="chua_nop")  # not_submitted, submitted, graded
+    thoi_gian_nop = db.Column(db.DateTime, nullable=True)
+    vi_tri_ngoi = db.Column(db.String(20), nullable=True)  # Seat assignment
 
 def tao_chi_muc():
     Index("idx_nguoi_dung_email", NguoiDung.email)

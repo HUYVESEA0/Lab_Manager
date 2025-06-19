@@ -32,6 +32,7 @@ def disable_csrf():
 from . import system
 from . import users
 from . import lab_sessions
+from . import lab_sessions_enhanced  # Enhanced lab sessions API
 from . import auth
 from . import admin
 from . import csrf

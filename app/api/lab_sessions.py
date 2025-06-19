@@ -5,7 +5,7 @@ Lab Sessions Management API
 RESTful API endpoints for lab session management operations.
 """
 
-from flask import jsonify, request, current_app
+from flask import jsonify, request, current_app, make_response
 from flask_login import login_required, current_user
 from app.api import api_bp
 from app.models import CaThucHanh as LabSession, DangKyCa as Registration, VaoCa as Entry, NguoiDung as User, db
@@ -58,16 +58,13 @@ def get_lab_sessions():
                 LabSession.dang_hoat_dong == True,
                 LabSession.gio_bat_dau > now
             )
-        
-        # Order by start time
+          # Order by start time
         query = query.order_by(LabSession.gio_bat_dau)
-        
         sessions = query.paginate(
             page=page,
             per_page=per_page,
             error_out=False
         )
-        
         return jsonify({
             'sessions': [{
                 'id': session.id,
@@ -76,11 +73,13 @@ def get_lab_sessions():
                 'dia_diem': session.dia_diem,
                 'gio_bat_dau': session.gio_bat_dau.isoformat(),
                 'gio_ket_thuc': session.gio_ket_thuc.isoformat(),
+                'ngay': session.ngay.isoformat(),
                 'dang_hoat_dong': session.dang_hoat_dong,
                 'nguoi_tao_ma': session.nguoi_tao_ma,
                 'so_luong_toi_da': session.so_luong_toi_da,
                 'so_dang_ky': len(session.dang_ky) if session.dang_ky else 0,
                 'ngay_tao': session.ngay_tao.isoformat() if session.ngay_tao else None,
+                'ma_xac_thuc': session.ma_xac_thuc,
                 'co_the_dang_ky': session.co_the_dang_ky() if hasattr(session, 'co_the_dang_ky') else True,
                 'dang_dien_ra': session.dang_dien_ra() if hasattr(session, 'dang_dien_ra') else False
             } for session in sessions.items],
@@ -124,53 +123,6 @@ def get_lab_session(session_id):
         logger.error(f"Error fetching lab session {session_id}: {str(e)}")
         return jsonify({'error': 'Lab session not found'}), 404
 
-@api_bp.route('/lab-sessions/stats', methods=['GET'])
-@login_required
-@admin_required
-def get_lab_session_stats():
-    """Get lab session statistics"""
-    try:
-        # Basic counts
-        total_sessions = LabSession.query.count()
-        active_sessions = LabSession.query.filter_by(dang_hoat_dong=True).count()
-        
-        # Today's sessions
-        today = datetime.utcnow().date()
-        today_sessions = LabSession.query.filter(
-            func.date(LabSession.gio_bat_dau) == today
-        ).count()
-        
-        # This week's sessions
-        week_start = today - timedelta(days=today.weekday())
-        week_end = week_start + timedelta(days=6)
-        week_sessions = LabSession.query.filter(
-            func.date(LabSession.gio_bat_dau).between(week_start, week_end)
-        ).count()
-        
-        # Room usage stats
-        room_stats = db.session.query(
-            LabSession.dia_diem,
-            func.count(LabSession.id).label('count')
-        ).group_by(LabSession.dia_diem).all()
-        
-        # Status distribution
-        status_stats = db.session.query(
-            LabSession.dang_hoat_dong,
-            func.count(LabSession.id).label('count')
-        ).group_by(LabSession.dang_hoat_dong).all()
-        
-        return jsonify({
-            'total_sessions': total_sessions,
-            'active_sessions': active_sessions,
-            'inactive_sessions': total_sessions - active_sessions,
-            'today_sessions': today_sessions,
-            'week_sessions': week_sessions,
-            'room_usage': {room: count for room, count in room_stats},
-            'status_distribution': {('active' if status else 'inactive'): count for status, count in status_stats}
-        })
-    except Exception as e:
-        logger.error(f"Error fetching lab session stats: {str(e)}")
-        return jsonify({'error': 'Failed to fetch lab session statistics'}), 500
 
 @api_bp.route('/lab-sessions/upcoming', methods=['GET'])
 @login_required
@@ -640,3 +592,320 @@ def schedule_lab_rooms():
     except Exception as e:
         logger.error(f"Error scheduling rooms: {str(e)}")
         return jsonify({'error': 'Failed to schedule rooms'}), 500
+
+@api_bp.route('/lab-sessions/stats', methods=['GET'])
+@login_required
+@admin_required
+def get_lab_session_stats():
+    """Get enhanced lab session statistics"""
+    try:
+        # Basic counts
+        total_sessions = LabSession.query.count()
+        active_sessions = LabSession.query.filter_by(dang_hoat_dong=True).count()
+        
+        # Today's sessions
+        today = datetime.utcnow().date()
+        today_sessions = LabSession.query.filter(
+            func.date(LabSession.gio_bat_dau) == today
+        ).count()
+        
+        # This week's sessions
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)
+        week_sessions = LabSession.query.filter(
+            func.date(LabSession.gio_bat_dau).between(week_start, week_end)
+        ).count()
+        
+        # Total attendees from all entries
+        from app.models import VaoCa as Entry
+        total_attendees = Entry.query.count()
+        
+        # Upcoming sessions (next 7 days)
+        next_week = today + timedelta(days=7)
+        upcoming_sessions = LabSession.query.filter(
+            func.date(LabSession.gio_bat_dau).between(today, next_week),
+            LabSession.dang_hoat_dong == True
+        ).count()
+        
+        # Room usage stats
+        room_stats = db.session.query(
+            LabSession.dia_diem,
+            func.count(LabSession.id).label('count')
+        ).group_by(LabSession.dia_diem).limit(10).all()
+        
+        # Monthly session trend (last 6 months)
+        monthly_stats = []
+        for i in range(6):
+            month_start = (today.replace(day=1) - timedelta(days=i*30)).replace(day=1)
+            month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            
+            count = LabSession.query.filter(
+                func.date(LabSession.gio_bat_dau).between(month_start, month_end)
+            ).count()
+            
+            monthly_stats.append({
+                'month': month_start.strftime('%Y-%m'),
+                'count': count
+            })
+        
+        return jsonify({
+            'total_sessions': total_sessions,
+            'active_sessions': active_sessions,
+            'inactive_sessions': total_sessions - active_sessions,
+            'today_sessions': today_sessions,
+            'week_sessions': week_sessions,
+            'upcoming_sessions': upcoming_sessions,
+            'total_attendees': total_attendees,
+            'room_usage': [{'room': room, 'count': count} for room, count in room_stats],
+            'monthly_trend': monthly_stats,
+            'last_updated': datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error fetching lab session stats: {str(e)}")
+        return jsonify({'error': 'Failed to fetch lab session statistics'}), 500
+
+@api_bp.route('/lab-sessions/bulk-action', methods=['POST'])
+@login_required
+@admin_required
+def bulk_lab_session_action():
+    """Perform bulk actions on lab sessions (Admin only)"""
+    try:
+        data = request.get_json()
+        action = data.get('action')
+        session_ids = data.get('session_ids', [])
+        
+        if not action or not session_ids:
+            return jsonify({'error': 'Action and session_ids are required'}), 400
+        
+        sessions = LabSession.query.filter(LabSession.id.in_(session_ids)).all()
+        
+        if not sessions:
+            return jsonify({'error': 'No sessions found with provided IDs'}), 404
+        
+        success_count = 0
+        
+        if action == 'activate':
+            for session in sessions:
+                session.dang_hoat_dong = True
+                success_count += 1
+            message = f'Successfully activated {success_count} sessions'
+            
+        elif action == 'deactivate':
+            for session in sessions:
+                session.dang_hoat_dong = False
+                success_count += 1
+            message = f'Successfully deactivated {success_count} sessions'
+            
+        elif action == 'delete':
+            for session in sessions:
+                # Delete related records first
+                from app.models import DangKyCa as Registration, VaoCa as Entry
+                Registration.query.filter_by(ca_thuc_hanh_ma=session.id).delete()
+                Entry.query.filter_by(ca_thuc_hanh_ma=session.id).delete()
+                db.session.delete(session)
+                success_count += 1
+            message = f'Successfully deleted {success_count} sessions'
+            
+        else:
+            return jsonify({'error': 'Invalid action'}), 400
+        
+        db.session.commit()
+        
+        # Invalidate caches
+        invalidate_session_caches()
+        invalidate_activity_caches()
+        
+        log_activity(f"Bulk {action} sessions", f"{message} - IDs: {session_ids}")
+        
+        return jsonify({
+            'message': message,
+            'affected_count': success_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error performing bulk action: {str(e)}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to perform bulk action'}), 500
+
+@api_bp.route('/lab-sessions/<int:session_id>/duplicate', methods=['POST'])
+@login_required
+@admin_required
+def duplicate_lab_session(session_id):
+    """Duplicate a lab session (Admin only)"""
+    try:
+        original_session = LabSession.query.get_or_404(session_id)
+        
+        # Create new session with same properties but different title and future date
+        new_session = LabSession(
+            tieu_de=f"{original_session.tieu_de} (Copy)",
+            mo_ta=original_session.mo_ta,
+            ngay=datetime.utcnow().date() + timedelta(days=7),  # Default to next week
+            gio_bat_dau=original_session.gio_bat_dau + timedelta(days=7),
+            gio_ket_thuc=original_session.gio_ket_thuc + timedelta(days=7),
+            dia_diem=original_session.dia_diem,
+            so_luong_toi_da=original_session.so_luong_toi_da,
+            dang_hoat_dong=False,  # Start as inactive
+            ma_xac_thuc=''.join(random.choices(string.ascii_uppercase + string.digits, k=6)),
+            nguoi_tao_ma=current_user.id
+        )
+        
+        db.session.add(new_session)
+        db.session.commit()
+        
+        # Invalidate caches
+        invalidate_session_caches()
+        
+        log_activity("Duplicate session", f"Duplicated session: {original_session.tieu_de}")
+        
+        return jsonify({
+            'message': 'Session duplicated successfully',
+            'new_session_id': new_session.id,
+            'new_session': {
+                'id': new_session.id,
+                'tieu_de': new_session.tieu_de,
+                'gio_bat_dau': new_session.gio_bat_dau.isoformat(),
+                'gio_ket_thuc': new_session.gio_ket_thuc.isoformat()
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error duplicating session: {str(e)}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to duplicate session'}), 500
+
+@api_bp.route('/lab-sessions/export', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def export_lab_sessions():
+    """Export lab sessions to various formats (Admin only)"""
+    try:
+        if request.method == 'POST':
+            # Export selected sessions
+            data = request.get_json()
+            session_ids = data.get('session_ids', [])
+            format_type = data.get('format', 'excel')
+            
+            if session_ids:
+                sessions = LabSession.query.filter(LabSession.id.in_(session_ids)).all()
+            else:
+                sessions = LabSession.query.all()
+        else:
+            # Export all sessions
+            format_type = request.args.get('format', 'excel')
+            sessions = LabSession.query.order_by(LabSession.gio_bat_dau.desc()).all()
+        
+        # Prepare data for export
+        export_data = []
+        for session in sessions:
+            registration_count = len(session.dang_ky) if session.dang_ky else 0
+            
+            export_data.append({
+                'ID': session.id,
+                'Title': session.tieu_de,
+                'Description': session.mo_ta or '',
+                'Location': session.dia_diem,
+                'Date': session.ngay.strftime('%Y-%m-%d'),
+                'Start Time': session.gio_bat_dau.strftime('%H:%M'),
+                'End Time': session.gio_ket_thuc.strftime('%H:%M'),
+                'Max Students': session.so_luong_toi_da,
+                'Registered': registration_count,
+                'Available Spots': session.so_luong_toi_da - registration_count,
+                'Status': 'Active' if session.dang_hoat_dong else 'Inactive',
+                'Verification Code': session.ma_xac_thuc,
+                'Created By': session.nguoi_tao_ma,
+                'Created Date': session.ngay_tao.strftime('%Y-%m-%d %H:%M') if session.ngay_tao else ''
+            })
+        
+        if format_type == 'csv':
+            import csv
+            import io
+            
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=export_data[0].keys() if export_data else [])
+            writer.writeheader()
+            writer.writerows(export_data)
+            
+            response = make_response(output.getvalue())
+            response.headers['Content-Type'] = 'text/csv'
+            response.headers['Content-Disposition'] = 'attachment; filename=lab_sessions.csv'
+            return response
+            
+        elif format_type == 'excel':
+            try:
+                import pandas as pd
+                from io import BytesIO
+                
+                df = pd.DataFrame(export_data)
+                output = BytesIO()
+                
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df.to_excel(writer, sheet_name='Lab Sessions', index=False)
+                    
+                    # Get workbook and worksheet
+                    workbook = writer.book
+                    worksheet = writer.sheets['Lab Sessions']
+                    
+                    # Auto-adjust column widths
+                    for column in worksheet.columns:
+                        max_length = 0
+                        column_letter = column[0].column_letter
+                        for cell in column:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                        adjusted_width = min(max_length + 2, 50)
+                        worksheet.column_dimensions[column_letter].width = adjusted_width
+                
+                output.seek(0)
+                response = make_response(output.read())
+                response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                response.headers['Content-Disposition'] = 'attachment; filename=lab_sessions.xlsx'
+                return response
+                
+            except ImportError:
+                return jsonify({'error': 'Excel export requires pandas and openpyxl packages'}), 500
+                
+        elif format_type == 'pdf':
+            # For PDF export, you would need a PDF library like reportlab
+            return jsonify({'error': 'PDF export not implemented yet'}), 501
+            
+        else:
+            return jsonify({'error': 'Unsupported format'}), 400
+            
+    except Exception as e:
+        logger.error(f"Error exporting sessions: {str(e)}")
+        return jsonify({'error': 'Failed to export sessions'}), 500
+
+@api_bp.route('/lab-sessions/<int:session_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_lab_session(session_id):
+    """Delete a specific lab session (Admin only)"""
+    try:
+        session = LabSession.query.get_or_404(session_id)
+        
+        # Delete related records first
+        from app.models import DangKyCa as Registration, VaoCa as Entry
+        Registration.query.filter_by(ca_thuc_hanh_ma=session_id).delete()
+        Entry.query.filter_by(ca_thuc_hanh_ma=session_id).delete()
+        
+        session_title = session.tieu_de
+        db.session.delete(session)
+        db.session.commit()
+        
+        # Invalidate caches
+        invalidate_session_caches()
+        invalidate_activity_caches()
+        
+        log_activity("Delete session", f"Deleted session: {session_title}")
+        
+        return jsonify({
+            'message': 'Session deleted successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error deleting session: {str(e)}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete session'}), 500

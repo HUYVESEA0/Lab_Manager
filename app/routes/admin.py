@@ -466,8 +466,24 @@ def activity_logs(page=1):
 @cached_route(timeout=180, key_prefix='admin_lab_sessions_page')
 def admin_lab_sessions():
     """Show lab sessions management page with caching"""
-    lab_sessions = CaThucHanh.query.order_by(CaThucHanh.thoi_gian_bat_dau.desc()).all()
-    return render_template("admin/admin_lab_sessions.html", lab_sessions=lab_sessions)
+    # Check if enhanced view is requested
+    enhanced_view = request.args.get('enhanced', 'false').lower() == 'true'
+    
+    if enhanced_view:
+        # Use enhanced template with modern UI and advanced features
+        return render_template("admin/enhanced_lab_sessions.html")
+    else:
+        # Use existing template for backward compatibility
+        lab_sessions = CaThucHanh.query.order_by(CaThucHanh.thoi_gian_bat_dau.desc()).all()
+        return render_template("admin/admin_lab_sessions.html", lab_sessions=lab_sessions)
+
+@admin_bp.route('/lab-sessions/enhanced')
+@login_required
+@admin_required
+@cached_route(timeout=180, key_prefix='admin_lab_sessions_enhanced')
+def enhanced_lab_sessions():
+    """Show enhanced lab sessions management page"""
+    return render_template("admin/enhanced_lab_sessions.html")
 
 @admin_bp.route('/system')
 @login_required

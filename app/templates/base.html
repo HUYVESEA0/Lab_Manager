@@ -89,11 +89,13 @@
                                 <a class="dropdown-item" href="{{ url_for('admin.create_user') }}">
                                     <i class="fas fa-user-plus mr-2"></i>Thêm người dùng mới
                                 </a>
-                                
-                                <div class="dropdown-divider"></div>
+                                  <div class="dropdown-divider"></div>
                                 <h6 class="dropdown-header">Quản lý ca thực hành</h6>
                                 <a class="dropdown-item" href="{{ url_for('lab.admin_lab_sessions') }}">
                                     <i class="fas fa-calendar-alt mr-2"></i>Danh sách ca thực hành
+                                </a>
+                                <a class="dropdown-item" href="{{ url_for('admin.enhanced_lab_sessions') }}">
+                                    <i class="fas fa-rocket mr-2"></i>Quản lý nâng cao
                                 </a>
                                 <a class="dropdown-item" href="{{ url_for('lab.create_lab_session') }}">
                                     <i class="fas fa-calendar-plus mr-2"></i>Tạo ca thực hành mới
