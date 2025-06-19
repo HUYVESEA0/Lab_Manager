@@ -109,52 +109,59 @@
         border-radius: 2px;
     }
     
+    .strength-weak { background-color: #dc3545; width: 25%; }
+    .strength-fair { background-color: #fd7e14; width: 50%; }
+    .strength-good { background-color: #ffc107; width: 75%; }
+    .strength-strong { background-color: #28a745; width: 100%; }
+    
     .role-selector {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1rem;
-        margin-bottom: 2rem;
+        margin-top: 1rem;
     }
     
     .role-option {
         border: 2px solid #e9ecef;
         border-radius: 12px;
         padding: 1.5rem;
-        text-align: center;
         cursor: pointer;
         transition: all 0.3s ease;
-        background: white;
+        text-align: center;
     }
     
     .role-option:hover {
         border-color: #007bff;
+        background-color: #f8f9ff;
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
     }
     
-    .role-option.active {
+    .role-option.selected {
         border-color: #007bff;
-        background-color: #f8f9fa;
+        background-color: #e3f2fd;
     }
     
     .role-icon {
         width: 60px;
         height: 60px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
+        margin: 0 auto 1rem;
         font-size: 24px;
         color: white;
-        margin: 0 auto 1rem;
     }
     
+    .role-user .role-icon { background: linear-gradient(135deg, #17a2b8, #138496); }
+    .role-admin .role-icon { background: linear-gradient(135deg, #ffc107, #e0a800); }
+    .role-system .role-icon { background: linear-gradient(135deg, #dc3545, #c82333); }
+    
     .preview-card {
-        background: #f8f9fa;
+        background-color: #f8f9fa;
         border-radius: 12px;
-        padding: 2rem;
-        text-align: center;
+        padding: 1.5rem;
+        margin-top: 1rem;
     }
     
     .user-avatar-preview {
@@ -219,7 +226,7 @@
                         <span>Xác nhận</span>
                     </li>
                 </ul>
-
+                
                 <form method="POST" action="{{ url_for('admin.create_user') }}" id="createUserForm">
                     {{ form.hidden_tag() }}
                     
@@ -233,7 +240,7 @@
                                     <i class="fas fa-user"></i>{{ form.ten_nguoi_dung.label.text }}
                                 </label>
                                 {% if form.ten_nguoi_dung.errors %}
-                                    {{ form.ten_nguoi_dung(class="form-control form-control-enhanced is-invalid", placeholder="Nhập tên người dùng", id="username") }}
+                                    {{ form.ten_nguoi_dung(class="form-control form-control-enhanced is-invalid", placeholder="Nhập tên người dùng") }}
                                     <div class="invalid-feedback">
                                         {% for error in form.ten_nguoi_dung.errors %}
                                             <span>{{ error }}</span>
@@ -252,7 +259,7 @@
                                     <i class="fas fa-envelope"></i>{{ form.email.label.text }}
                                 </label>
                                 {% if form.email.errors %}
-                                    {{ form.email(class="form-control form-control-enhanced is-invalid", placeholder="user@example.com", id="email") }}
+                                    {{ form.email(class="form-control form-control-enhanced is-invalid", placeholder="user@example.com") }}
                                     <div class="invalid-feedback">
                                         {% for error in form.email.errors %}
                                             <span>{{ error }}</span>
@@ -278,7 +285,7 @@
                                     <i class="fas fa-lock"></i>{{ form.mat_khau.label.text }}
                                 </label>
                                 {% if form.mat_khau.errors %}
-                                    {{ form.mat_khau(class="form-control form-control-enhanced is-invalid", placeholder="Nhập mật khẩu", id="password") }}
+                                    {{ form.mat_khau(class="form-control form-control-enhanced is-invalid", placeholder="Nhập mật khẩu") }}
                                     <div class="invalid-feedback">
                                         {% for error in form.mat_khau.errors %}
                                             <span>{{ error }}</span>
@@ -301,7 +308,7 @@
                                     <i class="fas fa-lock"></i>{{ form.xac_nhan_mat_khau.label.text }}
                                 </label>
                                 {% if form.xac_nhan_mat_khau.errors %}
-                                    {{ form.xac_nhan_mat_khau(class="form-control form-control-enhanced is-invalid", placeholder="Nhập lại mật khẩu", id="confirmPassword") }}
+                                    {{ form.xac_nhan_mat_khau(class="form-control form-control-enhanced is-invalid", placeholder="Nhập lại mật khẩu") }}
                                     <div class="invalid-feedback">
                                         {% for error in form.xac_nhan_mat_khau.errors %}
                                             <span>{{ error }}</span>
@@ -425,7 +432,80 @@
 <div class="alert alert-danger mt-5">Bạn không có quyền truy cập trang này.</div>
 {% endif %}
 {% endblock %}
+                                {{ form.email(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.email.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.email(class="form-control", placeholder="Nhập địa chỉ email") }}
+                            {% endif %}
+                        </div>
 
+                        <div class="form-group">
+                            {{ form.mat_khau.label(class="form-control-label") }}
+                            {% if form.mat_khau.errors %}
+                                {{ form.mat_khau(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.mat_khau.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.mat_khau(class="form-control", placeholder="Nhập mật khẩu") }}
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            {{ form.xac_nhan_mat_khau.label(class="form-control-label") }}
+                            {% if form.xac_nhan_mat_khau.errors %}
+                                {{ form.xac_nhan_mat_khau(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.xac_nhan_mat_khau.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.xac_nhan_mat_khau(class="form-control", placeholder="Xác nhận mật khẩu") }}
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            {{ form.vai_tro.label(class="form-control-label") }}
+                            {% if form.vai_tro.errors %}
+                                {{ form.vai_tro(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.vai_tro.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.vai_tro(class="form-control") }}
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                <ul class="mb-0 pl-3 mt-2">
+                                    <li><strong>Người dùng:</strong> Người dùng thường với quyền hạn cơ bản</li>
+                                    <li><strong>Quản trị viên:</strong> Có thể quản lý người dùng và nội dung</li>
+                                    <li><strong>Quản trị hệ thống:</strong> Có quyền truy cập đầy đủ hệ thống</li>
+                                </ul>
+                            </small>
+                        </div>
+
+                        <div class="form-group mt-4">
+                            {{ form.submit(class="btn btn-success") }}
+                            <a href="{{ url_for('admin.admin_users') }}" class="btn btn-secondary">Hủy</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-danger mt-5">Bạn không có quyền truy cập trang này.</div>
+{% endif %}
+{% endblock %}
 {% block scripts %}
 {{ super() }}
 <script>
@@ -441,108 +521,38 @@ class CreateUserWizard {
         this.setupEventListeners();
         this.setupPasswordStrength();
         this.setupRoleSelection();
-        this.updatePreview();
+        this.setupFormValidation();
     }
 
     setupEventListeners() {
         // Navigation buttons
-        document.getElementById('nextBtn').addEventListener('click', () => this.nextStep());
-        document.getElementById('prevBtn').addEventListener('click', () => this.prevStep());
-        
-        // Form inputs for live preview
-        const usernameInput = document.getElementById('username');
-        const emailInput = document.getElementById('email');
-        
-        if (usernameInput) usernameInput.addEventListener('input', () => this.updatePreview());
-        if (emailInput) emailInput.addEventListener('input', () => this.updatePreview());
-        
-        // Password confirmation
-        const confirmPasswordInput = document.getElementById('confirmPassword');
-        if (confirmPasswordInput) {
-            confirmPasswordInput.addEventListener('input', () => this.validatePasswordMatch());
-        }
-    }
-
-    nextStep() {
-        if (this.validateCurrentStep()) {
-            if (this.currentStep < this.maxStep) {
-                this.currentStep++;
-                this.updateWizardDisplay();
-                this.updatePreview();
-            }
-        } else {
-            this.showStepError();
-        }
-    }
-
-    prevStep() {
-        if (this.currentStep > 1) {
-            this.currentStep--;
-            this.updateWizardDisplay();
-        }
-    }
-
-    validateCurrentStep() {
-        const currentStepElement = document.querySelector(`[data-step="${this.currentStep}"]`);
-        const requiredInputs = currentStepElement.querySelectorAll('input[required], select[required]');
-        
-        let isValid = true;
-        requiredInputs.forEach(input => {
-            if (!input.value.trim()) {
-                isValid = false;
-                input.classList.add('is-invalid');
-            } else {
-                input.classList.remove('is-invalid');
-            }
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            this.nextStep();
         });
 
-        // Validate password match on step 2
-        if (this.currentStep === 2) {
-            const password = document.getElementById('password');
-            const confirmPassword = document.getElementById('confirmPassword');
-            if (password && confirmPassword && password.value && confirmPassword.value && password.value !== confirmPassword.value) {
-                isValid = false;
-                document.getElementById('passwordMatchError').style.display = 'block';
-            }
-        }
-
-        return isValid;
-    }
-
-    updateWizardDisplay() {
-        // Update step indicators
-        document.querySelectorAll('.wizard-step').forEach((step, index) => {
-            step.classList.remove('active', 'completed');
-            if (index + 1 === this.currentStep) {
-                step.classList.add('active');
-            } else if (index + 1 < this.currentStep) {
-                step.classList.add('completed');
-            }
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            this.prevStep();
         });
 
-        // Show/hide step content
-        document.querySelectorAll('.wizard-content').forEach(content => {
-            content.style.display = 'none';
+        // Form field listeners for real-time validation
+        document.getElementById('username').addEventListener('input', (e) => {
+            this.validateField('username', e.target.value);
+            this.updatePreview();
         });
-        const currentStepContent = document.querySelector(`[data-step="${this.currentStep}"]`);
-        if (currentStepContent) {
-            currentStepContent.style.display = 'block';
-        }
 
-        // Update navigation buttons
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const submitBtn = document.getElementById('submitBtn');
+        document.getElementById('email').addEventListener('input', (e) => {
+            this.validateField('email', e.target.value);
+            this.updatePreview();
+        });
 
-        if (prevBtn) prevBtn.style.display = this.currentStep > 1 ? 'inline-block' : 'none';
-        
-        if (this.currentStep === this.maxStep) {
-            if (nextBtn) nextBtn.style.display = 'none';
-            if (submitBtn) submitBtn.style.display = 'inline-block';
-        } else {
-            if (nextBtn) nextBtn.style.display = 'inline-block';
-            if (submitBtn) submitBtn.style.display = 'none';
-        }
+        document.getElementById('password').addEventListener('input', (e) => {
+            this.checkPasswordStrength(e.target.value);
+            this.validatePasswordMatch();
+        });
+
+        document.getElementById('confirmPassword').addEventListener('input', () => {
+            this.validatePasswordMatch();
+        });
     }
 
     setupPasswordStrength() {
@@ -550,135 +560,250 @@ class CreateUserWizard {
         const strengthBar = document.getElementById('strengthBar');
         const strengthText = document.getElementById('strengthText');
 
-        if (passwordInput && strengthBar && strengthText) {
-            passwordInput.addEventListener('input', function() {
-                const password = this.value;
-                const strength = calculatePasswordStrength(password);
-                
-                strengthBar.style.width = strength.percentage + '%';
-                strengthBar.style.backgroundColor = strength.color;
-                strengthText.textContent = `Độ mạnh mật khẩu: ${strength.text}`;
-            });
-        }
+        this.checkPasswordStrength = (password) => {
+            let strength = 0;
+            let feedback = [];
 
-        function calculatePasswordStrength(password) {
-            let score = 0;
-            if (password.length >= 6) score += 20;
-            if (password.length >= 10) score += 20;
-            if (/[a-z]/.test(password)) score += 20;
-            if (/[A-Z]/.test(password)) score += 20;
-            if (/[0-9]/.test(password)) score += 10;
-            if (/[^A-Za-z0-9]/.test(password)) score += 10;
+            if (password.length >= 6) strength += 1;
+            else feedback.push('Tối thiểu 6 ký tự');
 
-            if (score < 30) return { percentage: score, color: '#dc3545', text: 'Yếu' };
-            if (score < 60) return { percentage: score, color: '#ffc107', text: 'Trung bình' };
-            if (score < 90) return { percentage: score, color: '#28a745', text: 'Mạnh' };
-            return { percentage: 100, color: '#28a745', text: 'Rất mạnh' };
+            if (password.match(/[a-z]/)) strength += 1;
+            else feedback.push('Chứa chữ thường');
+
+            if (password.match(/[A-Z]/)) strength += 1;
+            else feedback.push('Chứa chữ hoa');
+
+            if (password.match(/\d/)) strength += 1;
+            else feedback.push('Chứa số');
+
+            if (password.match(/[^a-zA-Z\d]/)) strength += 1;
+            else feedback.push('Chứa ký tự đặc biệt');
+
+            // Update strength bar
+            strengthBar.className = 'strength-fill';
+            if (strength >= 4) {
+                strengthBar.classList.add('strength-strong');
+                strengthText.textContent = 'Độ mạnh: Rất mạnh';
+                strengthText.className = 'text-success';
+            } else if (strength >= 3) {
+                strengthBar.classList.add('strength-good');
+                strengthText.textContent = 'Độ mạnh: Tốt';
+                strengthText.className = 'text-warning';
+            } else if (strength >= 2) {
+                strengthBar.classList.add('strength-fair');
+                strengthText.textContent = 'Độ mạnh: Trung bình';
+                strengthText.className = 'text-warning';
+            } else if (strength >= 1) {
+                strengthBar.classList.add('strength-weak');
+                strengthText.textContent = 'Độ mạnh: Yếu';
+                strengthText.className = 'text-danger';
+            } else {
+                strengthText.textContent = 'Độ mạnh: Chưa nhập';
+                strengthText.className = 'text-muted';
+            }
+
+            return strength >= 2; // Minimum acceptable strength
+        };
+    }
+
+    validatePasswordMatch() {
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const errorDiv = document.getElementById('passwordMatchError');
+        const confirmInput = document.getElementById('confirmPassword');
+
+        if (confirmPassword && password !== confirmPassword) {
+            errorDiv.style.display = 'block';
+            confirmInput.classList.add('is-invalid');
+            return false;
+        } else {
+            errorDiv.style.display = 'none';
+            confirmInput.classList.remove('is-invalid');
+            return true;
         }
     }
 
     setupRoleSelection() {
-        const self = this;
-        document.querySelectorAll('.role-option').forEach(option => {
-            option.addEventListener('click', function() {
-                // Remove active class from all options
-                document.querySelectorAll('.role-option').forEach(opt => {
-                    opt.classList.remove('active');
-                });
+        const roleOptions = document.querySelectorAll('.role-option');
+        const selectedRoleInput = document.getElementById('selectedRole');
+
+        roleOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                // Remove selection from all options
+                roleOptions.forEach(opt => opt.classList.remove('selected'));
                 
-                // Add active class to clicked option
-                this.classList.add('active');
+                // Add selection to clicked option
+                option.classList.add('selected');
                 
-                // Update hidden field
-                const role = this.getAttribute('data-role');
-                const selectedRoleInput = document.getElementById('selectedRole');
-                if (selectedRoleInput) {
-                    selectedRoleInput.value = role;
-                }
+                // Update hidden input
+                const roleValue = option.getAttribute('data-role');
+                selectedRoleInput.value = roleValue;
                 
-                // Update preview
-                self.updatePreview();
+                this.updatePreview();
             });
         });
     }
 
-    validatePasswordMatch() {
-        const password = document.getElementById('password');
-        const confirmPassword = document.getElementById('confirmPassword');
-        const errorElement = document.getElementById('passwordMatchError');
-
-        if (password && confirmPassword && errorElement) {
-            if (confirmPassword.value && password.value !== confirmPassword.value) {
-                errorElement.style.display = 'block';
-                confirmPassword.classList.add('is-invalid');
-            } else {
-                errorElement.style.display = 'none';
-                confirmPassword.classList.remove('is-invalid');
+    setupFormValidation() {
+        this.validators = {
+            username: (value) => {
+                if (!value || value.length < 3) return 'Tên người dùng phải có ít nhất 3 ký tự';
+                if (value.length > 20) return 'Tên người dùng không được quá 20 ký tự';
+                if (!/^[a-zA-Z0-9_]+$/.test(value)) return 'Tên người dùng chỉ được chứa chữ, số và dấu gạch dưới';
+                return null;
+            },
+            email: (value) => {
+                if (!value) return 'Email không được để trống';
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(value)) return 'Email không hợp lệ';
+                return null;
             }
+        };
+    }
+
+    validateField(fieldName, value) {
+        const validator = this.validators[fieldName];
+        if (!validator) return true;
+
+        const error = validator(value);
+        const input = document.getElementById(fieldName);
+        const feedback = input.parentNode.querySelector('.invalid-feedback');
+
+        if (error) {
+            input.classList.add('is-invalid');
+            if (feedback) feedback.textContent = error;
+            return false;
+        } else {
+            input.classList.remove('is-invalid');
+            return true;
+        }
+    }
+
+    validateCurrentStep() {
+        switch (this.currentStep) {
+            case 1:
+                const usernameValid = this.validateField('username', document.getElementById('username').value);
+                const emailValid = this.validateField('email', document.getElementById('email').value);
+                return usernameValid && emailValid;
+            
+            case 2:
+                const password = document.getElementById('password').value;
+                const passwordStrong = this.checkPasswordStrength(password);
+                const passwordMatch = this.validatePasswordMatch();
+                return passwordStrong && passwordMatch;
+            
+            case 3:
+                return document.getElementById('selectedRole').value !== '';
+            
+            case 4:
+                return true;
+            
+            default:
+                return false;
+        }
+    }
+
+    nextStep() {
+        if (!this.validateCurrentStep()) {
+            this.showStepError();
+            return;
+        }
+
+        if (this.currentStep < this.maxStep) {
+            this.currentStep++;
+            this.updateStepDisplay();
+            this.updatePreview();
+        }
+    }
+
+    prevStep() {
+        if (this.currentStep > 1) {
+            this.currentStep--;
+            this.updateStepDisplay();
+        }
+    }
+
+    updateStepDisplay() {
+        // Hide all step contents
+        document.querySelectorAll('.wizard-content').forEach(content => {
+            content.style.display = 'none';
+        });
+
+        // Show current step content
+        document.querySelector(`[data-step="${this.currentStep}"]`).style.display = 'block';
+
+        // Update step indicators
+        document.querySelectorAll('.wizard-step').forEach((step, index) => {
+            const stepNumber = index + 1;
+            step.classList.remove('active', 'completed');
+            
+            if (stepNumber < this.currentStep) {
+                step.classList.add('completed');
+            } else if (stepNumber === this.currentStep) {
+                step.classList.add('active');
+            }
+        });
+
+        // Update navigation buttons
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const submitBtn = document.getElementById('submitBtn');
+
+        prevBtn.style.display = this.currentStep > 1 ? 'block' : 'none';
+        
+        if (this.currentStep === this.maxStep) {
+            nextBtn.style.display = 'none';
+            submitBtn.style.display = 'inline-block';
+        } else {
+            nextBtn.style.display = 'inline-block';
+            submitBtn.style.display = 'none';
         }
     }
 
     updatePreview() {
-        const usernameInput = document.getElementById('username');
-        const emailInput = document.getElementById('email');
-        const selectedRoleInput = document.getElementById('selectedRole');
-        
-        const username = usernameInput ? usernameInput.value : '';
-        const email = emailInput ? emailInput.value : '';
-        const role = selectedRoleInput ? selectedRoleInput.value : 'nguoi_dung';
-
-        // Update avatar
-        const avatar = document.getElementById('avatarPreview');
-        if (avatar) {
+        if (this.currentStep === 4) {
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const role = document.getElementById('selectedRole').value;
+            
+            // Update avatar
+            const avatar = document.getElementById('avatarPreview');
+            avatar.textContent = username ? username[0].toUpperCase() : 'U';
+            
+            // Generate avatar color based on username
             if (username) {
-                avatar.textContent = username.charAt(0).toUpperCase();
-                
-                // Generate color based on username
                 const colors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6610f2'];
                 const colorIndex = username.charCodeAt(0) % colors.length;
                 avatar.style.background = `linear-gradient(135deg, ${colors[colorIndex]}, ${colors[colorIndex]}dd)`;
-            } else {
-                avatar.textContent = 'U';
-                avatar.style.background = 'linear-gradient(135deg, #007bff, #0056b3)';
             }
-        }
-        
-        // Update text content
-        const previewName = document.getElementById('previewName');
-        const previewEmail = document.getElementById('previewEmail');
-        const previewUsername = document.getElementById('previewUsername');
-        const previewEmailDisplay = document.getElementById('previewEmailDisplay');
-        
-        if (previewName) previewName.textContent = username || 'Tên người dùng';
-        if (previewEmail) previewEmail.textContent = email || 'email@example.com';
-        if (previewUsername) previewUsername.textContent = username || '-';
-        if (previewEmailDisplay) previewEmailDisplay.textContent = email || '-';
-        
-        // Update role display
-        const roleLabels = {
-            'nguoi_dung': 'Người dùng',
-            'quan_tri_vien': 'Quản trị viên',
-            'quan_tri_he_thong': 'Quản trị hệ thống'
-        };
-        
-        const roleLabel = roleLabels[role] || 'Chưa chọn';
-        const previewRole = document.getElementById('previewRole');
-        const previewRoleDisplay = document.getElementById('previewRoleDisplay');
-        
-        if (previewRole) {
-            previewRole.textContent = roleLabel;
-            previewRole.className = 'badge';
+            
+            // Update text content
+            document.getElementById('previewName').textContent = username || 'Tên người dùng';
+            document.getElementById('previewEmail').textContent = email || 'email@example.com';
+            document.getElementById('previewUsername').textContent = username || '-';
+            document.getElementById('previewEmailDisplay').textContent = email || '-';
+            
+            // Update role display
+            const roleLabels = {
+                'nguoi_dung': 'Người dùng',
+                'quan_tri_vien': 'Quản trị viên',
+                'quan_tri_he_thong': 'Quản trị hệ thống'
+            };
+            
+            const roleLabel = roleLabels[role] || 'Chưa chọn';
+            document.getElementById('previewRole').textContent = roleLabel;
+            document.getElementById('previewRoleDisplay').textContent = roleLabel;
+            
+            // Update role badge color
+            const roleBadge = document.getElementById('previewRole');
+            roleBadge.className = 'badge';
             if (role === 'quan_tri_he_thong') {
-                previewRole.classList.add('badge-danger');
+                roleBadge.classList.add('badge-danger');
             } else if (role === 'quan_tri_vien') {
-                previewRole.classList.add('badge-warning');
+                roleBadge.classList.add('badge-warning');
             } else {
-                previewRole.classList.add('badge-primary');
+                roleBadge.classList.add('badge-primary');
             }
-        }
-        
-        if (previewRoleDisplay) {
-            previewRoleDisplay.textContent = roleLabel;
         }
     }
 
@@ -709,3 +834,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
+
+
+
+
+

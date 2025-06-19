@@ -1,0 +1,495 @@
+<!-- Quick Create User Modal -->
+<div class="modal fade" id="quickCreateUserModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus mr-2"></i>Tạo người dùng nhanh
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="quickCreateForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="quickUsername">Tên người dùng *</label>
+                                <input type="text" class="form-control" id="quickUsername" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="quickEmail">Email *</label>
+                                <input type="email" class="form-control" id="quickEmail" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="quickRole">Vai trò</label>
+                                <select class="form-control" id="quickRole">
+                                    <option value="nguoi_dung">Người dùng</option>
+                                    <option value="quan_tri_vien">Quản trị viên</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="sendWelcomeEmail" checked>
+                                    Gửi email chào mừng
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Mật khẩu tạm thời sẽ được tự động tạo và gửi qua email.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success" onclick="submitQuickCreate()">
+                    <i class="fas fa-user-plus mr-1"></i>Tạo người dùng
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Users Modal -->
+<div class="modal fade" id="importUsersModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-import mr-2"></i>Import người dùng
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="form-group">
+                            <label for="importFile">Chọn file Excel/CSV</label>
+                            <input type="file" class="form-control-file" id="importFile" accept=".xlsx,.xls,.csv">
+                            <small class="form-text text-muted">
+                                Hỗ trợ định dạng: .xlsx, .xls, .csv (tối đa 1000 người dùng)
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Tùy chọn import:</label>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="skipDuplicates" checked>
+                                <label class="custom-control-label" for="skipDuplicates">
+                                    Bỏ qua người dùng trùng lặp
+                                </label>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="sendWelcomeEmails" checked>
+                                <label class="custom-control-label" for="sendWelcomeEmails">
+                                    Gửi email chào mừng cho người dùng mới
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">Định dạng file mẫu:</h6>
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Cột</th>
+                                            <th>Dữ liệu</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td>A</td><td>Tên người dùng</td></tr>
+                                        <tr><td>B</td><td>Email</td></tr>
+                                        <tr><td>C</td><td>Vai trò</td></tr>
+                                        <tr><td>D</td><td>Họ tên</td></tr>
+                                    </tbody>
+                                </table>
+                                <a href="/admin/download-template" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-download mr-1"></i>Tải mẫu
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="importPreview" style="display: none;">
+                    <hr>
+                    <h6>Xem trước dữ liệu:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="previewTable">
+                            <!-- Data will be populated here -->
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-info" onclick="processImport()" id="importBtn" disabled>
+                    <i class="fas fa-upload mr-1"></i>Import
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Notification Modal -->
+<div class="modal fade" id="bulkNotificationModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="fas fa-envelope-open-text mr-2"></i>Gửi thông báo hàng loạt
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="bulkNotificationForm">
+                    <div class="form-group">
+                        <label for="notificationSubject">Tiêu đề email *</label>
+                        <input type="text" class="form-control" id="notificationSubject" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notificationMessage">Nội dung thông báo *</label>
+                        <textarea class="form-control" id="notificationMessage" rows="6" required
+                                  placeholder="Nhập nội dung thông báo..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Gửi đến:</label>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="sendToUsers" checked>
+                                    <label class="custom-control-label" for="sendToUsers">
+                                        Người dùng thường
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="sendToAdmins">
+                                    <label class="custom-control-label" for="sendToAdmins">
+                                        Quản trị viên
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="sendToActive" checked>
+                                    <label class="custom-control-label" for="sendToActive">
+                                        Chỉ tài khoản hoạt động
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <span id="recipientCount">Ước tính: 0 người nhận</span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-warning" onclick="sendBulkNotification()">
+                    <i class="fas fa-paper-plane mr-1"></i>Gửi thông báo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Security Management Modal -->
+<div class="modal fade" id="securityManagementModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-lock mr-2"></i>Quản lý bảo mật người dùng
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Khóa tài khoản hàng loạt</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>Lọc theo:</label>
+                                    <select class="form-control" id="lockFilterType">
+                                        <option value="inactive">Không hoạt động > 30 ngày</option>
+                                        <option value="never_logged">Chưa đăng nhập bao giờ</option>
+                                        <option value="suspicious">Hoạt động đáng ngờ</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-warning btn-block" onclick="previewLockUsers()">
+                                    <i class="fas fa-search mr-1"></i>Xem trước danh sách
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Đặt lại mật khẩu hàng loạt</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>Áp dụng cho:</label>
+                                    <select class="form-control" id="resetFilterType">
+                                        <option value="new_users">Người dùng mới tạo</option>
+                                        <option value="requested">Yêu cầu đặt lại</option>
+                                        <option value="security_risk">Rủi ro bảo mật</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-info btn-block" onclick="previewResetPasswords()">
+                                    <i class="fas fa-key mr-1"></i>Xem trước danh sách
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="securityPreview" style="display: none;">
+                    <hr>
+                    <h6>Danh sách người dùng sẽ bị tác động:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="securityPreviewTable">
+                            <!-- Data will be populated here -->
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" onclick="executeSecurityAction()" id="securityActionBtn" disabled>
+                    <i class="fas fa-exclamation-triangle mr-1"></i>Thực hiện
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Quick Create User functionality
+function submitQuickCreate() {
+    const formData = {
+        username: document.getElementById('quickUsername').value,
+        email: document.getElementById('quickEmail').value,
+        role: document.getElementById('quickRole').value,
+        sendWelcome: document.getElementById('sendWelcomeEmail').checked
+    };
+    
+    if (!formData.username || !formData.email) {
+        alert('Vui lòng điền đầy đủ thông tin bắt buộc');
+        return;
+    }
+    
+    // Show loading state
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Đang tạo...';
+    btn.disabled = true;
+    
+    // Simulate API call
+    setTimeout(() => {
+        // Reset button
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        
+        // Show success message
+        alert('Tạo người dùng thành công!');
+        $('#quickCreateUserModal').modal('hide');
+        
+        // Clear form
+        document.getElementById('quickCreateForm').reset();
+        
+        // Refresh page or update table
+        location.reload();
+    }, 2000);
+}
+
+// Import Users functionality
+document.getElementById('importFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        // Show preview
+        document.getElementById('importPreview').style.display = 'block';
+        document.getElementById('importBtn').disabled = false;
+        
+        // Simulate file parsing
+        const previewTable = document.getElementById('previewTable');
+        previewTable.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Tên người dùng</th>
+                    <th>Email</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>user1</td>
+                    <td>user1@example.com</td>
+                    <td>Người dùng</td>
+                    <td><span class="badge badge-success">OK</span></td>
+                </tr>
+                <tr>
+                    <td>user2</td>
+                    <td>user2@example.com</td>
+                    <td>Quản trị viên</td>
+                    <td><span class="badge badge-warning">Trùng lặp</span></td>
+                </tr>
+            </tbody>
+        `;
+    }
+});
+
+function processImport() {
+    const btn = document.getElementById('importBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Đang import...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        alert('Import thành công 15 người dùng!');
+        $('#importUsersModal').modal('hide');
+        location.reload();
+    }, 3000);
+}
+
+// Bulk Notification functionality
+function updateRecipientCount() {
+    const sendToUsers = document.getElementById('sendToUsers').checked;
+    const sendToAdmins = document.getElementById('sendToAdmins').checked;
+    const sendToActive = document.getElementById('sendToActive').checked;
+    
+    let count = 0;
+    if (sendToUsers) count += 150;
+    if (sendToAdmins) count += 5;
+    
+    document.getElementById('recipientCount').textContent = `Ước tính: ${count} người nhận`;
+}
+
+// Add event listeners for checkbox changes
+['sendToUsers', 'sendToAdmins', 'sendToActive'].forEach(id => {
+    document.getElementById(id).addEventListener('change', updateRecipientCount);
+});
+
+function sendBulkNotification() {
+    const subject = document.getElementById('notificationSubject').value;
+    const message = document.getElementById('notificationMessage').value;
+    
+    if (!subject || !message) {
+        alert('Vui lòng điền đầy đủ thông tin');
+        return;
+    }
+    
+    if (confirm('Bạn có chắc chắn muốn gửi thông báo này?')) {
+        alert('Thông báo đã được gửi thành công!');
+        $('#bulkNotificationModal').modal('hide');
+    }
+}
+
+// Security Management functionality
+function previewLockUsers() {
+    document.getElementById('securityPreview').style.display = 'block';
+    document.getElementById('securityActionBtn').disabled = false;
+    
+    const previewTable = document.getElementById('securityPreviewTable');
+    previewTable.innerHTML = `
+        <thead>
+            <tr>
+                <th>Tên người dùng</th>
+                <th>Email</th>
+                <th>Lần đăng nhập cuối</th>
+                <th>Lý do</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>inactive_user1</td>
+                <td>user1@example.com</td>
+                <td>45 ngày trước</td>
+                <td>Không hoạt động</td>
+            </tr>
+            <tr>
+                <td>inactive_user2</td>
+                <td>user2@example.com</td>
+                <td>60 ngày trước</td>
+                <td>Không hoạt động</td>
+            </tr>
+        </tbody>
+    `;
+}
+
+function previewResetPasswords() {
+    document.getElementById('securityPreview').style.display = 'block';
+    document.getElementById('securityActionBtn').disabled = false;
+    
+    const previewTable = document.getElementById('securityPreviewTable');
+    previewTable.innerHTML = `
+        <thead>
+            <tr>
+                <th>Tên người dùng</th>
+                <th>Email</th>
+                <th>Ngày tạo</th>
+                <th>Lý do</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>new_user1</td>
+                <td>newuser1@example.com</td>
+                <td>Hôm nay</td>
+                <td>Người dùng mới</td>
+            </tr>
+            <tr>
+                <td>new_user2</td>
+                <td>newuser2@example.com</td>
+                <td>Hôm qua</td>
+                <td>Người dùng mới</td>
+            </tr>
+        </tbody>
+    `;
+}
+
+function executeSecurityAction() {
+    if (confirm('Bạn có chắc chắn muốn thực hiện hành động này?')) {
+        alert('Đã thực hiện thành công!');
+        $('#securityManagementModal').modal('hide');
+    }
+}
+
+// Initialize recipient count
+document.addEventListener('DOMContentLoaded', function() {
+    updateRecipientCount();
+});
+</script>

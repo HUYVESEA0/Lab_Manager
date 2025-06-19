@@ -1,0 +1,118 @@
+<!-- User Quick Actions Component -->
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-gradient-primary text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-bolt mr-2"></i>Thao tác nhanh với người dùng
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="quick-action-item mb-3">
+                    <div class="d-flex align-items-center">
+                        <div class="quick-action-icon bg-success text-white mr-3">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Tạo người dùng nhanh</h6>
+                            <small class="text-muted">Tạo tài khoản mới với thông tin cơ bản</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-success" onclick="openQuickCreateUser()">
+                            Tạo ngay
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="quick-action-item mb-3">
+                    <div class="d-flex align-items-center">
+                        <div class="quick-action-icon bg-info text-white mr-3">
+                            <i class="fas fa-file-import"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Import người dùng</h6>
+                            <small class="text-muted">Nhập danh sách từ file Excel/CSV</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-info" onclick="openImportUsers()">
+                            Import
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="quick-action-item mb-3">
+                    <div class="d-flex align-items-center">
+                        <div class="quick-action-icon bg-warning text-white mr-3">
+                            <i class="fas fa-envelope-open-text"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Gửi thông báo</h6>
+                            <small class="text-muted">Gửi email đến tất cả người dùng</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-warning" onclick="openBulkNotification()">
+                            Gửi ngay
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="quick-action-item mb-3">
+                    <div class="d-flex align-items-center">
+                        <div class="quick-action-icon bg-danger text-white mr-3">
+                            <i class="fas fa-user-lock"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Quản lý bảo mật</h6>
+                            <small class="text-muted">Khóa/mở khóa tài khoản hàng loạt</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" onclick="openSecurityManagement()">
+                            Quản lý
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.quick-action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.quick-action-item {
+    padding: 10px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.quick-action-item:hover {
+    background-color: #f8f9fa;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+</style>
+
+<script>
+function openQuickCreateUser() {
+    $('#quickCreateUserModal').modal('show');
+}
+
+function openImportUsers() {
+    $('#importUsersModal').modal('show');
+}
+
+function openBulkNotification() {
+    $('#bulkNotificationModal').modal('show');
+}
+
+function openSecurityManagement() {
+    $('#securityManagementModal').modal('show');
+}
+</script>
