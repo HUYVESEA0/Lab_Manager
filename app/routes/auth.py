@@ -52,15 +52,19 @@ def login():
         session["login_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         flash("Đăng nhập thành công!", "success")
         next_url = request.args.get("next")
+        
         if not next_url and "next_url" in session:
             next_url = session.pop("next_url", None)
+        
         if not next_url and "next" in session:
             next_url = session.pop("next", None)
+        
         if next_url:
             return redirect(next_url)
-        if hasattr(nguoi_dung, "la_nguoi_quan_tri_he_thong") and nguoi_dung.la_nguoi_quan_tri_he_thong:
+        
+        if hasattr(nguoi_dung, "is_admin_manager") and nguoi_dung.is_admin_manager():
             return redirect(url_for("admin.admin_dashboard"))
-        elif hasattr(nguoi_dung, "la_nguoi_quan_tri") and nguoi_dung.la_nguoi_quan_tri:
+        elif hasattr(nguoi_dung, "is_admin") and nguoi_dung.is_admin():
             return redirect(url_for("admin.admin_dashboard"))
         else:
             return redirect(url_for("user.dashboard"))

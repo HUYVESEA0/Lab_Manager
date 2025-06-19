@@ -37,13 +37,17 @@ class NguoiDung(UserMixin, db.Model):
     
     # Password reset fields
     reset_token = db.Column(db.String(100), nullable=True)
-    reset_token_expiry = db.Column(db.Integer, nullable=True)  # Unix timestamp
-
-    # Flask compatibility helpers for legacy code and templates
+    reset_token_expiry = db.Column(db.Integer, nullable=True)  # Unix timestamp    # Flask compatibility helpers for legacy code and templates
     def is_admin(self):
+        """Check if user is any type of admin (quan_tri_vien or quan_tri_he_thong)"""
         return self.vai_tro in ["quan_tri_vien", "quan_tri_he_thong"]
 
     def is_admin_manager(self):
+        """Check if user is system admin (quan_tri_he_thong)"""
+        return self.vai_tro == "quan_tri_he_thong"
+    
+    def is_system_admin(self):
+        """Alias for is_admin_manager for clarity"""
         return self.vai_tro == "quan_tri_he_thong"
 
     def __init__(self, ten_nguoi_dung=None, email=None, vai_tro="nguoi_dung"):
@@ -80,11 +84,11 @@ class NguoiDung(UserMixin, db.Model):
         """Xóa token đặt lại mật khẩu sau khi sử dụng"""
         self.reset_token = None
         self.reset_token_expiry = None
-    
-    # English method aliases for compatibility
+      # English method aliases for compatibility
     def get_reset_password_token(self):
         """Generate password reset token (English alias)"""
-        return self.tao_reset_token()        
+        return self.tao_reset_token()
+        
     @staticmethod
     def verify_reset_password_token(token):
         """Find and verify user by reset token"""
@@ -99,21 +103,26 @@ class NguoiDung(UserMixin, db.Model):
         return NguoiDung.query.filter_by(reset_token=token).first()
 
     def la_quan_tri_vien(self):
+        """Vietnamese method - check if user is any type of admin"""
         return self.vai_tro in ["quan_tri_vien", "quan_tri_he_thong"]
 
     def la_quan_tri_he_thong(self):
+        """Vietnamese method - check if user is system admin"""
         return self.vai_tro == "quan_tri_he_thong"
 
     def muc_vai_tro(self):
+        """Get role level for hierarchy comparison"""
         muc = {"quan_tri_he_thong": 3, "quan_tri_vien": 2, "nguoi_dung": 1}
         return muc.get(self.vai_tro, 0)
 
     @property
     def la_nguoi_quan_tri(self):
+        """Property version - check if user is any type of admin"""
         return self.vai_tro in ["quan_tri_vien", "quan_tri_he_thong"]
 
     @property
     def la_nguoi_quan_tri_he_thong(self):
+        """Property version - check if user is system admin"""
         return self.vai_tro == "quan_tri_he_thong"
 
     # Legacy compatibility properties for templates

@@ -15,7 +15,7 @@ def admin_required(f):
 def admin_manager_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not (hasattr(current_user, 'la_quan_tri_he_thong') and current_user.la_quan_tri_he_thong()):
+        if not current_user.is_authenticated or not (hasattr(current_user, 'is_admin_manager') and current_user.is_admin_manager()):
             flash("Bạn cần quyền quản trị hệ thống để truy cập trang này.", "danger")
             return redirect(url_for("index"))
         return f(*args, **kwargs)
