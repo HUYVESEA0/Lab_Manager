@@ -254,3 +254,121 @@ class ResetPasswordForm(FlaskForm):
         ],
     )
     submit = SubmitField("Đặt lại mật khẩu")
+
+class AdvancedRegistrationForm(FlaskForm):
+    """Form đăng ký nâng cao với validation mạnh"""
+    ten_nguoi_dung = StringField(
+        "Tên người dùng",
+        validators=[
+            DataRequired(message="Tên người dùng không được để trống"),
+            Length(min=3, max=20, message="Tên người dùng phải từ 3 đến 20 ký tự"),
+        ],
+    )
+    email = StringField(
+        "Email",
+        validators=[
+            DataRequired(message="Email không được để trống"),
+            Email(message="Vui lòng nhập địa chỉ email hợp lệ"),
+        ],
+    )
+    password = PasswordField(
+        "Mật khẩu",
+        validators=[
+            DataRequired(message="Mật khẩu không được để trống"),
+            Length(min=8, message="Mật khẩu phải có ít nhất 8 ký tự"),
+        ],
+    )
+    confirm_password = PasswordField(
+        "Xác nhận mật khẩu",
+        validators=[
+            DataRequired(message="Xác nhận mật khẩu không được để trống"),
+            EqualTo("password", message="Mật khẩu và xác nhận mật khẩu phải giống nhau"),
+        ],
+    )
+    bio = TextAreaField(
+        "Giới thiệu bản thân",
+        validators=[Length(max=500, message="Giới thiệu không được quá 500 ký tự")],
+        render_kw={"placeholder": "Viết vài dòng về bản thân bạn (tùy chọn)"}
+    )
+    terms_accepted = BooleanField(
+        "Tôi đồng ý với điều khoản sử dụng",
+        validators=[DataRequired(message="Bạn phải đồng ý với điều khoản sử dụng")]
+    )
+    submit = SubmitField("Đăng ký")
+
+    def validate_ten_nguoi_dung(self, ten_nguoi_dung):
+        # Check username format
+        import re
+        if not re.match(r'^[a-zA-Z0-9_]+$', ten_nguoi_dung.data):
+            raise ValidationError("Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới.")
+        
+        # Check if exists
+        nguoi_dung = NguoiDung.query.filter_by(ten_nguoi_dung=ten_nguoi_dung.data).first()
+        if nguoi_dung:
+            raise ValidationError("Tên người dùng đã tồn tại. Vui lòng chọn tên khác.")
+
+    def validate_email(self, email):
+        nguoi_dung = NguoiDung.query.filter_by(email=email.data.lower().strip()).first()
+        if nguoi_dung:
+            raise ValidationError("Email này đã được đăng ký. Vui lòng sử dụng email khác.")
+
+    def validate_password(self, password):
+        """Validate password strength"""
+        pwd = password.data
+        
+        if len(pwd) < 8:
+            raise ValidationError("Mật khẩu phải có ít nhất 8 ký tự.")
+        
+        has_upper = any(c.isupper() for c in pwd)
+        has_lower = any(c.islower() for c in pwd)
+        has_digit = any(c.isdigit() for c in pwd)
+        has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in pwd)
+        
+        if not (has_upper and has_lower and has_digit and has_special):
+            raise ValidationError(
+                "Mật khẩu phải bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt."
+            )
+
+class BulkUserCreationForm(FlaskForm):
+    """Form tạo người dùng hàng loạt"""
+    users_data = TextAreaField(
+        "Dữ liệu người dùng (JSON)",
+        validators=[DataRequired(message="Dữ liệu người dùng không được để trống")],
+        render_kw={
+            "rows": 10,
+            "placeholder": """[
+  {
+    "ten_nguoi_dung": "user1",
+    "email": "user1@example.com",
+    "mat_khau": "SecurePass123!",
+    "vai_tro": "nguoi_dung"
+  },
+  {
+    "ten_nguoi_dung": "user2", 
+    "email": "user2@example.com",
+    "mat_khau": "SecurePass456!",
+    "vai_tro": "nguoi_dung"
+  }
+]"""
+        }
+    )
+    submit = SubmitField("Tạo hàng loạt")
+
+    def validate_users_data(self, users_data):
+        import json
+        try:
+            data = json.loads(users_data.data)
+            if not isinstance(data, list):
+                raise ValidationError("Dữ liệu phải là một mảng JSON.")
+            
+            for i, user in enumerate(data):
+                if not isinstance(user, dict):
+                    raise ValidationError(f"Người dùng thứ {i+1} phải là một object.")
+                
+                required_fields = ['ten_nguoi_dung', 'email', 'mat_khau']
+                for field in required_fields:
+                    if field not in user:
+                        raise ValidationError(f"Người dùng thứ {i+1} thiếu trường '{field}'.")
+                        
+        except json.JSONDecodeError:
+            raise ValidationError("Dữ liệu JSON không hợp lệ.")
