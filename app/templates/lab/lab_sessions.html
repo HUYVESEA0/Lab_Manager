@@ -13,25 +13,70 @@
                 </button>
             </div>
         </div>
-    </div>
-
-    <!-- Available Sessions Section -->
+    </div>    <!-- Available Sessions Section -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title mb-0">Available Sessions</h3>
+                    <h3 class="card-title mb-0">Danh sách ca thực hành</h3>
                 </div>
                 <div class="card-body">
-                    <div id="available-sessions-container">
-                        <!-- Loading spinner -->
-                        <div class="text-center py-4">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="sr-only">Loading...</span>
-                            </div>
-                            <p class="mt-2">Loading available sessions...</p>
+                    {% if sessions %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>Tên ca</th>
+                                        <th>Ngày</th>
+                                        <th>Thời gian</th>
+                                        <th>Phòng</th>
+                                        <th>Số chỗ</th>
+                                        <th>Đã đăng ký</th>
+                                        <th>Trạng thái</th>
+                                        <th>Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody>                                    {% for session in sessions %}
+                                    <tr>
+                                        <td>{{ session.tieu_de }}</td>
+                                        <td>{{ session.ngay.strftime('%d/%m/%Y') if session.ngay else 'N/A' }}</td>
+                                        <td>{{ session.gio_bat_dau.strftime('%H:%M') if session.gio_bat_dau else 'N/A' }} - {{ session.gio_ket_thuc.strftime('%H:%M') if session.gio_ket_thuc else 'N/A' }}</td>
+                                        <td>{{ session.dia_diem or 'N/A' }}</td>
+                                        <td>{{ session.so_luong_toi_da or 'N/A' }}</td>
+                                        <td>{{ session.so_nguoi_dang_ky or 0 }}</td>
+                                        <td>
+                                            {% if session.trang_thai == 'scheduled' %}
+                                                <span class="badge badge-success">Đang mở</span>
+                                            {% elif session.trang_thai == 'completed' %}
+                                                <span class="badge badge-secondary">Đã hoàn thành</span>
+                                            {% elif session.trang_thai == 'cancelled' %}
+                                                <span class="badge badge-danger">Đã hủy</span>
+                                            {% else %}
+                                                <span class="badge badge-warning">{{ session.trang_thai or 'N/A' }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if session.trang_thai == 'scheduled' %}
+                                                <button class="btn btn-sm btn-primary" onclick="registerSession({{ session.id }})">
+                                                    <i class="fas fa-plus"></i> Đăng ký
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-secondary" disabled>
+                                                    Không thể đăng ký
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Hiện tại chưa có ca thực hành nào.</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -42,18 +87,59 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title mb-0">My Registered Sessions</h3>
+                    <h3 class="card-title mb-0">Ca thực hành đã đăng ký</h3>
                 </div>
                 <div class="card-body">
-                    <div id="registered-sessions-container">
-                        <!-- Loading spinner -->
-                        <div class="text-center py-4">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="sr-only">Loading...</span>
-                            </div>
-                            <p class="mt-2">Loading your registered sessions...</p>
+                    {% if registrations %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>Tên ca</th>
+                                        <th>Ngày</th>
+                                        <th>Thời gian</th>
+                                        <th>Phòng</th>
+                                        <th>Ngày đăng ký</th>
+                                        <th>Trạng thái</th>
+                                        <th>Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody>                                    {% for reg in registrations %}
+                                    <tr>
+                                        <td>{{ reg.ca_thuc_hanh.tieu_de }}</td>
+                                        <td>{{ reg.ca_thuc_hanh.ngay.strftime('%d/%m/%Y') if reg.ca_thuc_hanh.ngay else 'N/A' }}</td>
+                                        <td>{{ reg.ca_thuc_hanh.gio_bat_dau.strftime('%H:%M') if reg.ca_thuc_hanh.gio_bat_dau else 'N/A' }} - {{ reg.ca_thuc_hanh.gio_ket_thuc.strftime('%H:%M') if reg.ca_thuc_hanh.gio_ket_thuc else 'N/A' }}</td>
+                                        <td>{{ reg.ca_thuc_hanh.dia_diem or 'N/A' }}</td>
+                                        <td>{{ reg.ngay_dang_ky.strftime('%d/%m/%Y %H:%M') if reg.ngay_dang_ky else 'N/A' }}</td>
+                                        <td>
+                                            {% if reg.ca_thuc_hanh.trang_thai == 'scheduled' %}
+                                                <span class="badge badge-success">Đã đăng ký</span>
+                                            {% elif reg.ca_thuc_hanh.trang_thai == 'completed' %}
+                                                <span class="badge badge-secondary">Đã kết thúc</span>
+                                            {% else %}
+                                                <span class="badge badge-warning">{{ reg.ca_thuc_hanh.trang_thai or 'N/A' }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if reg.ca_thuc_hanh.trang_thai == 'scheduled' %}
+                                                <button class="btn btn-sm btn-danger" onclick="cancelRegistration({{ reg.id }})">
+                                                    <i class="fas fa-times"></i> Hủy đăng ký
+                                                </button>
+                                            {% else %}
+                                                <span class="text-muted">Không thể hủy</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-check fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Bạn chưa đăng ký ca thực hành nào.</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -63,6 +149,62 @@
 <!-- Set page identifier for JavaScript -->
 <script>
 document.body.dataset.page = 'lab-sessions';
+
+// Functions for registration actions
+function registerSession(sessionId) {
+    if (confirm('Bạn có chắc chắn muốn đăng ký ca thực hành này?')) {
+        fetch('/lab/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({session_id: sessionId})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Đăng ký thành công!');
+                location.reload();
+            } else {
+                alert('Lỗi: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Có lỗi xảy ra: ' + error.message);
+        });
+    }
+}
+
+function cancelRegistration(registrationId) {
+    if (confirm('Bạn có chắc chắn muốn hủy đăng ký ca thực hành này?')) {
+        fetch('/lab/cancel-registration', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({registration_id: registrationId})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Hủy đăng ký thành công!');
+                location.reload();
+            } else {
+                alert('Lỗi: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Có lỗi xảy ra: ' + error.message);
+        });
+    }
+}
+
+// Refresh button functionality
+document.getElementById('refresh-sessions').addEventListener('click', function() {
+    location.reload();
+});
 </script>
 {% endblock %}
 

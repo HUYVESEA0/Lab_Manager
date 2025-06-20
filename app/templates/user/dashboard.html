@@ -1,0 +1,1002 @@
+{% extends "index.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<!-- Real-time dashboard styles -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/system_dashboard.css') }}">
+<!-- Socket.IO for real-time updates -->
+<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
+<!-- API Integration Styles -->
+<style>
+    .api-status {
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        z-index: 1000;
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .api-status.show {
+        opacity: 1;
+    }
+    .api-status.connected {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .api-status.disconnected {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+    .card {
+        position: relative;
+    }
+</style>
+
+<style>
+    /* Modern dashboard styling with better UX */
+    :root {
+        --primary-gradient: linear-gradient(135deg, var(--primary-color) 0%, #4a7bff 100%);
+        --success-gradient: linear-gradient(135deg, var(--success-color) 0%, #2dd36f 100%);
+        --info-gradient: linear-gradient(135deg, var(--accent-color) 0%, #5260ff 100%);
+        --warning-gradient: linear-gradient(135deg, var(--warning-color) 0%, #ffc409 100%);
+        --danger-gradient: linear-gradient(135deg, var(--danger-color) 0%, #eb445a 100%);
+        --card-border-radius: 12px;
+        --section-gap: 1.75rem;
+        --card-box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+        --transition-smooth: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+    }
+    
+    /* Dashboard layout */
+    .dashboard-container {
+        padding-bottom: 2rem;
+    }
+    
+    /* Welcome banner with 3D effect */
+    .welcome-banner {
+        background: var(--primary-gradient);
+        border-radius: var(--card-border-radius);
+        padding: 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--card-box-shadow);
+        margin-bottom: var(--section-gap);
+        transform-style: preserve-3d;
+        perspective: 1000px;
+    }
+    
+    .welcome-banner::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 100%;
+        height: 100%;
+        background: rgba(255,255,255,0.1);
+        transform: rotate(35deg);
+        pointer-events: none;
+    }
+    
+    .welcome-banner h2 {
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        font-size: 2rem;
+    }
+    
+    .welcome-banner .lead {
+        font-weight: 500;
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .profile-actions .btn {
+        border-radius: 50px;
+        padding: 0.5rem 1.25rem;
+        font-weight: 500;
+        box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+        transition: var(--transition-smooth);
+    }
+    
+    .profile-actions .btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    }
+    
+    /* Stat cards with hover effects */
+    .stat-card {
+        border-radius: var(--card-border-radius);
+        box-shadow: var(--card-box-shadow);
+        transition: var(--transition-smooth);
+        border: none;
+        height: 100%;
+        overflow: hidden;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-7px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+    }
+    
+    .stat-card .card-body {
+        padding: 1.75rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .stat-card .background-icon {
+        position: absolute;
+        bottom: -15px;
+        right: -15px;
+        font-size: 8rem;
+        opacity: 0.15;
+        transform: rotate(-15deg);
+        z-index: 0;
+    }
+    
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+        line-height: 1;
+    }
+    
+    .stat-label {
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 500;
+        opacity: 0.8;
+    }
+    
+    .stat-icon {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .stat-trend {
+        display: flex;
+        align-items: center;
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+    }
+    
+    .stat-trend i {
+        margin-right: 0.25rem;
+    }
+    
+    .trend-up {
+        color: #2dd36f;
+    }
+    
+    .trend-down {
+        color: #eb445a;
+    }
+    
+    /* Content cards */
+    .content-card {
+        border-radius: var(--card-border-radius);
+        box-shadow: var(--card-box-shadow);
+        transition: var(--transition-smooth);
+        border: none;
+        margin-bottom: var(--section-gap);
+        overflow: hidden;
+    }
+    
+    .content-card:hover {
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+    }
+    
+    .content-card .card-header {
+        background-color: white;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        padding: 1.25rem 1.5rem;
+    }
+    
+    .content-card .card-header h5 {
+        margin: 0;
+        color: var(--primary-color);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
+    
+    .content-card .card-header h5 i {
+        margin-right: 0.75rem;
+        opacity: 0.8;
+    }
+    
+    .content-card .card-body {
+        padding: 1.5rem;
+    }
+    
+    /* Upcoming sessions table */
+    .sessions-table {
+        max-height: 350px;
+        overflow-y: auto;
+    }
+    
+    .sessions-table::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .sessions-table::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .sessions-table::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+    }
+    
+    .sessions-table::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    
+    .sessions-table .table {
+        margin-bottom: 0;
+    }
+    
+    .sessions-table .table th {
+        border-top: none;
+        font-weight: 600;
+        color: #495057;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.03em;
+    }
+    
+    .sessions-table .table td {
+        vertical-align: middle;
+    }
+    
+    .status-badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.35em 0.65em;
+        border-radius: 50px;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+    
+    .sessions-table .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Session info and quick links */
+    .info-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.25rem;
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .info-item:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+    
+    .info-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+    
+    .info-icon i {
+        font-size: 1.5rem;
+        color: white;
+    }
+    
+    .info-content h6 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #495057;
+    }
+    
+    .info-content p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .bg-primary-gradient {
+        background: var(--primary-gradient);
+    }
+    
+    .bg-success-gradient {
+        background: var(--success-gradient);
+    }
+    
+    .bg-info-gradient {
+        background: var(--info-gradient);
+    }
+    
+    /* Quick links */
+    .quick-links .list-group-item {
+        border: none;
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.5rem;
+        border-radius: 8px;
+        transition: var(--transition-smooth);
+    }
+    
+    .quick-links .list-group-item:hover {
+        background-color: rgba(0,0,0,0.02);
+        transform: translateX(5px);
+    }
+    
+    .quick-links .list-group-item i.link-icon {
+        width: 24px;
+        text-align: center;
+        margin-right: 0.75rem;
+    }
+    
+    /* Admin tools section */
+    .admin-tools {
+        margin-top: var(--section-gap);
+    }
+    
+    .admin-tool-btn {
+        height: 100%;
+        border-radius: 10px;
+        padding: 1.5rem 1rem;
+        text-align: center;
+        transition: var(--transition-smooth);
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .admin-tool-btn:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .admin-tool-btn i {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        display: block;
+    }
+    
+    .admin-tool-btn span {
+        display: block;
+        font-weight: 500;
+    }
+    
+    /* Empty state styling */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+    
+    .empty-state img {
+        max-width: 180px;
+        margin-bottom: 1.5rem;
+        opacity: 0.6;
+    }
+    
+    .empty-state p {
+        color: #6c757d;
+        margin-bottom: 1.5rem;
+        font-size: 1.1rem;
+    }
+    
+    /* Activity chart */
+    .activity-chart {
+        height: 200px;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 991.98px) {
+        .welcome-banner {
+            padding: 1.5rem;
+        }
+        
+        .welcome-banner h2 {
+            font-size: 1.75rem;
+        }
+        
+        .profile-actions {
+            margin-top: 1rem;
+            text-align: left;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+        }
+    }
+    
+    @media (max-width: 767.98px) {
+        .admin-tool-btn {
+            margin-bottom: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/system_dashboard.js') }}"></script>
+<script>
+// Enhanced Dashboard with API Integration
+class DashboardManager {
+    constructor() {
+        this.apiStatus = 'disconnected';
+        this.updateInterval = null;
+        this.currentUser = null;
+        this.init();
+    }
+
+    async init() {
+        await this.checkAPIConnection();
+        await this.loadCurrentUser();
+        await this.loadDashboardData();
+        this.startPeriodicUpdates();
+        this.setupEventListeners();
+        this.createAPIStatusIndicator();
+    }
+
+    async checkAPIConnection() {
+        try {
+            const response = await labAPI.getSystemHealth();
+            if (response.ok) {
+                this.setAPIStatus('connected');
+            } else {
+                this.setAPIStatus('disconnected');
+            }
+        } catch (error) {
+            this.setAPIStatus('disconnected');
+        }
+    }
+
+    async loadCurrentUser() {
+        try {
+            const response = await labAPI.getCurrentUser();
+            if (response.ok) {
+                const data = await response.json();
+                this.currentUser = data.user;
+                this.updateUserInfo(data.user);
+            }
+        } catch (error) {
+            console.error('Failed to load current user:', error);
+        }
+    }
+
+    async loadDashboardData() {
+        await Promise.all([
+            this.loadSystemMetrics(),
+            this.loadUserStats(),
+            this.loadRecentActivity()
+        ]);
+    }
+
+    async loadSystemMetrics() {
+        try {
+            this.showCardLoading('system-metrics');
+            const response = await labAPI.getSystemMetrics();
+            if (response.ok) {
+                const data = await response.json();
+                this.updateSystemMetrics(data);
+            }
+        } catch (error) {
+            console.error('Failed to load system metrics:', error);
+        } finally {
+            this.hideCardLoading('system-metrics');
+        }
+    }
+
+    async loadUserStats() {
+        try {
+            this.showCardLoading('user-stats');
+            const response = await labAPI.getUserStats();
+            if (response.ok) {
+                const data = await response.json();
+                this.updateUserStats(data);
+            }
+        } catch (error) {
+            console.error('Failed to load user stats:', error);
+        } finally {
+            this.hideCardLoading('user-stats');
+        }
+    }
+
+    async loadRecentActivity() {
+        // Placeholder for recent activity
+        console.log('Recent activity loading would be implemented here');
+    }
+
+    updateUserInfo(user) {
+        const userNameElements = document.querySelectorAll('[data-user-name]');
+        userNameElements.forEach(element => {
+            element.textContent = user.ten_nguoi_dung;
+        });
+
+        const userRoleElements = document.querySelectorAll('[data-user-role]');
+        userRoleElements.forEach(element => {
+            element.textContent = this.formatRole(user.vai_tro);
+        });
+
+        const userEmailElements = document.querySelectorAll('[data-user-email]');
+        userEmailElements.forEach(element => {
+            element.textContent = user.email;
+        });
+    }
+
+    updateSystemMetrics(data) {
+        // Update system metric displays
+        const metricElements = document.querySelectorAll('[data-metric]');
+        metricElements.forEach(element => {
+            const metric = element.getAttribute('data-metric');
+            if (data[metric] !== undefined) {
+                element.textContent = data[metric];
+            }
+        });
+    }
+
+    updateUserStats(data) {
+        // Update user statistic displays
+        const statElements = document.querySelectorAll('[data-stat]');
+        statElements.forEach(element => {
+            const stat = element.getAttribute('data-stat');
+            if (data[stat] !== undefined) {
+                element.textContent = data[stat];
+            }
+        });
+    }
+
+    showCardLoading(cardId) {
+        const card = document.getElementById(cardId);
+        if (card) {
+            const loadingOverlay = document.createElement('div');
+            loadingOverlay.className = 'loading-overlay';
+            loadingOverlay.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>';
+            card.appendChild(loadingOverlay);
+        }
+    }
+
+    hideCardLoading(cardId) {
+        const card = document.getElementById(cardId);
+        if (card) {
+            const loadingOverlay = card.querySelector('.loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.remove();
+            }
+        }
+    }
+
+    setAPIStatus(status) {
+        this.apiStatus = status;
+        const indicator = document.getElementById('api-status-indicator');
+        if (indicator) {
+            indicator.className = `api-status ${status} show`;
+            indicator.textContent = status === 'connected' ? 
+                '🟢 API Connected' : '🔴 API Disconnected';
+        }
+    }
+
+    createAPIStatusIndicator() {
+        const indicator = document.createElement('div');
+        indicator.id = 'api-status-indicator';
+        indicator.className = 'api-status disconnected';
+        indicator.textContent = '🔴 API Checking...';
+        document.body.appendChild(indicator);
+    }
+
+    startPeriodicUpdates() {
+        // Update every 30 seconds
+        this.updateInterval = setInterval(() => {
+            this.checkAPIConnection();
+            this.loadDashboardData();
+        }, 30000);
+    }
+
+    setupEventListeners() {
+        // Refresh button if exists
+        const refreshBtn = document.getElementById('refresh-dashboard');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                this.loadDashboardData();
+                showNotification('Dashboard refreshed', 'success');
+            });
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+            }
+        });
+    }
+
+    formatRole(role) {
+        const roles = {
+            'sinh_vien': 'Sinh viên',
+            'giang_vien': 'Giảng viên',
+            'quan_tri': 'Quản trị',
+            'quan_tri_he_thong': 'Quản trị hệ thống'
+        };
+        return roles[role] || role;
+    }
+}
+
+// Initialize dashboard when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    window.dashboardManager = new DashboardManager();
+    
+    // Initialize existing dashboard features
+    if (typeof SystemDashboard !== 'undefined') {
+        const systemDashboard = new SystemDashboard({
+            type: 'user',
+            realTime: true,
+            updateInterval: 10000
+        });
+        systemDashboard.init();
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container dashboard-container">
+    <!-- Welcome Banner -->
+    <div class="welcome-banner">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2>Xin chào, {{ current_user.ten_nguoi_dung }}!</h2>                <p class="lead">Chào mừng trở lại với Lab Management System</p>
+                <p>Theo dõi, quản lý và đăng ký các ca thực hành của bạn từ bảng điều khiển cá nhân.</p>
+                <!-- Dashboard status indicator -->
+                <div class="mt-2">
+                    <span id="connection-status" class="badge badge-success">
+                        <i class="fas fa-check-circle text-success"></i> Ready (Server-side)
+                    </span>
+                    <small class="text-light ml-2">Dashboard sử dụng dữ liệu từ server</small>
+                </div>
+            </div>
+            <div class="col-md-4 text-md-right profile-actions">
+                <a href="{{ url_for('user.profile') }}" class="btn btn-light mr-2">
+                    <i class="fas fa-user-circle mr-1"></i> Hồ sơ
+                </a>
+                <a href="{{ url_for('user.session_manager') }}" class="btn btn-light">
+                    <i class="fas fa-cogs mr-1"></i> Cài đặt
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Section -->
+    <div class="row mb-4">
+        <!-- Upcoming Sessions Stat -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card stat-card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="stat-value">{{ upcoming_sessions|default(0) }}</div>
+                    <div class="stat-label">Ca thực hành sắp tới</div>
+                    <div class="stat-trend">
+                        <i class="fas fa-arrow-up trend-up"></i> 
+                        <span>+2 so với tuần trước</span>
+                    </div>
+                    <i class="fas fa-calendar-alt background-icon"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Enrolled Courses Stat -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card stat-card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="stat-icon">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <div class="stat-value">{{ enrolled_courses|default(0) }}</div>
+                    <div class="stat-label">Khóa học đã đăng ký</div>
+                    <div class="stat-trend">
+                        <i class="fas fa-equals"></i> 
+                        <span>Không thay đổi</span>
+                    </div>
+                    <i class="fas fa-graduation-cap background-icon"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Completed Labs Stat -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card stat-card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-value">{{ completed_labs|default(0) }}</div>
+                    <div class="stat-label">Ca thực hành đã hoàn thành</div>
+                    <div class="stat-trend">
+                        <i class="fas fa-arrow-up trend-up"></i> 
+                        <span>+1 so với tuần trước</span>
+                    </div>
+                    <i class="fas fa-clipboard-check background-icon"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- Left Column (2/3) -->
+        <div class="col-lg-8">
+            <!-- Upcoming Lab Sessions -->
+            <div class="card content-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="m-0">
+                        <i class="fas fa-calendar-alt"></i>
+                        Ca thực hành sắp tới
+                    </h5>
+                    <a href="{{ url_for('lab.my_lab_sessions') }}" class="btn btn-sm btn-outline-primary">
+                        Xem tất cả
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="sessions-table">
+                        {% if lab_sessions %}
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Tiêu đề</th>
+                                        <th>Ngày</th>
+                                        <th>Thời gian</th>
+                                        <th>Trạng thái</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for session in lab_sessions %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="mr-2 text-primary">
+                                                    <i class="fas fa-flask"></i>
+                                                </div>
+                                                <div>{{ session.tieu_de }}</div>
+                                            </div>
+                                        </td>
+                                        <td>{{ session.ngay.strftime('%d/%m/%Y') }}</td>
+                                        <td>{{ session.gio_bat_dau.strftime('%H:%M') }} - {{ session.gio_ket_thuc.strftime('%H:%M') }}</td>
+                                        <td>
+                                            {% if session.dang_dien_ra() %}
+                                                <span class="badge badge-success status-badge">Đang diễn ra</span>
+                                            {% elif session.co_the_dang_ky() %}
+                                                <span class="badge badge-primary status-badge">Sắp diễn ra</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary status-badge">Đã kết thúc</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="#" class="btn btn-sm btn-outline-primary" data-toggle="tooltip" title="Xem chi tiết">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="#" class="btn btn-sm btn-outline-success" data-toggle="tooltip" title="Đăng ký tham gia">
+                                                    <i class="fas fa-qrcode"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <div class="empty-state">
+                                <img src="{{ url_for('static', filename='img/empty-calendar.svg') }}" alt="No sessions" onerror="this.src='https://cdn-icons-png.flaticon.com/512/4076/4076478.png'">
+                                <p>Bạn chưa có ca thực hành nào sắp tới</p>
+                                <a href="#" class="btn btn-primary">
+                                    <i class="fas fa-search mr-1"></i>
+                                    Tìm kiếm ca thực hành
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Activity Chart -->
+            <div class="card content-card">
+                <div class="card-header">
+                    <h5 class="m-0">
+                        <i class="fas fa-chart-line"></i>
+                        Hoạt động của bạn
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="activity-chart">
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                    <div class="text-center mt-3">
+                        <small class="text-muted">Biểu đồ thể hiện số lượng hoạt động của bạn trong 7 ngày qua</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column (1/3) -->
+        <div class="col-lg-4">
+            <!-- Session Information -->
+            <div class="card content-card">
+                <div class="card-header">
+                    <h5 class="m-0">
+                        <i class="fas fa-info-circle"></i>
+                        Thông tin phiên
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="info-item">
+                        <div class="info-icon bg-primary-gradient">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="info-content">
+                            <h6>Truy cập cuối</h6>
+                            <p>{{ session_data.last_visit }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon bg-success-gradient">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="info-content">
+                            <h6>Thời gian đăng nhập</h6>
+                            <p>{{ session_data.login_time }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon bg-info-gradient">
+                            <i class="fas fa-desktop"></i>
+                        </div>
+                        <div class="info-content">
+                            <h6>Số lượt xem</h6>
+                            <p>{{ session_data.visits }} lượt xem</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3 text-center">
+                        <a href="{{ url_for('user.session_manager') }}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-cogs mr-1"></i>
+                            Quản lý phiên làm việc
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lab Sessions Chart -->
+            <div class="card content-card">
+                <div class="card-header">
+                    <h5 class="m-0">
+                        <i class="fas fa-chart-pie"></i>
+                        Thống kê ca thực hành
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="activity-chart">
+                        <canvas id="labSessionsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Access -->
+            <div class="card content-card">
+                <div class="card-header">
+                    <h5 class="m-0">
+                        <i class="fas fa-bolt"></i>
+                        Truy cập nhanh
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="quick-links">
+                        <div class="list-group list-group-flush">
+                            <a href="{{ url_for('user.profile') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-user-circle text-primary link-icon"></i>
+                                    Hồ sơ cá nhân
+                                </div>
+                                <i class="fas fa-chevron-right text-muted"></i>
+                            </a>
+                            <a href="{{ url_for('user.settings') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-cog text-primary link-icon"></i>
+                                    Cài đặt tài khoản
+                                </div>
+                                <i class="fas fa-chevron-right text-muted"></i>
+                            </a>
+                            <a href="{{ url_for('lab.lab_sessions') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-calendar-check text-primary link-icon"></i>
+                                    Đăng ký ca thực hành
+                                </div>
+                                <i class="fas fa-chevron-right text-muted"></i>
+                            </a>
+                            <a href="{{ url_for('lab.my_lab_sessions') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-history text-primary link-icon"></i>
+                                    Lịch sử hoạt động
+                                </div>
+                                <i class="fas fa-chevron-right text-muted"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Quick Access (shown only for admins) -->
+    {% if current_user.is_admin() %}
+    <div class="admin-tools">
+        <div class="card content-card">
+            <div class="card-header">
+                <h5 class="m-0">
+                    <i class="fas fa-shield-alt"></i>
+                    Công cụ quản trị viên
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('admin.admin_users') }}" class="admin-tool-btn d-block">
+                            <i class="fas fa-users text-primary"></i>
+                            <span>Quản lý người dùng</span>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('lab.admin_lab_sessions') }}" class="admin-tool-btn d-block">
+                            <i class="fas fa-calendar-alt text-success"></i>
+                            <span>Quản lý ca thực hành</span>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('admin.activity_logs') }}" class="admin-tool-btn d-block">
+                            <i class="fas fa-history text-info"></i>
+                            <span>Nhật ký hoạt động</span>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('admin.admin_dashboard') }}" class="admin-tool-btn d-block">
+                            <i class="fas fa-tachometer-alt text-danger"></i>
+                            <span>Bảng điều khiển admin</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

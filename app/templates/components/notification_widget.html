@@ -1,0 +1,377 @@
+<!-- Notification Bell Widget -->
+<div class="notification-widget" id="notificationWidget">
+    <div class="dropdown">
+        <button class="btn btn-link notification-bell" type="button" id="notificationDropdown" 
+                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+        </button>
+        
+        <div class="dropdown-menu dropdown-menu-right notification-dropdown" 
+             aria-labelledby="notificationDropdown">
+            <div class="notification-header">
+                <h6 class="mb-0">Thông báo</h6>
+                <button class="btn btn-sm btn-link text-primary" id="markAllRead" style="display: none;">
+                    Đánh dấu tất cả đã đọc
+                </button>
+            </div>
+            
+            <div class="notification-list" id="notificationList">
+                <div class="notification-item text-center py-3">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <p class="mt-2 mb-0 text-muted">Đang tải...</p>
+                </div>
+            </div>
+            
+            <div class="notification-footer">
+                <a href="{{ url_for('user.notifications') }}" class="btn btn-sm btn-primary btn-block">
+                    Xem tất cả thông báo
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.notification-widget {
+    position: relative;
+}
+
+.notification-bell {
+    position: relative;
+    color: #6c757d;
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    border: none;
+    background: none;
+}
+
+.notification-bell:hover {
+    color: #007bff;
+}
+
+.notification-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(25%, -25%);
+}
+
+.notification-dropdown {
+    width: 350px;
+    max-height: 500px;
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border-radius: 0.5rem;
+}
+
+.notification-header {
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8f9fa;
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.notification-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f1f3f4;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    position: relative;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fa;
+}
+
+.notification-item.unread {
+    background-color: #e3f2fd;
+    border-left: 3px solid #2196f3;
+}
+
+.notification-item.unread::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    width: 8px;
+    height: 8px;
+    background: #2196f3;
+    border-radius: 50%;
+    transform: translateY(-50%);
+}
+
+.notification-title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #212529;
+    margin-bottom: 0.25rem;
+}
+
+.notification-content {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+}
+
+.notification-time {
+    font-size: 0.75rem;
+    color: #868e96;
+}
+
+.notification-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.notification-type-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+    color: white;
+}
+
+.notification-type-info { background: #17a2b8; }
+.notification-type-success { background: #28a745; }
+.notification-type-warning { background: #ffc107; color: #212529; }
+.notification-type-error { background: #dc3545; }
+
+.notification-footer {
+    padding: 0.75rem 1rem;
+    background: #f8f9fa;
+    border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.notification-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #6c757d;
+}
+</style>
+
+<script>
+class NotificationWidget {
+    constructor() {
+        this.updateInterval = null;
+        this.init();
+    }
+    
+    init() {
+        this.loadNotifications();
+        this.startPolling();
+        this.bindEvents();
+    }
+    
+    bindEvents() {
+        // Mark all as read
+        $('#markAllRead').on('click', () => {
+            this.markAllAsRead();
+        });
+        
+        // Handle notification clicks
+        $(document).on('click', '.notification-item', (e) => {
+            const item = $(e.currentTarget);
+            const notificationId = item.data('id');
+            const link = item.data('link');
+            
+            if (item.hasClass('unread')) {
+                this.markAsRead(notificationId);
+            }
+            
+            if (link) {
+                window.location.href = link;
+            }
+        });
+        
+        // Handle notification actions
+        $(document).on('click', '.notification-delete', (e) => {
+            e.stopPropagation();
+            const notificationId = $(e.target).closest('.notification-item').data('id');
+            this.deleteNotification(notificationId);
+        });
+    }
+      async loadNotifications() {
+        // Notifications now loaded from server-side data
+        // No need for API calls - data is already available in template
+        console.log('✅ Notifications loaded from server-side data');
+        
+        // If notifications data is available from server, use it
+        if (window.notificationsData) {
+            this.renderNotifications(window.notificationsData.notifications);
+            this.updateBadge(window.notificationsData.unread_count);
+        } else {
+            // Fallback: reload page to get fresh data
+            console.log('No server-side notification data, reloading page');
+            window.location.reload();
+        }
+    }
+    
+    renderNotifications(notifications) {
+        const container = $('#notificationList');
+        
+        if (notifications.length === 0) {
+            container.html(`
+                <div class="notification-empty">
+                    <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                    <p>Không có thông báo nào</p>
+                </div>
+            `);
+            return;
+        }
+        
+        const html = notifications.map(notification => `
+            <div class="notification-item ${notification.read ? '' : 'unread'}" 
+                 data-id="${notification.id}" data-link="${notification.link || ''}">
+                <div class="d-flex">
+                    <div class="notification-type-icon notification-type-${notification.type}">
+                        <i class="fas fa-${this.getTypeIcon(notification.type)}"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="notification-title">${notification.title}</div>
+                        <div class="notification-content">${notification.content}</div>
+                        <div class="notification-time">${this.formatTime(notification.created_at)}</div>
+                    </div>
+                    <button class="btn btn-sm btn-link notification-delete p-1" title="Xóa">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        container.html(html);
+    }
+    
+    updateBadge(count) {
+        const badge = $('#notificationBadge');
+        const markAllBtn = $('#markAllRead');
+        
+        if (count > 0) {
+            badge.text(count > 99 ? '99+' : count).show();
+            markAllBtn.show();
+        } else {
+            badge.hide();
+            markAllBtn.hide();
+        }
+    }
+    
+    async markAsRead(notificationId) {
+        try {
+            const response = await fetch(`/user/notifications/mark-read/${notificationId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                this.loadNotifications();
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    }
+    
+    async markAllAsRead() {
+        try {
+            const response = await fetch('/user/notifications/mark-all-read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                this.loadNotifications();
+            }
+        } catch (error) {
+            console.error('Error marking all notifications as read:', error);
+        }
+    }
+    
+    async deleteNotification(notificationId) {
+        try {
+            const response = await fetch(`/user/notifications/delete/${notificationId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                this.loadNotifications();
+            }
+        } catch (error) {
+            console.error('Error deleting notification:', error);
+        }
+    }
+    
+    getTypeIcon(type) {
+        const icons = {
+            'info': 'info-circle',
+            'success': 'check-circle',
+            'warning': 'exclamation-triangle',
+            'error': 'times-circle'
+        };
+        return icons[type] || 'bell';
+    }
+    
+    formatTime(timestamp) {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diff = now - date;
+        
+        if (diff < 60000) return 'Vừa xong';
+        if (diff < 3600000) return `${Math.floor(diff / 60000)} phút trước`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)} giờ trước`;
+        if (diff < 604800000) return `${Math.floor(diff / 86400000)} ngày trước`;
+        
+        return date.toLocaleDateString('vi-VN');
+    }
+    
+    startPolling() {
+        // Update notifications every 30 seconds
+        this.updateInterval = setInterval(() => {
+            this.loadNotifications();
+        }, 30000);
+    }
+    
+    stopPolling() {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+        }
+    }
+}
+
+// Initialize when document is ready
+$(document).ready(() => {
+    if ($('#notificationWidget').length) {
+        window.notificationWidget = new NotificationWidget();
+    }
+});
+</script>

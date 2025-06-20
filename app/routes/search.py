@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from sqlalchemy import or_, text
 from ..models import NguoiDung
-from ..cache.cache_manager import cached_route, cached_api
+from ..cache.cache_manager import cached_route
 
 search_bp = Blueprint('search', __name__)
 

@@ -152,6 +152,11 @@ class NguoiDung(UserMixin, db.Model):
     @property
     def created_at(self):
         return self.ngay_tao
+    
+    @property
+    def last_login(self):
+        """Compatibility property - maps last_seen to last_login for templates"""
+        return self.last_seen
         
     def __repr__(self):
         return f"<NguoiDung {self.ten_nguoi_dung}>"

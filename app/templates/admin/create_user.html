@@ -45,44 +45,44 @@
                         </div>
 
                         <div class="form-group">
-                            {{ form.password.label(class="form-control-label") }}
-                            {% if form.password.errors %}
-                                {{ form.password(class="form-control is-invalid") }}
+                            {{ form.mat_khau.label(class="form-control-label") }}
+                            {% if form.mat_khau.errors %}
+                                {{ form.mat_khau(class="form-control is-invalid") }}
                                 <div class="invalid-feedback">
-                                    {% for error in form.password.errors %}
+                                    {% for error in form.mat_khau.errors %}
                                         <span>{{ error }}</span>
                                     {% endfor %}
                                 </div>
                             {% else %}
-                                {{ form.password(class="form-control", placeholder="Enter password") }}
+                                {{ form.mat_khau(class="form-control", placeholder="Enter password") }}
                             {% endif %}
                         </div>
 
                         <div class="form-group">
-                            {{ form.confirm_password.label(class="form-control-label") }}
-                            {% if form.confirm_password.errors %}
-                                {{ form.confirm_password(class="form-control is-invalid") }}
+                            {{ form.xac_nhan_mat_khau.label(class="form-control-label") }}
+                            {% if form.xac_nhan_mat_khau.errors %}
+                                {{ form.xac_nhan_mat_khau(class="form-control is-invalid") }}
                                 <div class="invalid-feedback">
-                                    {% for error in form.confirm_password.errors %}
+                                    {% for error in form.xac_nhan_mat_khau.errors %}
                                         <span>{{ error }}</span>
                                     {% endfor %}
                                 </div>
                             {% else %}
-                                {{ form.confirm_password(class="form-control", placeholder="Confirm password") }}
+                                {{ form.xac_nhan_mat_khau(class="form-control", placeholder="Confirm password") }}
                             {% endif %}
                         </div>
 
                         <div class="form-group">
-                            {{ form.role.label(class="form-control-label") }}
-                            {% if form.role.errors %}
-                                {{ form.role(class="form-control is-invalid") }}
+                            {{ form.vai_tro.label(class="form-control-label") }}
+                            {% if form.vai_tro.errors %}
+                                {{ form.vai_tro(class="form-control is-invalid") }}
                                 <div class="invalid-feedback">
-                                    {% for error in form.role.errors %}
+                                    {% for error in form.vai_tro.errors %}
                                         <span>{{ error }}</span>
                                     {% endfor %}
                                 </div>
                             {% else %}
-                                {{ form.role(class="form-control") }}
+                                {{ form.vai_tro(class="form-control") }}
                             {% endif %}
                             <small class="form-text text-muted">
                                 <ul class="mb-0 pl-3 mt-2">

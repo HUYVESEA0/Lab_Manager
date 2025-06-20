@@ -69,10 +69,8 @@
                                 {% endif %}
 
                                 <div class="dropdown-divider"></div>
-
-                                <!-- System Section -->
                                 <h6 class="dropdown-header">Quản lý hệ thống</h6>
-                                <a class="dropdown-item" href="{{ url_for('admin.system_settings') }}">
+                                <a class="dropdown-item" href="{{ url_for('admin.settings') }}">
                                     <i class="fas fa-cog mr-2"></i>Cài đặt hệ thống
                                 </a>
                                 <a class="dropdown-item" href="{{ url_for('admin.activity_logs') }}">
@@ -84,14 +82,14 @@
 
                                 <!-- Admin Manager Only Section -->
                                 <h6 class="dropdown-header text-danger">Chỉ quản trị viên hệ thống</h6>
-                                <a class="dropdown-item text-danger" href="{{ url_for('admin.system_operations') }}">
+                                <a class="dropdown-item text-danger" href="{{ url_for('system_admin.system_operations') }}">
                                     <i class="fas fa-tools mr-2"></i>Quản lý hệ thống
                                 </a>
-                                <a class="dropdown-item text-danger" href="{{ url_for('admin.reset_database') }}">
-                                    <i class="fas fa-database mr-2"></i>Quản lý cơ sở dữ liệu
+                                <a class="dropdown-item text-danger" href="{{ url_for('system_admin.reset_database') }}">
+                                    <i class="fas fa-database mr-2"></i>Đặt lại cơ sở dữ liệu
                                 </a>
-                                <a class="dropdown-item text-danger" href="{{ url_for('admin.clear_logs') }}">
-                                    <i class="fas fa-eraser mr-2"></i>Xóa nhật ký
+                                <a class="dropdown-item text-danger" href="{{ url_for('system_admin.clear_logs') }}">
+                                    <i class="fas fa-broom mr-2"></i>Xóa nhật ký hệ thống
                                 </a>
                                 {% endif %}
                             </div>

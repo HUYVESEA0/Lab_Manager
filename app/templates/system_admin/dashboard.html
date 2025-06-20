@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}System Admin Dashboard{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .system-admin-header {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .system-stats-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(220, 53, 69, 0.1);
+        transition: transform 0.2s ease;
+        border-left: 4px solid #dc3545;
+    }
+    
+    .system-stats-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(220, 53, 69, 0.2);
+    }
+    
+    .danger-zone {
+        border: 2px solid #dc3545;
+        border-radius: 8px;
+        padding: 20px;
+        background-color: #f8f9fa;
+    }
+    
+    .system-admin-badge {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- System Admin Header -->
+    <div class="system-admin-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-1">
+                    <i class="fas fa-crown mr-2"></i>System Administrator Dashboard
+                </h1>
+                <p class="mb-0">Quản lý toàn bộ hệ thống Lab Manager</p>
+            </div>
+            <div class="system-admin-badge">
+                <i class="fas fa-shield-alt mr-1"></i>SYSTEM ADMIN
+            </div>
+        </div>
+    </div>
+
+    <!-- System Statistics -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card system-stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Total Users
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_users }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card system-stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Admin Users
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ admin_users }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-shield fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card system-stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                System Admins
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ system_admins }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-crown fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card system-stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                System Settings
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ system_settings|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-cogs fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt mr-2 text-danger"></i>System Operations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{{ url_for('system_admin.system_settings') }}" class="btn btn-danger btn-block mb-2">
+                                <i class="fas fa-cogs mr-1"></i>System Settings
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('system_admin.system_operations') }}" class="btn btn-warning btn-block mb-2">
+                                <i class="fas fa-tools mr-1"></i>System Operations
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('admin.admin_users') }}" class="btn btn-info btn-block mb-2">
+                                <i class="fas fa-users-cog mr-1"></i>Manage All Users
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('admin.activity_logs') }}" class="btn btn-secondary btn-block mb-2">
+                                <i class="fas fa-history mr-1"></i>System Logs
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Danger Zone
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="danger-zone">
+                        <h6 class="text-danger">⚠️ Cảnh báo: Các thao tác dưới đây có thể ảnh hưởng nghiêm trọng đến hệ thống</h6>
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <a href="{{ url_for('system_admin.reset_database') }}" class="btn btn-outline-danger btn-block" 
+                                   onclick="return confirm('Bạn có chắc chắn muốn truy cập chức năng reset database?')">
+                                    <i class="fas fa-database mr-1"></i>Reset Database
+                                </a>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-danger btn-block" 
+                                        onclick="confirmSystemBackup()">
+                                    <i class="fas fa-download mr-1"></i>Full System Backup
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-danger btn-block disabled">
+                                    <i class="fas fa-power-off mr-1"></i>System Maintenance
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmSystemBackup() {
+    if (confirm('Tạo backup toàn bộ hệ thống? Quá trình này có thể mất vài phút.')) {
+        fetch('{{ url_for("system_admin.backup_system") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        }).then(response => {
+            if (response.ok) {
+                alert('Backup được tạo thành công!');
+                location.reload();
+            } else {
+                alert('Có lỗi xảy ra khi tạo backup.');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

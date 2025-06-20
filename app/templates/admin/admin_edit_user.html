@@ -44,16 +44,16 @@
                         </div>
 
                         <div class="form-group">
-                            {{ form.role.label(class="form-control-label") }}
-                            {% if form.role.errors %}
-                                {{ form.role(class="form-control is-invalid") }}
+                            {{ form.vai_tro.label(class="form-control-label") }}
+                            {% if form.vai_tro.errors %}
+                                {{ form.vai_tro(class="form-control is-invalid") }}
                                 <div class="invalid-feedback">
-                                    {% for error in form.role.errors %}
+                                    {% for error in form.vai_tro.errors %}
                                         <span>{{ error }}</span>
                                     {% endfor %}
                                 </div>
                             {% else %}
-                                {{ form.role(class="form-control") }}
+                                {{ form.vai_tro(class="form-control") }}
                             {% endif %}
                         </div>
 

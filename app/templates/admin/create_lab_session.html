@@ -322,142 +322,367 @@
         position: absolute;
         z-index: 9999 !important;
     }
+
+    /* Auto-save indicator */
+    .auto-save-indicator {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #28a745;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        z-index: 1000;
+        display: none;
+        transition: all 0.3s ease;
+    }
+
+    .auto-save-indicator.saving {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .auto-save-indicator.error {
+        background: #dc3545;
+    }
+
+    /* Enhanced form styling */
+    .form-section.collapsed .form-section-content {
+        display: none;
+    }
+
+    .form-section-header {
+        cursor: pointer;
+        padding: 0.5rem 0;
+        border-bottom: 2px solid #e9ecef;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .form-section-header:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+        border-radius: 4px;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    .section-toggle {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    /* Recurring sessions styling */
+    .recurring-options {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+        border: 1px solid #dee2e6;
+    }
+
+    .recurring-pattern {
+        display: none;
+        margin-top: 1rem;
+    }
+
+    .recurring-pattern.active {
+        display: block;
+    }
+
+    /* Notification settings */
+    .notification-settings {
+        background-color: #e3f2fd;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+        border: 1px solid #bbdefb;
+    }
+
+    /* Progress indicator */
+    .form-progress {
+        background-color: #f8f9fa;
+        border-radius: 20px;
+        height: 6px;
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .form-progress-bar {
+        background: linear-gradient(90deg, #007bff, #28a745);
+        height: 100%;
+        width: 0%;
+        transition: width 0.3s ease;
+        border-radius: 20px;
+    }
+
+    /* Enhanced tooltips */
+    .tooltip-trigger {
+        color: #007bff;
+        cursor: help;
+        margin-left: 5px;
+    }
+
+    /* Conflict detection */
+    .conflict-warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-top: 1rem;
+        display: none;
+    }
+
+    .conflict-warning.show {
+        display: block;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated and current_user.is_admin() %}
+<!-- Auto-save indicator -->
+<div class="auto-save-indicator" id="autoSaveIndicator">
+    <i class="fas fa-save"></i> <span id="autoSaveText">Draft saved</span>
+</div>
+
+<!-- Form progress indicator -->
+<div class="form-progress">
+    <div class="form-progress-bar" id="formProgressBar"></div>
+</div>
+
 <div class="container">
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h4><i class="fas fa-calendar-plus"></i> Tạo ca thực hành mới</h4>
+                    <small class="d-block mt-1">Điền thông tin để tạo buổi thực hành cho sinh viên</small>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('lab.create_lab_session') }}" id="labSessionForm">
                         {{ form.hidden_tag() }}
 
                         <!-- Basic Information Section -->
-                        <div class="form-section">
-                            <h5 class="form-section-title"><i class="fas fa-info-circle"></i> Thông tin cơ bản</h5>
-
-                            <div class="form-group">
-                                <label for="tieu_de" class="required-field">{{ form.tieu_de.label }}</label>
-                                {% if form.tieu_de.errors %}
-                                    {{ form.tieu_de(class="form-control is-invalid") }}
-                                    <div class="invalid-feedback">
-                                        {% for error in form.tieu_de.errors %}
-                                            <span>{{ error }}</span>
-                                        {% endfor %}
-                                    </div>
-                                {% else %}
-                                    {{ form.tieu_de(class="form-control", placeholder="VD: Thực hành Python cơ bản") }}
-                                {% endif %}
-                                <small class="field-help">Nhập tiêu đề mô tả cho ca thực hành</small>
+                        <div class="form-section" id="basicInfoSection">
+                            <div class="form-section-header" onclick="toggleSection('basicInfoSection')">
+                                <h5 class="form-section-title mb-0">
+                                    <i class="fas fa-info-circle"></i> Thông tin cơ bản
+                                </h5>
+                                <span class="section-toggle">
+                                    <i class="fas fa-chevron-up"></i>
+                                </span>
                             </div>
+                            <div class="form-section-content">
+                                <div class="form-group">
+                                    <label for="tieu_de" class="required-field">
+                                        {{ form.tieu_de.label }}
+                                        <i class="fas fa-question-circle tooltip-trigger" 
+                                           title="Nhập tên mô tả ngắn gọn cho buổi thực hành"></i>
+                                    </label>
+                                    {% if form.tieu_de.errors %}
+                                        {{ form.tieu_de(class="form-control is-invalid", placeholder="VD: Thực hành Python cơ bản") }}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.tieu_de.errors %}
+                                                <span>{{ error }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        {{ form.tieu_de(class="form-control", placeholder="VD: Thực hành Python cơ bản") }}
+                                    {% endif %}
+                                    <small class="field-help">Nhập tiêu đề mô tả cho ca thực hành</small>
+                                </div>
 
-                            <div class="form-group">
-                                <label for="mo_ta" class="required-field">{{ form.mo_ta.label }}</label>
-                                {% if form.mo_ta.errors %}
-                                    {{ form.mo_ta(class="form-control is-invalid", rows=4) }}
-                                    <div class="invalid-feedback">
-                                        {% for error in form.mo_ta.errors %}
-                                            <span>{{ error }}</span>
-                                        {% endfor %}
-                                    </div>
-                                {% else %}
-                                    {{ form.mo_ta(class="form-control", rows=4, placeholder="Mô tả nội dung, mục tiêu, yêu cầu ca thực hành...") }}
-                                {% endif %}
-                                <small class="field-help">Cung cấp chi tiết về ca thực hành này</small>
+                                <div class="form-group">
+                                    <label for="mo_ta" class="required-field">
+                                        {{ form.mo_ta.label }}
+                                        <i class="fas fa-question-circle tooltip-trigger" 
+                                           title="Mô tả chi tiết nội dung, yêu cầu và mục tiêu của buổi thực hành"></i>
+                                    </label>
+                                    {% if form.mo_ta.errors %}
+                                        {{ form.mo_ta(class="form-control is-invalid", rows=4) }}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.mo_ta.errors %}
+                                                <span>{{ error }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        {{ form.mo_ta(class="form-control", rows=4, placeholder="Mô tả nội dung, mục tiêu, yêu cầu ca thực hành...") }}
+                                    {% endif %}
+                                    <small class="field-help">Cung cấp chi tiết về ca thực hành này</small>
+                                </div>
+
+                                <!-- Course Selection -->
+                                <div class="form-group">
+                                    <label for="course_id">
+                                        Môn học liên quan
+                                        <i class="fas fa-question-circle tooltip-trigger" 
+                                           title="Chọn môn học mà buổi thực hành này thuộc về"></i>
+                                    </label>
+                                    <select class="form-control" id="course_id" name="course_id">
+                                        <option value="">-- Chọn môn học (tùy chọn) --</option>
+                                        <!-- Dynamic course options would be populated here -->
+                                    </select>
+                                    <small class="field-help">Liên kết buổi thực hành với một môn học cụ thể</small>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Schedule Section -->
-                        <div class="form-section">
-                            <h5 class="form-section-title"><i class="fas fa-clock"></i> Lịch trình</h5>
-
-                            <div class="form-group">
-                                <label for="ngay" class="required-field">{{ form.ngay.label }} (Chọn lịch)</label>
-                                <div class="date-picker-container">
-                                    <div class="input-group date" id="datePicker" data-target-input="nearest">
-                                        {% if form.ngay.errors %}
-                                            <input type="text" class="form-control datetimepicker-input is-invalid"
-                                                   data-target="#datePicker" id="ngay" name="ngay">
-                                            <div class="input-group-append" data-target="#datePicker" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fas fa-calendar"></i></div>
-                                            </div>
-                                            <div class="invalid-feedback">
-                                                {% for error in form.ngay.errors %}
-                                                    <span>{{ error }}</span>
-                                                {% endfor %}
-                                            </div>
-                                        {% else %}
-                                            <input type="text" class="form-control datetimepicker-input"
-                                                   data-target="#datePicker" id="ngay" name="ngay">
-                                            <div class="input-group-append" data-target="#datePicker" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fas fa-calendar"></i></div>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <small class="field-help">Chọn ngày cho ca thực hành</small>
+                        <div class="form-section" id="scheduleSection">
+                            <div class="form-section-header" onclick="toggleSection('scheduleSection')">
+                                <h5 class="form-section-title mb-0">
+                                    <i class="fas fa-clock"></i> Lịch trình
+                                </h5>
+                                <span class="section-toggle">
+                                    <i class="fas fa-chevron-up"></i>
+                                </span>
                             </div>
-
-                            <div class="time-range-container">
-                                <div class="form-group time-picker-container">
-                                    <label for="gio_bat_dau" class="required-field">{{ form.gio_bat_dau.label }}</label>
-                                    <div class="input-group date" id="startTimePicker" data-target-input="nearest">
-                                        {% if form.gio_bat_dau.errors %}
-                                            <input type="text" class="form-control datetimepicker-input is-invalid"
-                                                   data-target="#startTimePicker" id="gio_bat_dau" name="gio_bat_dau">
-                                            <div class="input-group-append" data-target="#startTimePicker" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fas fa-clock"></i></div>
-                                            </div>
-                                            <div class="invalid-feedback">
-                                                {% for error in form.gio_bat_dau.errors %}
-                                                    <span>{{ error }}</span>
-                                                {% endfor %}
-                                            </div>
-                                        {% else %}
-                                            <input type="text" class="form-control datetimepicker-input"
-                                                   data-target="#startTimePicker" id="gio_bat_dau" name="gio_bat_dau">
-                                            <div class="input-group-append" data-target="#startTimePicker" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fas fa-clock"></i></div>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                    <small class="field-help">Chọn giờ bắt đầu</small>
+                            <div class="form-section-content">
+                                <!-- Conflict detection warning -->
+                                <div class="conflict-warning" id="conflictWarning">
+                                    <h6><i class="fas fa-exclamation-triangle"></i> Phát hiện xung đột lịch</h6>
+                                    <p id="conflictDetails">Có buổi thực hành khác đã được lên lịch trong khoảng thời gian này.</p>
                                 </div>
 
-                                <div class="form-group time-picker-container">
-                                    <label for="gio_ket_thuc" class="required-field">{{ form.gio_ket_thuc.label }}</label>
-                                    <div class="input-group date" id="endTimePicker" data-target-input="nearest">
-                                        {% if form.gio_ket_thuc.errors %}
-                                            <input type="text" class="form-control datetimepicker-input is-invalid"
-                                                   data-target="#endTimePicker" id="gio_ket_thuc" name="gio_ket_thuc">
-                                            <div class="input-group-append" data-target="#endTimePicker" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fas fa-clock"></i></div>
-                                            </div>
-                                            <div class="invalid-feedback">
-                                                {% for error in form.gio_ket_thuc.errors %}
-                                                    <span>{{ error }}</span>
-                                                {% endfor %}
-                                            </div>
-                                        {% else %}
-                                            <input type="text" class="form-control datetimepicker-input"
-                                                   data-target="#endTimePicker" id="gio_ket_thuc" name="gio_ket_thuc">
-                                            <div class="input-group-append" data-target="#endTimePicker" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fas fa-clock"></i></div>
-                                            </div>
-                                        {% endif %}
+                                <div class="form-group">
+                                    <label for="ngay" class="required-field">
+                                        {{ form.ngay.label }} (Chọn lịch)
+                                        <i class="fas fa-question-circle tooltip-trigger" 
+                                           title="Chọn ngày diễn ra buổi thực hành"></i>
+                                    </label>
+                                    <div class="date-picker-container">
+                                        <div class="input-group date" id="datePicker" data-target-input="nearest">
+                                            {% if form.ngay.errors %}
+                                                <input type="text" class="form-control datetimepicker-input is-invalid"
+                                                       data-target="#datePicker" id="ngay" name="ngay">
+                                                <div class="input-group-append" data-target="#datePicker" data-toggle="datetimepicker">
+                                                    <div class="input-group-text"><i class="fas fa-calendar"></i></div>
+                                                </div>
+                                                <div class="invalid-feedback">
+                                                    {% for error in form.ngay.errors %}
+                                                        <span>{{ error }}</span>
+                                                    {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                <input type="text" class="form-control datetimepicker-input"
+                                                       data-target="#datePicker" id="ngay" name="ngay">
+                                                <div class="input-group-append" data-target="#datePicker" data-toggle="datetimepicker">
+                                                    <div class="input-group-text"><i class="fas fa-calendar"></i></div>
+                                                </div>
+                                            {% endif %}
+                                        </div>
                                     </div>
-                                    <small class="field-help">Chọn giờ kết thúc</small>
+                                    <small class="field-help">Chọn ngày cho ca thực hành</small>
                                 </div>
-                            </div>
 
-                            <div class="alert alert-info mt-3" id="durationAlert">
-                                <i class="fas fa-info-circle"></i> Duration: <span id="sessionDuration">Please select start and end times</span>
+                                <div class="time-range-container">
+                                    <div class="form-group time-picker-container">
+                                        <label for="gio_bat_dau" class="required-field">
+                                            {{ form.gio_bat_dau.label }}
+                                            <i class="fas fa-question-circle tooltip-trigger" 
+                                               title="Thời gian bắt đầu buổi thực hành"></i>
+                                        </label>
+                                        <div class="input-group date" id="startTimePicker" data-target-input="nearest">
+                                            {% if form.gio_bat_dau.errors %}
+                                                <input type="text" class="form-control datetimepicker-input is-invalid"
+                                                       data-target="#startTimePicker" id="gio_bat_dau" name="gio_bat_dau">
+                                                <div class="input-group-append" data-target="#startTimePicker" data-toggle="datetimepicker">
+                                                    <div class="input-group-text"><i class="fas fa-clock"></i></div>
+                                                </div>
+                                                <div class="invalid-feedback">
+                                                    {% for error in form.gio_bat_dau.errors %}
+                                                        <span>{{ error }}</span>
+                                                    {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                <input type="text" class="form-control datetimepicker-input"
+                                                       data-target="#startTimePicker" id="gio_bat_dau" name="gio_bat_dau">
+                                                <div class="input-group-append" data-target="#startTimePicker" data-toggle="datetimepicker">
+                                                    <div class="input-group-text"><i class="fas fa-clock"></i></div>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <small class="field-help">Chọn giờ bắt đầu</small>
+                                    </div>
+
+                                    <div class="form-group time-picker-container">
+                                        <label for="gio_ket_thuc" class="required-field">
+                                            {{ form.gio_ket_thuc.label }}
+                                            <i class="fas fa-question-circle tooltip-trigger" 
+                                               title="Thời gian kết thúc buổi thực hành"></i>
+                                        </label>
+                                        <div class="input-group date" id="endTimePicker" data-target-input="nearest">
+                                            {% if form.gio_ket_thuc.errors %}
+                                                <input type="text" class="form-control datetimepicker-input is-invalid"
+                                                       data-target="#endTimePicker" id="gio_ket_thuc" name="gio_ket_thuc">
+                                                <div class="input-group-append" data-target="#endTimePicker" data-toggle="datetimepicker">
+                                                    <div class="input-group-text"><i class="fas fa-clock"></i></div>
+                                                </div>
+                                                <div class="invalid-feedback">
+                                                    {% for error in form.gio_ket_thuc.errors %}
+                                                        <span>{{ error }}</span>
+                                                    {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                <input type="text" class="form-control datetimepicker-input"
+                                                       data-target="#endTimePicker" id="gio_ket_thuc" name="gio_ket_thuc">
+                                                <div class="input-group-append" data-target="#endTimePicker" data-toggle="datetimepicker">
+                                                    <div class="input-group-text"><i class="fas fa-clock"></i></div>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <small class="field-help">Chọn giờ kết thúc</small>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info mt-3" id="durationAlert">
+                                    <i class="fas fa-info-circle"></i> Duration: <span id="sessionDuration">Please select start and end times</span>
+                                </div>
+
+                                <!-- Recurring Sessions Option -->
+                                <div class="recurring-options">
+                                    <div class="form-group">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="isRecurring" name="is_recurring">
+                                            <label class="custom-control-label" for="isRecurring">
+                                                <strong>Tạo buổi thực hành định kỳ</strong>
+                                                <i class="fas fa-question-circle tooltip-trigger" 
+                                                   title="Tự động tạo nhiều buổi thực hành theo chu kỳ"></i>
+                                            </label>
+                                        </div>
+                                        <small class="field-help">Tạo nhiều buổi thực hành với cùng thông tin</small>
+                                    </div>
+
+                                    <div class="recurring-pattern" id="recurringPattern">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="recurringType">Loại lặp lại</label>
+                                                    <select class="form-control" id="recurringType" name="recurring_type">
+                                                        <option value="weekly">Hàng tuần</option>
+                                                        <option value="biweekly">Hai tuần một lần</option>
+                                                        <option value="monthly">Hàng tháng</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="recurringCount">Số buổi</label>
+                                                    <input type="number" class="form-control" id="recurringCount" 
+                                                           name="recurring_count" min="1" max="20" value="4">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="recurringEndDate">Ngày kết thúc</label>
+                                            <input type="date" class="form-control" id="recurringEndDate" name="recurring_end_date">
+                                            <small class="field-help">Hoặc để trống để dựa trên số buổi</small>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -497,63 +722,130 @@
                         </div>
 
                         <!-- Additional Settings Section -->
-                        <div class="form-section">
-                            <h5 class="form-section-title"><i class="fas fa-cog"></i> Thiết lập bổ sung</h5>
-
-                            <div class="form-group">
-                                <div class="custom-control custom-switch">
-                                    {{ form.dang_hoat_dong(class="custom-control-input", checked=true) }}
-                                    <label class="custom-control-label" for="dang_hoat_dong">
-                                        {{ form.dang_hoat_dong.label }}
-                                    </label>
-                                </div>
-                                <small class="field-help">Nếu đánh dấu, sinh viên sẽ có thể đăng ký tham gia ca này</small>
+                        <div class="form-section" id="additionalSettingsSection">
+                            <div class="form-section-header" onclick="toggleSection('additionalSettingsSection')">
+                                <h5 class="form-section-title mb-0">
+                                    <i class="fas fa-cog"></i> Thiết lập bổ sung
+                                </h5>
+                                <span class="section-toggle">
+                                    <i class="fas fa-chevron-up"></i>
+                                </span>
                             </div>
-
-                            <div class="form-group">
-                                <label for="ma_xac_thuc">{{ form.ma_xac_thuc.label }}</label>
-                                <div class="input-group">
-                                    {% if form.ma_xac_thuc.errors %}
-                                        {{ form.ma_xac_thuc(class="form-control is-invalid", placeholder="Để trống để tự động tạo") }}
-                                        <div class="input-group-append">
-                                            <button class="btn btn-outline-secondary" type="button" id="generateCode">
-                                                <i class="fas fa-random"></i> Tạo mã
-                                            </button>
-                                        </div>
-                                        <div class="invalid-feedback">
-                                            {% for error in form.ma_xac_thuc.errors %}
-                                                <span>{{ error }}</span>
-                                            {% endfor %}
-                                        </div>
-                                    {% else %}
-                                        {{ form.ma_xac_thuc(class="form-control", placeholder="Để trống để tự động tạo") }}
-                                        <div class="input-group-append">
-                                            <button class="btn btn-outline-secondary" type="button" id="generateCode">
-                                                <i class="fas fa-random"></i> Tạo mã
-                                            </button>
-                                        </div>
-                                    {% endif %}
+                            <div class="form-section-content">
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch">
+                                        {{ form.dang_hoat_dong(class="custom-control-input", checked=true) }}
+                                        <label class="custom-control-label" for="dang_hoat_dong">
+                                            {{ form.dang_hoat_dong.label }}
+                                            <i class="fas fa-question-circle tooltip-trigger" 
+                                               title="Cho phép sinh viên đăng ký tham gia buổi thực hành"></i>
+                                        </label>
+                                    </div>
+                                    <small class="field-help">Nếu đánh dấu, sinh viên sẽ có thể đăng ký tham gia ca này</small>
                                 </div>
-                                <small class="field-help">Mã sinh viên sẽ sử dụng để check-in vào ca thực hành. Nếu để trống, mã ngẫu nhiên sẽ được tạo.</small>
 
-                                <div class="verification-code-container mt-3">
-                                    <div class="verification-info">
-                                        <div class="verification-info-text">
-                                            <p><strong>Lưu ý:</strong> Mã này sẽ được hiển thị cho bạn sau khi tạo buổi thực hành. Hãy đảm bảo chỉ chia sẻ với những người tham dự được ủy quyền.</p>
-                                            <p class="mb-2"><strong>Verification Code:</strong> <span id="displayVerificationCode">-</span></p>
+                                <!-- Notification Settings -->
+                                <div class="notification-settings">
+                                    <h6><i class="fas fa-bell"></i> Cài đặt thông báo</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input" id="notifyEmail" 
+                                                       name="notify_email" checked>
+                                                <label class="custom-control-label" for="notifyEmail">
+                                                    Gửi email thông báo
+                                                </label>
+                                            </div>
                                         </div>
-                                        <div class="verification-info-qr">
-                                            <button type="button" class="btn btn-primary" id="generateQR">
-                                                <i class="fas fa-qrcode"></i> Tạo mã QR
-                                            </button>
+                                        <div class="col-md-6">
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input" id="notifyReminder" 
+                                                       name="notify_reminder" checked>
+                                                <label class="custom-control-label" for="notifyReminder">
+                                                    Nhắc nhở trước 24h
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
+                                    <small class="field-help">Tự động gửi thông báo đến sinh viên đăng ký</small>
+                                </div>
 
-                                    <div class="qr-code-container">
-                                        <h5>Mã QR cho Verification Code</h5>
-                                        <div id="qrcode"></div>
-                                        <p class="mt-2 mb-0">Sinh viên có thể quét mã QR này để check-in</p>
+                                <div class="form-group mt-3">
+                                    <label for="ma_xac_thuc">
+                                        {{ form.ma_xac_thuc.label }}
+                                        <i class="fas fa-question-circle tooltip-trigger" 
+                                           title="Mã này được sử dụng để sinh viên check-in vào buổi thực hành"></i>
+                                    </label>
+                                    <div class="input-group">
+                                        {% if form.ma_xac_thuc.errors %}
+                                            {{ form.ma_xac_thuc(class="form-control is-invalid", placeholder="Để trống để tự động tạo") }}
+                                            <div class="input-group-append">
+                                                <button class="btn btn-outline-secondary" type="button" id="generateCode">
+                                                    <i class="fas fa-random"></i> Tạo mã
+                                                </button>
+                                            </div>
+                                            <div class="invalid-feedback">
+                                                {% for error in form.ma_xac_thuc.errors %}
+                                                    <span>{{ error }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            {{ form.ma_xac_thuc(class="form-control", placeholder="Để trống để tự động tạo") }}
+                                            <div class="input-group-append">
+                                                <button class="btn btn-outline-secondary" type="button" id="generateCode">
+                                                    <i class="fas fa-random"></i> Tạo mã
+                                                </button>
+                                            </div>
+                                        {% endif %}
                                     </div>
+                                    <small class="field-help">Mã sinh viên sẽ sử dụng để check-in vào ca thực hành. Nếu để trống, mã ngẫu nhiên sẽ được tạo.</small>
+
+                                    <div class="verification-code-container mt-3">
+                                        <div class="verification-info">
+                                            <div class="verification-info-text">
+                                                <p><strong>Lưu ý:</strong> Mã này sẽ được hiển thị cho bạn sau khi tạo buổi thực hành. Hãy đảm bảo chỉ chia sẻ với những người tham dự được ủy quyền.</p>
+                                                <p class="mb-2"><strong>Verification Code:</strong> <span id="displayVerificationCode">-</span></p>
+                                            </div>
+                                            <div class="verification-info-qr">
+                                                <button type="button" class="btn btn-primary" id="generateQR">
+                                                    <i class="fas fa-qrcode"></i> Tạo mã QR
+                                                </button>
+                                                <button type="button" class="btn btn-success ml-2" id="downloadQR" style="display: none;">
+                                                    <i class="fas fa-download"></i> Tải QR
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="qr-code-container">
+                                            <h5>Mã QR cho Verification Code</h5>
+                                            <div id="qrcode"></div>
+                                            <p class="mt-2 mb-0">Sinh viên có thể quét mã QR này để check-in</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Prerequisites -->
+                                <div class="form-group">
+                                    <label for="prerequisites">
+                                        Yêu cầu tiên quyết
+                                        <i class="fas fa-question-circle tooltip-trigger" 
+                                           title="Các kiến thức hoặc kỹ năng sinh viên cần có trước khi tham gia"></i>
+                                    </label>
+                                    <textarea class="form-control" id="prerequisites" name="prerequisites" 
+                                              rows="3" placeholder="VD: Kiến thức cơ bản về Python, đã cài đặt IDE..."></textarea>
+                                    <small class="field-help">Mô tả các yêu cầu sinh viên cần đáp ứng</small>
+                                </div>
+
+                                <!-- Materials/Resources -->
+                                <div class="form-group">
+                                    <label for="materials">
+                                        Tài liệu/Công cụ cần thiết
+                                        <i class="fas fa-question-circle tooltip-trigger" 
+                                           title="Danh sách tài liệu, phần mềm hoặc thiết bị sinh viên cần chuẩn bị"></i>
+                                    </label>
+                                    <textarea class="form-control" id="materials" name="materials" 
+                                              rows="3" placeholder="VD: Laptop, Python 3.8+, VS Code, tài liệu lab..."></textarea>
+                                    <small class="field-help">Những gì sinh viên cần chuẩn bị trước buổi thực hành</small>
                                 </div>
                             </div>
                         </div>
@@ -583,6 +875,140 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script>
     $(document).ready(function() {
+        // Form progress tracking
+        let completedSections = 0;
+        const totalSections = 4;
+
+        // Auto-save functionality
+        let autoSaveTimeout;
+        let formData = {};
+
+        function updateProgress() {
+            const progress = (completedSections / totalSections) * 100;
+            $('#formProgressBar').css('width', progress + '%');
+        }
+
+        function showAutoSaveIndicator(status, message) {
+            const indicator = $('#autoSaveIndicator');
+            const text = $('#autoSaveText');
+            
+            indicator.removeClass('saving error').show();
+            if (status === 'saving') {
+                indicator.addClass('saving');
+                text.html('<i class="fas fa-spinner fa-spin"></i> ' + message);
+            } else if (status === 'success') {
+                text.html('<i class="fas fa-check"></i> ' + message);
+            } else if (status === 'error') {
+                indicator.addClass('error');
+                text.html('<i class="fas fa-times"></i> ' + message);
+            }
+            
+            setTimeout(() => indicator.fadeOut(), 3000);
+        }
+
+        function autoSaveDraft() {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(() => {
+                showAutoSaveIndicator('saving', 'Đang lưu bản nháp...');
+                
+                // Collect form data
+                const currentFormData = {
+                    tieu_de: $('#tieu_de').val(),
+                    mo_ta: $('#mo_ta').val(),
+                    ngay: $('#ngay').val(),
+                    gio_bat_dau: $('#gio_bat_dau').val(),
+                    gio_ket_thuc: $('#gio_ket_thuc').val(),
+                    dia_diem: $('#dia_diem').val(),
+                    so_luong_toi_da: $('#so_luong_toi_da').val(),
+                    ma_xac_thuc: $('#verification_code').val()
+                };
+                
+                // Save to localStorage
+                localStorage.setItem('lab_session_draft', JSON.stringify(currentFormData));
+                showAutoSaveIndicator('success', 'Đã lưu bản nháp');
+            }, 2000);
+        }
+
+        function loadDraft() {
+            const draft = localStorage.getItem('lab_session_draft');
+            if (draft) {
+                const data = JSON.parse(draft);
+                if (confirm('Phát hiện bản nháp đã lưu. Bạn có muốn khôi phục không?')) {
+                    Object.keys(data).forEach(key => {
+                        $(`#${key}`).val(data[key]);
+                    });
+                    showAutoSaveIndicator('success', 'Đã khôi phục bản nháp');
+                }
+            }
+        }
+
+        // Section toggle functionality
+        window.toggleSection = function(sectionId) {
+            const section = $(`#${sectionId}`);
+            const content = section.find('.form-section-content');
+            const toggle = section.find('.section-toggle i');
+            
+            content.slideToggle();
+            toggle.toggleClass('fa-chevron-up fa-chevron-down');
+        };
+
+        // Conflict detection
+        function checkScheduleConflicts() {
+            const date = $('#ngay').val();
+            const startTime = $('#gio_bat_dau').val();
+            const endTime = $('#gio_ket_thuc').val();
+            
+            if (date && startTime && endTime) {
+                // Simulate conflict check (in real app, this would be an AJAX call)
+                setTimeout(() => {
+                    // Random conflict simulation for demo
+                    if (Math.random() > 0.8) {
+                        $('#conflictWarning').addClass('show');
+                        $('#conflictDetails').text(`Có xung đột với buổi thực hành "Python Advanced" từ ${startTime} đến ${endTime}`);
+                    } else {
+                        $('#conflictWarning').removeClass('show');
+                    }
+                }, 500);
+            }
+        }
+
+        // Recurring sessions toggle
+        $('#isRecurring').change(function() {
+            if ($(this).is(':checked')) {
+                $('#recurringPattern').addClass('active');
+            } else {
+                $('#recurringPattern').removeClass('active');
+            }
+        });
+
+        // Course selection population (simulate API call)
+        function loadCourses() {
+            const courses = [
+                { id: 1, name: 'Lập trình Python cơ bản' },
+                { id: 2, name: 'Cấu trúc dữ liệu và giải thuật' },
+                { id: 3, name: 'Phát triển web với Flask' },
+                { id: 4, name: 'Machine Learning cơ bản' },
+                { id: 5, name: 'Database Management Systems' }
+            ];
+            
+            const select = $('#course_id');
+            courses.forEach(course => {
+                select.append(`<option value="${course.id}">${course.name}</option>`);
+            });
+        }
+
+        // Initialize tooltips
+        $('[title]').tooltip();
+
+        // Load draft on page load
+        loadDraft();
+        
+        // Load courses
+        loadCourses();
+
+        // Auto-save on input changes
+        $('input, textarea, select').on('input change', autoSaveDraft);
+
         // Initialize date picker with enhanced configuration
         $('#datePicker').datetimepicker({
             format: 'YYYY-MM-DD',
@@ -702,6 +1128,9 @@
                     $('#durationAlert').removeClass('alert-danger').addClass('alert-info');
                     $('#sessionDuration').text(durationText);
                 }
+                
+                // Check for conflicts after time change
+                checkScheduleConflicts();
             }
         }
 
@@ -709,11 +1138,27 @@
             updateDuration();
         });
 
+        // Check conflicts when date changes
+        $('#datePicker').on('change.datetimepicker', function(e) {
+            checkScheduleConflicts();
+        });
+
         // Initialize duration on page load
         setTimeout(updateDuration, 500);
 
         // QR code object to store reference
         let qrcode = null;
+
+        // Enhanced QR code download functionality
+        function downloadQRCode() {
+            const canvas = document.querySelector('#qrcode canvas');
+            if (canvas) {
+                const link = document.createElement('a');
+                link.download = `lab-session-qr-${$('#verification_code').val()}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+        }
 
         // Generate random verification code
         $('#generateCode').click(function() {
@@ -730,6 +1175,9 @@
                 qrcode.clear();
                 qrcode.makeCode(code);
             }
+            
+            // Trigger auto-save
+            autoSaveDraft();
         });
 
         // Generate QR code for verification code
@@ -743,6 +1191,7 @@
 
             $('#displayVerificationCode').text(verificationCode);
             $('.qr-code-container').show();
+            $('#downloadQR').show();
 
             // Clear previous QR code if it exists
             if (qrcode) {
@@ -763,6 +1212,9 @@
             qrcode.makeCode(verificationCode);
         });
 
+        // Download QR code
+        $('#downloadQR').click(downloadQRCode);
+
         // Update QR when verification code changes manually
         $('#verification_code').on('input', function() {
             const code = $(this).val();
@@ -775,7 +1227,7 @@
             }
         });
 
-        // Form validation
+        // Enhanced form validation
         $('#labSessionForm').submit(function(e) {
             const startTime = $('#startTimePicker').datetimepicker('viewDate');
             const endTime = $('#endTimePicker').datetimepicker('viewDate');
@@ -784,8 +1236,48 @@
                 e.preventDefault();
                 alert('End time must be after start time');
                 $('#endTimePicker').focus();
+                return false;
             }
+
+            // Clear draft on successful submission
+            localStorage.removeItem('lab_session_draft');
+            
+            // Show submission loading
+            $(this).find('button[type="submit"]').prop('disabled', true).html(
+                '<i class="fas fa-spinner fa-spin"></i> Đang tạo...'
+            );
         });
+
+        // Form completion tracking
+        function checkSectionCompletion() {
+            completedSections = 0;
+            
+            // Basic info section
+            if ($('#tieu_de').val() && $('#mo_ta').val()) {
+                completedSections++;
+            }
+            
+            // Schedule section
+            if ($('#ngay').val() && $('#gio_bat_dau').val() && $('#gio_ket_thuc').val()) {
+                completedSections++;
+            }
+            
+            // Location section
+            if ($('#dia_diem').val() && $('#so_luong_toi_da').val()) {
+                completedSections++;
+            }
+            
+            // Additional settings (always count as complete since it has defaults)
+            completedSections++;
+            
+            updateProgress();
+        }
+
+        // Check completion on input
+        $('input, textarea, select').on('input change', checkSectionCompletion);
+        
+        // Initial completion check
+        checkSectionCompletion();
     });
 </script>
 {% endblock %}

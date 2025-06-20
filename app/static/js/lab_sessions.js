@@ -49,8 +49,8 @@ class LabSessionManager {
             case 'my-sessions':
                 this.loadMySessions();
                 break;
-            case 'admin-lab-sessions':
-                this.loadAdminLabSessions();
+            case 'admin-lab-sessions':                // API calls removed - using server-side data
+                console.log('✅ Admin lab sessions loaded from server-side');
                 break;
             case 'session-attendees':
                 this.loadSessionAttendees();
@@ -89,25 +89,10 @@ class LabSessionManager {
         } catch (error) {
             console.error('Error loading my sessions:', error);
             this.showError('Network error while loading your sessions');
-        }
-    }    async loadAdminLabSessions(filterParams = '') {
-        try {
-            const url = filterParams ? `/api/v1/lab-sessions?${filterParams}` : '/api/v1/lab-sessions';
-            const response = await this.api.get(url);
-            const data = await response.json();
-            
-            if (response.ok) {
-                this.renderAdminLabSessions(data.sessions);
-                this.renderPagination(data.pagination);
-            } else {
-                console.error('Failed to load admin sessions:', data.error);
-                this.showError('Failed to load lab sessions');
-            }
-        } catch (error) {
-            console.error('Error loading admin sessions:', error);
-            this.showError('Network error while loading lab sessions');
-        }
-    }
+        }    }    
+      
+    // API functions removed - now using server-side data only
+    // All lab session loading is handled by backend routes
 
     async loadSessionAttendees() {
         const sessionId = document.body.dataset.sessionId;
@@ -510,8 +495,10 @@ class LabSessionManager {
         paginationList.querySelectorAll('a[data-page]').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                const page = parseInt(link.dataset.page);
-                this.loadAdminLabSessions(`page=${page}`);
+                const page = parseInt(link.dataset.page);                // Using server-side pagination
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.set('page', page);
+                window.location.href = currentUrl.toString();
             });
         });
     }

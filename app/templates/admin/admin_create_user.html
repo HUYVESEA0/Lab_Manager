@@ -245,9 +245,7 @@
                                 <small class="form-text text-muted">
                                     <i class="fas fa-info-circle mr-1"></i>Tên người dùng phải là duy nhất và có từ 3-20 ký tự
                                 </small>
-                            </div>
-
-                            <div class="form-group-enhanced">
+                            </div>                            <div class="form-group-enhanced">
                                 <label class="form-label-enhanced">
                                     <i class="fas fa-envelope"></i>{{ form.email.label.text }}
                                 </label>
@@ -265,6 +263,48 @@
                                     <i class="fas fa-info-circle mr-1"></i>Email sẽ được sử dụng để đăng nhập và liên lạc
                                 </small>
                             </div>
+
+                            {% if form.ho_ten %}
+                            <div class="form-group-enhanced">
+                                <label class="form-label-enhanced">
+                                    <i class="fas fa-id-card"></i>{{ form.ho_ten.label.text }}
+                                </label>
+                                {% if form.ho_ten.errors %}
+                                    {{ form.ho_ten(class="form-control form-control-enhanced is-invalid", placeholder="Nhập họ và tên đầy đủ", id="fullname") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.ho_ten.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.ho_ten(class="form-control form-control-enhanced", placeholder="Nhập họ và tên đầy đủ", id="fullname") }}
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle mr-1"></i>Họ và tên hiển thị trong hệ thống
+                                </small>
+                            </div>
+                            {% endif %}
+
+                            {% if form.so_dien_thoai %}
+                            <div class="form-group-enhanced">
+                                <label class="form-label-enhanced">
+                                    <i class="fas fa-phone"></i>{{ form.so_dien_thoai.label.text }}
+                                </label>
+                                {% if form.so_dien_thoai.errors %}
+                                    {{ form.so_dien_thoai(class="form-control form-control-enhanced is-invalid", placeholder="0123456789", id="phone") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.so_dien_thoai.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.so_dien_thoai(class="form-control form-control-enhanced", placeholder="0123456789", id="phone") }}
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle mr-1"></i>Số điện thoại liên lạc (không bắt buộc)
+                                </small>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -360,6 +400,63 @@
                             </div>
                             
                             {{ form.vai_tro(style="display: none;", id="selectedRole") }}
+                            
+                            <!-- Account Settings -->
+                            <div class="mt-4">
+                                <h5 class="mb-3"><i class="fas fa-cog mr-2"></i>Cài đặt tài khoản</h5>
+                                
+                                {% if form.kich_hoat %}
+                                <div class="form-check form-check-enhanced">
+                                    {{ form.kich_hoat(class="form-check-input", id="activate", checked=true) }}
+                                    <label class="form-check-label" for="activate">
+                                        <i class="fas fa-toggle-on text-success mr-1"></i>{{ form.kich_hoat.label.text }}
+                                    </label>
+                                    <small class="form-text text-muted d-block">Tài khoản sẽ có thể đăng nhập ngay sau khi tạo</small>
+                                </div>
+                                {% endif %}
+                                
+                                {% if form.gui_email_chao_mung %}
+                                <div class="form-check form-check-enhanced">
+                                    {{ form.gui_email_chao_mung(class="form-check-input", id="welcomeEmail", checked=true) }}
+                                    <label class="form-check-label" for="welcomeEmail">
+                                        <i class="fas fa-envelope text-info mr-1"></i>{{ form.gui_email_chao_mung.label.text }}
+                                    </label>
+                                    <small class="form-text text-muted d-block">Gửi thông tin đăng nhập qua email</small>
+                                </div>
+                                {% endif %}
+                                
+                                {% if form.yeu_cau_doi_mat_khau %}
+                                <div class="form-check form-check-enhanced">
+                                    {{ form.yeu_cau_doi_mat_khau(class="form-check-input", id="changePassword") }}
+                                    <label class="form-check-label" for="changePassword">
+                                        <i class="fas fa-key text-warning mr-1"></i>{{ form.yeu_cau_doi_mat_khau.label.text }}
+                                    </label>
+                                    <small class="form-text text-muted d-block">Bắt buộc đổi mật khẩu khi đăng nhập lần đầu</small>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Notes -->
+                            {% if form.ghi_chu %}
+                            <div class="mt-4">
+                                <label class="form-label-enhanced">
+                                    <i class="fas fa-sticky-note"></i>{{ form.ghi_chu.label.text }}
+                                </label>
+                                {% if form.ghi_chu.errors %}
+                                    {{ form.ghi_chu(class="form-control form-control-enhanced is-invalid", rows="3", placeholder="Ghi chú về người dùng (không bắt buộc)") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.ghi_chu.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.ghi_chu(class="form-control form-control-enhanced", rows="3", placeholder="Ghi chú về người dùng (không bắt buộc)") }}
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle mr-1"></i>Ghi chú nội bộ về người dùng (tối đa 500 ký tự)
+                                </small>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -377,10 +474,36 @@
                                     <p class="text-muted" id="previewEmail">email@example.com</p>
                                     <span class="badge badge-primary" id="previewRole">Vai trò</span>
                                 </div>
-                                
-                                <hr>
+                                  <hr>
                                 
                                 <div class="row">
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-info-circle mr-1"></i>Thông tin cơ bản</h6>
+                                        <ul class="list-unstyled">
+                                            <li><strong>Tên đăng nhập:</strong> <span id="previewUsername">-</span></li>
+                                            <li><strong>Email:</strong> <span id="previewEmailDetail">-</span></li>                                            <li><strong>Họ tên:</strong> <span id="previewFullName">-</span></li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-shield-alt mr-1"></i>Bảo mật & Quyền</h6>
+                                        <ul class="list-unstyled">
+                                            <li><strong>Vai trò:</strong> <span id="previewRoleDetail">-</span></li>
+                                            <li><strong>Tài khoản:</strong> <span id="previewStatus">-</span></li>
+                                            <li><strong>Email chào mừng:</strong> <span id="previewWelcomeEmail">-</span></li>
+                                            <li><strong>Đổi mật khẩu:</strong> <span id="previewChangePassword">-</span></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                
+                                <div id="previewNotes" class="mt-3" style="display: none;">
+                                    <h6><i class="fas fa-sticky-note mr-1"></i>Ghi chú</h6>
+                                    <p class="text-muted" id="previewNotesContent"></p>
+                                </div>
+                                
+                                <div class="alert alert-info mt-3">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    Nhấn "Tạo người dùng" để hoàn tất. Thông tin đăng nhập sẽ được gửi qua email nếu đã chọn tùy chọn này.
+                                </div>
                                     <div class="col-md-6">
                                         <h6><i class="fas fa-user mr-2"></i>Thông tin đăng nhập</h6>
                                         <p><strong>Tên đăng nhập:</strong> <span id="previewUsername">-</span></p>
@@ -435,23 +558,51 @@ class CreateUserWizard {
         this.maxStep = 4;
         this.formData = {};
         this.init();
-    }
-
-    init() {
+    }    init() {
         this.setupEventListeners();
         this.setupPasswordStrength();
         this.setupRoleSelection();
         this.updatePreview();
-    }
-
-    setupEventListeners() {
+    }    setupEventListeners() {
         // Navigation buttons
         document.getElementById('nextBtn').addEventListener('click', () => this.nextStep());
         document.getElementById('prevBtn').addEventListener('click', () => this.prevStep());
         
-        // Form inputs for live preview
-        const usernameInput = document.getElementById('username');
-        const emailInput = document.getElementById('email');
+        // Submit button
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (this.validateCurrentStep()) {
+                    document.getElementById('createUserForm').submit();
+                } else {
+                    this.showStepError();
+                }
+            });
+        }
+          // Form inputs for live preview
+        const inputIds = ['username', 'email', 'fullname'];
+        inputIds.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('input', () => this.updatePreview());
+            }
+        });
+        
+        // Checkboxes for live preview
+        const checkboxIds = ['activate', 'welcomeEmail', 'changePassword'];
+        checkboxIds.forEach(id => {
+            const checkbox = document.getElementById(id);
+            if (checkbox) {
+                checkbox.addEventListener('change', () => this.updatePreview());
+            }
+        });
+        
+        // Notes textarea
+        const notesTextarea = document.querySelector('textarea[name="ghi_chu"]');
+        if (notesTextarea) {
+            notesTextarea.addEventListener('input', () => this.updatePreview());
+        }
         
         if (usernameInput) usernameInput.addEventListener('input', () => this.updatePreview());
         if (emailInput) emailInput.addEventListener('input', () => this.updatePreview());
@@ -616,16 +767,22 @@ class CreateUserWizard {
                 confirmPassword.classList.remove('is-invalid');
             }
         }
-    }
-
-    updatePreview() {
+    }    updatePreview() {
+        // Get all input values
         const usernameInput = document.getElementById('username');
         const emailInput = document.getElementById('email');
+        const fullnameInput = document.getElementById('fullname');
         const selectedRoleInput = document.getElementById('selectedRole');
+        const activateInput = document.getElementById('activate');
+        const welcomeEmailInput = document.getElementById('welcomeEmail');
+        const changePasswordInput = document.getElementById('changePassword');
+        const notesInput = document.querySelector('textarea[name="ghi_chu"]');
         
         const username = usernameInput ? usernameInput.value : '';
         const email = emailInput ? emailInput.value : '';
+        const fullname = fullnameInput ? fullnameInput.value : '';
         const role = selectedRoleInput ? selectedRoleInput.value : 'nguoi_dung';
+        const notes = notesInput ? notesInput.value : '';
 
         // Update avatar
         const avatar = document.getElementById('avatarPreview');
@@ -643,16 +800,17 @@ class CreateUserWizard {
             }
         }
         
-        // Update text content
+        // Update basic info
         const previewName = document.getElementById('previewName');
         const previewEmail = document.getElementById('previewEmail');
         const previewUsername = document.getElementById('previewUsername');
-        const previewEmailDisplay = document.getElementById('previewEmailDisplay');
+        const previewEmailDetail = document.getElementById('previewEmailDetail');        const previewFullName = document.getElementById('previewFullName');
         
-        if (previewName) previewName.textContent = username || 'Tên người dùng';
+        if (previewName) previewName.textContent = fullname || username || 'Tên người dùng';
         if (previewEmail) previewEmail.textContent = email || 'email@example.com';
         if (previewUsername) previewUsername.textContent = username || '-';
-        if (previewEmailDisplay) previewEmailDisplay.textContent = email || '-';
+        if (previewEmailDetail) previewEmailDetail.textContent = email || '-';
+        if (previewFullName) previewFullName.textContent = fullname || '-';
         
         // Update role display
         const roleLabels = {
@@ -663,7 +821,7 @@ class CreateUserWizard {
         
         const roleLabel = roleLabels[role] || 'Chưa chọn';
         const previewRole = document.getElementById('previewRole');
-        const previewRoleDisplay = document.getElementById('previewRoleDisplay');
+        const previewRoleDetail = document.getElementById('previewRoleDetail');
         
         if (previewRole) {
             previewRole.textContent = roleLabel;
@@ -673,6 +831,42 @@ class CreateUserWizard {
             } else if (role === 'quan_tri_vien') {
                 previewRole.classList.add('badge-warning');
             } else {
+                previewRole.classList.add('badge-primary');
+            }
+        }
+        if (previewRoleDetail) previewRoleDetail.textContent = roleLabel;
+        
+        // Update account settings
+        const previewStatus = document.getElementById('previewStatus');
+        const previewWelcomeEmail = document.getElementById('previewWelcomeEmail');
+        const previewChangePassword = document.getElementById('previewChangePassword');
+        
+        if (previewStatus) {
+            const isActive = activateInput ? activateInput.checked : true;
+            previewStatus.textContent = isActive ? 'Đã kích hoạt' : 'Chưa kích hoạt';
+        }
+        
+        if (previewWelcomeEmail) {
+            const sendEmail = welcomeEmailInput ? welcomeEmailInput.checked : false;
+            previewWelcomeEmail.textContent = sendEmail ? 'Có' : 'Không';
+        }
+        
+        if (previewChangePassword) {
+            const requireChange = changePasswordInput ? changePasswordInput.checked : false;
+            previewChangePassword.textContent = requireChange ? 'Có' : 'Không';
+        }
+        
+        // Update notes
+        const previewNotes = document.getElementById('previewNotes');
+        const previewNotesContent = document.getElementById('previewNotesContent');
+        if (previewNotes && previewNotesContent) {
+            if (notes && notes.trim()) {
+                previewNotes.style.display = 'block';
+                previewNotesContent.textContent = notes;
+            } else {
+                previewNotes.style.display = 'none';
+            }
+        }
                 previewRole.classList.add('badge-primary');
             }
         }
@@ -711,7 +905,5 @@ document.addEventListener('DOMContentLoaded', function() {
     new CreateUserWizard();
 });
 
-// Include user creation manager
 </script>
-<script src="{{ url_for('static', filename='js/user-creation.js') }}"></script>
 {% endblock %}

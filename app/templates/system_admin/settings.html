@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .system-settings-header {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .settings-card {
+        border-left: 4px solid #dc3545;
+    }
+    
+    .setting-item {
+        border-bottom: 1px solid #dee2e6;
+        padding: 15px 0;
+    }
+    
+    .setting-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="system-settings-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-1">
+                    <i class="fas fa-cogs mr-2"></i>System Settings
+                </h1>
+                <p class="mb-0">Quản lý cài đặt toàn hệ thống</p>
+            </div>
+            <a href="{{ url_for('system_admin.system_dashboard') }}" class="btn btn-light">
+                <i class="fas fa-arrow-left mr-1"></i>Quay lại Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card settings-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sliders-h mr-2"></i>Cài đặt hệ thống
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ csrf_token() }}
+                        
+                        <!-- App Name Setting -->
+                        <div class="setting-item">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label class="font-weight-bold">Tên ứng dụng</label>
+                                    <small class="text-muted d-block">Tên hiển thị của hệ thống</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" name="app_name" 
+                                           value="{% for setting in settings %}{% if setting.ten_cai_dat == 'app_name' %}{{ setting.gia_tri }}{% endif %}{% endfor %}"
+                                           placeholder="Lab Manager">
+                                </div>
+                                <div class="col-md-3">
+                                    <span class="badge badge-info">Cấu hình chính</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Other Settings -->
+                        {% for setting in settings %}
+                        {% if setting.ten_cai_dat != 'app_name' %}
+                        <div class="setting-item">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label class="font-weight-bold">{{ setting.ten_cai_dat|title }}</label>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" 
+                                           name="{{ setting.ten_cai_dat }}" 
+                                           value="{{ setting.gia_tri }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <span class="badge badge-secondary">Hệ thống</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-save mr-1"></i>Lưu cài đặt
+                            </button>
+                            <button type="reset" class="btn btn-secondary ml-2">
+                                <i class="fas fa-undo mr-1"></i>Reset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

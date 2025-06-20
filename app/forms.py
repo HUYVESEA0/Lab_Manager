@@ -1,7 +1,7 @@
 from datetime import datetime
 from flask_wtf import FlaskForm
 from wtforms import BooleanField, HiddenField, PasswordField, SelectField, StringField, SubmitField, TextAreaField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError
+from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError, Regexp
 from .models import NguoiDung
 
 class LoginForm(FlaskForm):
@@ -81,11 +81,56 @@ class UserEditForm(FlaskForm):
                 raise ValidationError("Email đã được đăng ký. Vui lòng sử dụng email khác.")
 
 class CreateUserForm(FlaskForm):
-    ten_nguoi_dung = StringField("Tên người dùng", validators=[DataRequired(), Length(min=3, max=20)])
-    email = StringField("Email", validators=[DataRequired(), Email()])
-    mat_khau = PasswordField("Mật khẩu", validators=[DataRequired(), Length(min=6)])
-    xac_nhan_mat_khau = PasswordField("Xác nhận mật khẩu", validators=[DataRequired(), EqualTo("mat_khau")])
-    vai_tro = SelectField("Vai trò", choices=[("nguoi_dung", "Người dùng"), ("quan_tri_vien", "Quản trị viên"), ("quan_tri_he_thong", "Quản trị hệ thống")])
+    # Thông tin cơ bản
+    ten_nguoi_dung = StringField("Tên người dùng", validators=[
+        DataRequired(message="Tên người dùng là bắt buộc"), 
+        Length(min=3, max=20, message="Tên người dùng phải có từ 3-20 ký tự"),
+        Regexp(r'^[a-zA-Z0-9_]+$', message="Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới")
+    ])
+    
+    ho_ten = StringField("Họ và tên", validators=[
+        DataRequired(message="Họ và tên là bắt buộc"),
+        Length(min=2, max=100, message="Họ và tên phải có từ 2-100 ký tự")
+    ])
+    
+    email = StringField("Email", validators=[
+        DataRequired(message="Email là bắt buộc"), 
+        Email(message="Email không hợp lệ")
+    ])
+    
+    so_dien_thoai = StringField("Số điện thoại", validators=[
+        Length(max=15, message="Số điện thoại không được quá 15 ký tự"),
+        Regexp(r'^[0-9+\-\s()]*$', message="Số điện thoại chỉ được chứa số và các ký tự +, -, (, ), khoảng trắng")
+    ])
+    
+    # Bảo mật
+    mat_khau = PasswordField("Mật khẩu", validators=[
+        DataRequired(message="Mật khẩu là bắt buộc"), 
+        Length(min=6, message="Mật khẩu phải có ít nhất 6 ký tự")
+    ])
+    
+    xac_nhan_mat_khau = PasswordField("Xác nhận mật khẩu", validators=[
+        DataRequired(message="Xác nhận mật khẩu là bắt buộc"), 
+        EqualTo("mat_khau", message="Mật khẩu xác nhận không khớp")
+    ])
+    
+    # Vai trò và quyền
+    vai_tro = SelectField("Vai trò", choices=[
+        ("nguoi_dung", "Người dùng"), 
+        ("quan_tri_vien", "Quản trị viên"), 
+        ("quan_tri_he_thong", "Quản trị hệ thống")
+    ], validators=[DataRequired(message="Vui lòng chọn vai trò")])
+    
+    # Cài đặt tài khoản
+    kich_hoat = BooleanField("Kích hoạt tài khoản ngay", default=True)
+    gui_email_chao_mung = BooleanField("Gửi email chào mừng", default=True)
+    yeu_cau_doi_mat_khau = BooleanField("Yêu cầu đổi mật khẩu lần đầu đăng nhập", default=False)
+    
+    # Ghi chú
+    ghi_chu = TextAreaField("Ghi chú", validators=[
+        Length(max=500, message="Ghi chú không được quá 500 ký tự")
+    ])
+    
     submit = SubmitField("Tạo người dùng")
 
     def validate_ten_nguoi_dung(self, ten_nguoi_dung):
@@ -97,6 +142,21 @@ class CreateUserForm(FlaskForm):
         nguoi_dung = NguoiDung.query.filter_by(email=email.data).first()
         if nguoi_dung:
             raise ValidationError("Email đã được đăng ký. Vui lòng sử dụng email khác.")
+    
+    def validate_mat_khau(self, mat_khau):
+        password = mat_khau.data
+        if len(password) < 6:
+            raise ValidationError("Mật khẩu phải có ít nhất 6 ký tự.")
+        
+        # Kiểm tra độ mạnh mật khẩu
+        has_upper = any(c.isupper() for c in password)
+        has_lower = any(c.islower() for c in password)
+        has_digit = any(c.isdigit() for c in password)
+        
+        score = sum([has_upper, has_lower, has_digit])
+        if score < 2:
+            raise ValidationError("Mật khẩu nên chứa ít nhất 2 trong các yếu tố: chữ hoa, chữ thường, số.")
+
 
 class SystemSettingsForm(FlaskForm):
     app_name = StringField("Application Name", validators=[DataRequired(), Length(max=100)])

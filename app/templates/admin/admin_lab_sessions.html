@@ -325,9 +325,7 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Statistics Cards -->
+    </div>    <!-- Statistics Cards -->
     <div class="row mb-4" id="stats-container">
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card">
@@ -335,8 +333,8 @@
                     <div class="stat-icon primary mx-auto">
                         <i class="fas fa-flask"></i>
                     </div>
-                    <div class="stat-number" id="total-sessions">--</div>
-                    <div class="stat-label">Total Sessions</div>
+                    <div class="stat-number">{{ sessions|length if sessions else 0 }}</div>
+                    <div class="stat-label">Tổng số ca</div>
                 </div>
             </div>
         </div>
@@ -346,8 +344,8 @@
                     <div class="stat-icon success mx-auto">
                         <i class="fas fa-play-circle"></i>
                     </div>
-                    <div class="stat-number" id="active-sessions">--</div>
-                    <div class="stat-label">Active Sessions</div>
+                    <div class="stat-number">{{ sessions|selectattr("trang_thai", "equalto", "scheduled")|list|length if sessions else 0 }}</div>
+                    <div class="stat-label">Ca đang mở</div>
                 </div>
             </div>
         </div>
@@ -357,8 +355,8 @@
                     <div class="stat-icon warning mx-auto">
                         <i class="fas fa-calendar-day"></i>
                     </div>
-                    <div class="stat-number" id="today-sessions">--</div>
-                    <div class="stat-label">Today's Sessions</div>
+                    <div class="stat-number">{{ sessions|selectattr("ngay", "equalto", today)|list|length if sessions and today else 0 }}</div>
+                    <div class="stat-label">Ca hôm nay</div>
                 </div>
             </div>
         </div>
@@ -367,9 +365,8 @@
                 <div class="card-body text-center">
                     <div class="stat-icon info mx-auto">
                         <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stat-number" id="total-attendees">--</div>
-                    <div class="stat-label">Total Attendees</div>
+                    </div>                    <div class="stat-number">{{ sessions|sum(attribute='so_nguoi_dang_ky') if sessions else 0 }}</div>
+                    <div class="stat-label">Tổng đăng ký</div>
                 </div>
             </div>
         </div>
@@ -451,30 +448,122 @@
                 </button>
             </div>
         </div>
-    </div>
-
-    <!-- Sessions List -->
+    </div>    <!-- Sessions List -->
     <div class="row">
         <div class="col-12">
-            <div class="loading-overlay" id="sessions-container">
-                <div id="admin-sessions-container">
-                    <!-- Loading spinner -->
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="sr-only">Loading...</span>
+            <div id="sessions-container">
+                {% if sessions %}
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-list"></i>
+                                Danh sách ca thực hành ({{ sessions|length }} ca)
+                            </h5>
                         </div>
-                        <p class="mt-3">Loading lab sessions...</p>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th width="5%">
+                                                <input type="checkbox" id="select-all-sessions-checkbox" class="form-check-input">
+                                            </th>
+                                            <th>Tên ca</th>
+                                            <th>Ngày</th>
+                                            <th>Thời gian</th>
+                                            <th>Phòng</th>
+                                            <th>Sức chứa</th>
+                                            <th>Đã đăng ký</th>
+                                            <th>Đã vào</th>
+                                            <th>Trạng thái</th>
+                                            <th>Hành động</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for session in sessions %}                                        <tr data-session-id="{{ session.id }}">
+                                            <td>
+                                                <input type="checkbox" class="session-checkbox form-check-input" value="{{ session.id }}">
+                                            </td>
+                                            <td>
+                                                <strong>{{ session.tieu_de }}</strong>
+                                                {% if session.mo_ta %}
+                                                <br><small class="text-muted">{{ session.mo_ta[:50] }}{% if session.mo_ta|length > 50 %}...{% endif %}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ session.ngay.strftime('%d/%m/%Y') if session.ngay else 'N/A' }}</td>
+                                            <td>
+                                                {{ session.gio_bat_dau.strftime('%H:%M') if session.gio_bat_dau else 'N/A' }} - 
+                                                {{ session.gio_ket_thuc.strftime('%H:%M') if session.gio_ket_thuc else 'N/A' }}
+                                            </td>
+                                            <td>{{ session.dia_diem or 'N/A' }}</td>
+                                            <td>
+                                                <span class="badge badge-secondary">{{ session.so_luong_toi_da or 'Không giới hạn' }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-primary">{{ session.so_nguoi_dang_ky or 0 }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-success">{{ session.so_nguoi_da_vao or 0 }}</span>
+                                            </td>
+                                            <td>
+                                                {% if session.trang_thai == 'scheduled' %}
+                                                    <span class="badge badge-success">Đang mở</span>
+                                                {% elif session.trang_thai == 'completed' %}
+                                                    <span class="badge badge-secondary">Đã hoàn thành</span>
+                                                {% elif session.trang_thai == 'cancelled' %}
+                                                    <span class="badge badge-danger">Đã hủy</span>
+                                                {% else %}
+                                                    <span class="badge badge-warning">{{ session.trang_thai or 'N/A' }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-sm btn-outline-primary" 
+                                                            onclick="viewSession({{ session.id }})" 
+                                                            title="Xem chi tiết">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-warning" 
+                                                            onclick="editSession({{ session.id }})" 
+                                                            title="Chỉnh sửa">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    {% if session.trang_thai == 'scheduled' %}
+                                                    <button class="btn btn-sm btn-outline-secondary" 
+                                                            onclick="closeSession({{ session.id }})" 
+                                                            title="Đóng ca">
+                                                        <i class="fas fa-lock"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                    <button class="btn btn-sm btn-outline-danger" 
+                                                            onclick="deleteSession({{ session.id }})" 
+                                                            title="Xóa">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- Pagination -->
-                <nav aria-label="Sessions pagination" id="sessions-pagination" style="display: none;">
-                    <ul class="pagination justify-content-center" id="pagination-list">
-                        <!-- Pagination will be generated by JavaScript -->
-                    </ul>
-                </nav>
+                {% else %}
+                    <div class="card">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">Chưa có ca thực hành nào</h5>
+                            <p class="text-muted">Bắt đầu bằng cách tạo ca thực hành mới.</p>
+                            <button class="btn btn-primary" data-toggle="modal" data-target="#quickCreateModal">
+                                <i class="fas fa-plus"></i> Tạo ca mới
+                            </button>
+                        </div>
+                    </div>
+                {% endif %}
             </div>
-        </div>    </div>
+        </div>
+    </div>
 </div>
 
 <!-- Quick Create Session Modal -->
@@ -659,8 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (searchTerm) {
             params.append('search', searchTerm);
         }
-        
-        // Add other filters
+          // Add other filters
         for (let [key, value] of formData.entries()) {
             if (value) params.append(key, value);
         }
@@ -668,10 +756,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update filter tags
         updateFilterTags(params);
         
-        // Reload sessions with filters
-        if (window.labSessionManager) {
-            window.labSessionManager.loadAdminLabSessions(params.toString());
+        // Reload page with filters - using server-side filtering
+        const currentUrl = new URL(window.location);
+        for (let [key, value] of params.entries()) {
+            currentUrl.searchParams.set(key, value);
         }
+        window.location.href = currentUrl.toString();
     }
     
     function updateFilterTags(params) {
@@ -707,38 +797,103 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function loadStatistics() {
-    try {
-        const response = await fetch('/api/v1/lab-sessions/stats');
-        const data = await response.json();
-        
-        if (response.ok) {
-            document.getElementById('total-sessions').textContent = data.total_sessions || '0';
-            document.getElementById('active-sessions').textContent = data.active_sessions || '0';
-            document.getElementById('today-sessions').textContent = data.today_sessions || '0';
-            document.getElementById('total-attendees').textContent = data.total_attendees || '0';
-        }
-    } catch (error) {
-        console.error('Error loading statistics:', error);
-    }
+    // API calls removed - using server-side statistics from template
+    console.log('✅ Using server-side statistics from template');
+    // Statistics are already calculated and displayed in template
 }
-</script>
-    if (filterForm) {
-        filterForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(filterForm);
-            const params = new URLSearchParams();
-            
-            for (let [key, value] of formData.entries()) {
-                if (value) params.append(key, value);
+
+// Filter form handling
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForm = document.getElementById('session-filter-form');
+// Admin lab session action functions
+function viewSession(sessionId) {
+    window.location.href = '/admin/lab-sessions/' + sessionId;
+}
+
+function editSession(sessionId) {
+    window.location.href = '/admin/lab-sessions/' + sessionId + '/edit';
+}
+
+function closeSession(sessionId) {
+    if (confirm('Bạn có chắc chắn muốn đóng ca thực hành này?')) {
+        fetch('/admin/lab-sessions/' + sessionId + '/close', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
             }
-            
-            // Reload sessions with filters
-            if (window.labSessionManager) {
-                window.labSessionManager.loadAdminLabSessions(params.toString());
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Đã đóng ca thực hành thành công!');
+                location.reload();
+            } else {
+                alert('Lỗi: ' + data.message);
             }
+        })
+        .catch(error => {
+            alert('Có lỗi xảy ra: ' + error.message);
         });
     }
+}
+
+function deleteSession(sessionId) {
+    if (confirm('Bạn có chắc chắn muốn xóa ca thực hành này? Hành động này không thể hoàn tác.')) {
+        fetch('/admin/lab-sessions/' + sessionId + '/delete', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Đã xóa ca thực hành thành công!');
+                location.reload();
+            } else {
+                alert('Lỗi: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Có lỗi xảy ra: ' + error.message);
+        });
+    }
+}
+
+// Checkbox functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all-sessions-checkbox');
+    const sessionCheckboxes = document.querySelectorAll('.session-checkbox');
+    
+    if (selectAllCheckbox && sessionCheckboxes.length > 0) {
+        selectAllCheckbox.addEventListener('change', function() {
+            sessionCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            updateSelectedCount();
+        });
+        
+        sessionCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelectedCount);
+        });
+    }
+    
+    function updateSelectedCount() {
+        const selectedCount = document.querySelectorAll('.session-checkbox:checked').length;
+        const selectedCountElement = document.getElementById('selected-count');
+        if (selectedCountElement) {
+            selectedCountElement.textContent = selectedCount;
+        }
+    }
 });
+
+// Refresh functionality
+document.getElementById('refresh-sessions').addEventListener('click', function() {
+    location.reload();
+});
+
 </script>
 {% endblock %}
 

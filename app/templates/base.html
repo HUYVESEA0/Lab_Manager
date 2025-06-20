@@ -90,11 +90,11 @@
                                     <i class="fas fa-user-plus mr-2"></i>Thêm người dùng mới
                                 </a>
                                   <div class="dropdown-divider"></div>
-                                <h6 class="dropdown-header">Quản lý ca thực hành</h6>
+                                <h6 class="dropdown-header">Quản lý ca thực hành</h6>                                
                                 <a class="dropdown-item" href="{{ url_for('lab.admin_lab_sessions') }}">
                                     <i class="fas fa-calendar-alt mr-2"></i>Danh sách ca thực hành
                                 </a>
-                                <a class="dropdown-item" href="{{ url_for('admin.enhanced_lab_sessions') }}">
+                                <a class="dropdown-item" href="{{ url_for('admin.admin_lab_sessions_enhanced') }}">
                                     <i class="fas fa-rocket mr-2"></i>Quản lý nâng cao
                                 </a>
                                 <a class="dropdown-item" href="{{ url_for('lab.create_lab_session') }}">
@@ -106,8 +106,7 @@
                                 <a class="dropdown-item" href="{{ url_for('admin.activity_logs') }}">
                                     <i class="fas fa-history mr-2"></i>Nhật ký hoạt động
                                 </a>
-                                {% if current_user.is_admin_manager() %}
-                                <a class="dropdown-item" href="{{ url_for('admin.system_settings') }}">
+                                {% if current_user.is_admin_manager() %}                                <a class="dropdown-item" href="{{ url_for('admin.settings') }}">
                                     <i class="fas fa-cogs mr-2"></i>Cài đặt hệ thống
                                 </a>
                                 {% endif %}

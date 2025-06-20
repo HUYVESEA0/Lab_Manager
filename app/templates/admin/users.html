@@ -543,40 +543,10 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="card-body p-0">
-                    <!-- Bulk Actions Bar -->
-                    <div id="bulkActionsBar" class="bg-light border-bottom px-3 py-2" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <small class="text-muted">
-                                    <span id="selectedCount">0</span> người dùng được chọn
-                                </small>
-                            </div>
-                            <div class="btn-group btn-group-sm">
-                                <button type="button" class="btn btn-warning" id="bulkChangeRole">
-                                    <i class="fas fa-user-tag mr-1"></i>Thay đổi vai trò
-                                </button>
-                                <button type="button" class="btn btn-info" id="bulkExport">
-                                    <i class="fas fa-download mr-1"></i>Xuất đã chọn
-                                </button>
-                                <button type="button" class="btn btn-danger" id="bulkDelete">
-                                    <i class="fas fa-trash mr-1"></i>Xóa đã chọn
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
+                </div>                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table admin-table mb-0">
-                            <thead>
+                        <table class="table admin-table mb-0">                            <thead>
                                 <tr>
-                                    <th width="50px">
-                                        <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input" id="selectAll">
-                                            <label class="custom-control-label" for="selectAll"></label>
-                                        </div>
-                                    </th>
                                     <th class="sortable" data-sort="name">
                                         <i class="fas fa-user mr-1"></i>Người dùng
                                     </th>
@@ -598,14 +568,7 @@
                                 </tr>
                             </thead>
                             <tbody id="usersTableBody">
-                                {% for user in users %}
-                                <tr data-user-id="{{ user.id }}" class="user-row">
-                                    <td>
-                                        <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input user-select" id="user{{ user.id }}" value="{{ user.id }}">
-                                            <label class="custom-control-label" for="user{{ user.id }}"></label>
-                                        </div>
-                                    </td>
+                                {% for user in users %}                                <tr data-user-id="{{ user.id }}" class="user-row">
                                     <td>
                                         <div class="user-info-card">
                                             <div class="user-avatar-large" style="background: linear-gradient(135deg, {{ user.avatar_color or '#007bff' }}, {{ user.avatar_color or '#0056b3' }});">
@@ -843,14 +806,7 @@
                         </div>
                         <div class="col-md-2">
                             <button class="btn btn-outline-info btn-block" id="importUsers">
-                                <i class="fas fa-file-import mb-1"></i><br>
-                                <small>Import CSV</small>
-                            </button>
-                        </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-outline-warning btn-block" id="sendBulkEmail">
-                                <i class="fas fa-envelope mb-1"></i><br>
-                                <small>Email hàng loạt</small>
+                                <i class="fas fa-file-import mb-1"></i><br>                                <small>Import CSV</small>
                             </button>
                         </div>
                         <div class="col-md-2">
@@ -1050,7 +1006,6 @@
 <script>
 class UserManagement {
     constructor() {
-        this.selectedUsers = new Set();
         this.currentFilters = {};
         this.sortOrder = { column: 'created', direction: 'desc' };
         this.init();
@@ -1092,38 +1047,7 @@ class UserManagement {
 
         // Apply and reset filters
         document.getElementById('applyFilters').addEventListener('click', () => this.applyFilters());
-        document.getElementById('resetFilters').addEventListener('click', () => this.resetFilters());
-
-        // Select all functionality
-        document.getElementById('selectAll').addEventListener('change', (e) => {
-            this.selectAll(e.target.checked);
-        });
-
-        // Individual user selection
-        document.querySelectorAll('.user-select').forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                this.toggleUserSelection(e.target.value, e.target.checked);
-            });
-        });
-
-        // Bulk actions
-        document.getElementById('bulkChangeRole').addEventListener('click', () => {
-            if (this.selectedUsers.size > 0) {
-                $('#bulkChangeRoleModal').modal('show');
-            }
-        });
-
-        document.getElementById('bulkDelete').addEventListener('click', () => {
-            if (this.selectedUsers.size > 0) {
-                $('#bulkDeleteModal').modal('show');
-            }
-        });
-
-        document.getElementById('bulkExport').addEventListener('click', () => {
-            this.exportSelectedUsers();
-        });
-
-        // Export functionality
+        document.getElementById('resetFilters').addEventListener('click', () => this.resetFilters());        // Export functionality
         document.getElementById('exportExcel').addEventListener('click', () => this.exportData('excel'));
         document.getElementById('exportCSV').addEventListener('click', () => this.exportData('csv'));
         document.getElementById('exportPDF').addEventListener('click', () => this.exportData('pdf'));
@@ -1141,15 +1065,6 @@ class UserManagement {
                 const column = header.getAttribute('data-sort');
                 this.sortTable(column);
             });
-        });
-
-        // Modal confirmations
-        document.getElementById('confirmBulkChangeRole').addEventListener('click', () => {
-            this.processBulkRoleChange();
-        });
-
-        document.getElementById('confirmBulkDelete').addEventListener('click', () => {
-            this.processBulkDelete();
         });
     }
 
@@ -1293,53 +1208,7 @@ class UserManagement {
         document.getElementById('roleFilter').value = '';
         document.getElementById('statusFilter').value = '';
         if (document.getElementById('dateFromFilter')) document.getElementById('dateFromFilter').value = '';
-        if (document.getElementById('dateToFilter')) document.getElementById('dateToFilter').value = '';
-        this.applyFilters();
-    }
-
-    selectAll(checked) {
-        document.querySelectorAll('.user-select').forEach(checkbox => {
-            if (checkbox.closest('.user-row').style.display !== 'none') {
-                checkbox.checked = checked;
-                this.toggleUserSelection(checkbox.value, checked);
-            }
-        });
-    }
-
-    toggleUserSelection(userId, selected) {
-        if (selected) {
-            this.selectedUsers.add(userId);
-        } else {
-            this.selectedUsers.delete(userId);
-        }
-        this.updateBulkActionsVisibility();
-        this.updateSelectAllState();
-    }
-
-    updateBulkActionsVisibility() {
-        const bulkBar = document.getElementById('bulkActionsBar');
-        const selectedCount = document.getElementById('selectedCount');
-        
-        if (this.selectedUsers.size > 0) {
-            bulkBar.style.display = 'block';
-            selectedCount.textContent = this.selectedUsers.size;
-        } else {
-            bulkBar.style.display = 'none';
-        }
-
-        // Update modal counters
-        document.getElementById('selectedUserCount').textContent = this.selectedUsers.size;
-        document.getElementById('deleteSelectedUserCount').textContent = this.selectedUsers.size;
-    }
-
-    updateSelectAllState() {
-        const selectAllCheckbox = document.getElementById('selectAll');
-        const visibleCheckboxes = Array.from(document.querySelectorAll('.user-select'))
-            .filter(cb => cb.closest('.user-row').style.display !== 'none');
-        const checkedCount = visibleCheckboxes.filter(cb => cb.checked).length;
-        
-        selectAllCheckbox.checked = checkedCount === visibleCheckboxes.length && visibleCheckboxes.length > 0;
-        selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < visibleCheckboxes.length;
+        if (document.getElementById('dateToFilter')) document.getElementById('dateToFilter').value = '';        this.applyFilters();
     }
 
     sortTable(column) {
@@ -1405,35 +1274,25 @@ class UserManagement {
                 this.exportToCSV(data);
                 break;
             case 'pdf':
-                this.exportToPDF(data);
-                break;
+                this.exportToPDF(data);                break;
         }
     }
 
-    exportSelectedUsers() {
-        const selectedData = this.getTableData(true);
-        this.exportToCSV(selectedData, 'selected_users');
-    }
-
-    getTableData(selectedOnly = false) {
+    getTableData() {
         const rows = document.querySelectorAll('#usersTableBody .user-row');
         const data = [];
         
         rows.forEach(row => {
-            if (selectedOnly && !this.selectedUsers.has(row.getAttribute('data-user-id'))) {
-                return;
-            }
-            
             if (row.style.display === 'none') return;
             
             const cells = row.querySelectorAll('td');
             data.push({
-                name: cells[1].querySelector('.user-name').textContent,
-                email: cells[1].querySelector('.user-email').textContent,
-                role: cells[2].textContent.trim(),
-                status: cells[3].textContent.trim(),
-                lastActivity: cells[4].textContent.trim(),
-                created: cells[5].textContent.trim()
+                name: cells[0].querySelector('.user-name').textContent,
+                email: cells[0].querySelector('.user-email').textContent,
+                role: cells[1].textContent.trim(),
+                status: cells[2].textContent.trim(),
+                lastActivity: cells[3].textContent.trim(),
+                created: cells[4].textContent.trim()
             });
         });
         
@@ -1495,72 +1354,8 @@ class UserManagement {
         document.getElementById('listView').classList.remove('btn-outline-secondary');
         document.getElementById('gridView').classList.add('btn-outline-secondary');
         document.getElementById('gridView').classList.remove('btn-primary');
-    }
-
-    refreshTable() {
+    }    refreshTable() {
         window.location.reload();
-    }
-
-    processBulkRoleChange() {
-        const newRole = document.getElementById('newRole').value;
-        const userIds = Array.from(this.selectedUsers);
-        
-        // Send AJAX request to server
-        fetch('/admin/api/users/bulk-change-role', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrf_token]').value
-            },
-            body: JSON.stringify({
-                user_ids: userIds,
-                new_role: newRole
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                this.showNotification('Đã cập nhật vai trò thành công!', 'success');
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                this.showNotification('Có lỗi xảy ra khi cập nhật vai trò!', 'error');
-            }
-        })
-        .catch(error => {
-            this.showNotification('Có lỗi xảy ra!', 'error');
-        });
-        
-        $('#bulkChangeRoleModal').modal('hide');
-    }
-
-    processBulkDelete() {
-        const userIds = Array.from(this.selectedUsers);
-        
-        // Send AJAX request to server
-        fetch('/admin/api/users/bulk-delete', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrf_token]').value
-            },
-            body: JSON.stringify({
-                user_ids: userIds
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                this.showNotification('Đã xóa người dùng thành công!', 'success');
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                this.showNotification('Có lỗi xảy ra khi xóa người dùng!', 'error');
-            }
-        })
-        .catch(error => {
-            this.showNotification('Có lỗi xảy ra!', 'error');
-        });
-        
-        $('#bulkDeleteModal').modal('hide');
     }
 
     setupAdvancedFeatures() {
@@ -1616,13 +1411,7 @@ class UserManagement {
 
         // Import Users
         document.getElementById('importUsers')?.addEventListener('click', () => {
-            $('#importUsersModal').modal('show');
-        });
-
-        // Send Bulk Email
-        document.getElementById('sendBulkEmail')?.addEventListener('click', () => {
-            this.showBulkEmailDialog();
-        });
+            $('#importUsersModal').modal('show');        });
 
         // Security Audit
         document.getElementById('securityAudit')?.addEventListener('click', () => {
@@ -1937,14 +1726,8 @@ class UserManagement {
 
     updateProgress(modal, progress) {
         const progressBar = modal.querySelector('.progress-bar');
-        const progressText = modal.querySelector('.progress-text');
-        progressBar.style.width = progress + '%';
+        const progressText = modal.querySelector('.progress-text');        progressBar.style.width = progress + '%';
         progressText.textContent = progress + '%';
-    }
-
-    showBulkEmailDialog() {
-        // Implementation for bulk email functionality
-        this.showNotification('Tính năng email hàng loạt sẽ được phát triển trong phiên bản tiếp theo!', 'info');
     }
 
     generateAdvancedReport() {

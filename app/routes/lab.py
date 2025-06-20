@@ -1,15 +1,16 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, jsonify, current_app
 from flask_login import login_required, current_user
 from flask_wtf.csrf import generate_csrf
 from datetime import datetime, timedelta, time
 from ..forms import SessionRegistrationForm, LabVerificationForm, LabResultForm, LabSessionForm
 from ..models import CaThucHanh, DangKyCa, VaoCa, NguoiDung, db
 from ..utils import log_activity
-from ..cache.cache_manager import cached_route, cached_api, invalidate_user_cache, invalidate_model_cache
+from ..cache.cache_manager import cached_route, invalidate_user_cache, invalidate_model_cache, invalidate_user_cache, invalidate_model_cache
 from ..cache.cached_queries import (
     get_total_sessions, get_active_sessions_count, get_sessions_today,
     invalidate_session_caches, invalidate_activity_caches
 )
+from ..services.notification_service import NotificationService, notify_lab_registration, notify_lab_reminder
 import random, string
 from sqlalchemy import func
 
@@ -29,10 +30,30 @@ def csrf_token():
 
 @lab_bp.route('/sessions')
 @login_required
-@cached_route(timeout=180, key_prefix='lab_sessions_page')
 def lab_sessions():
-    """Show available lab sessions with caching - template expects data from API"""
-    return render_template("lab/lab_sessions.html")
+    """Show available lab sessions"""
+    try:
+        # Get all available sessions
+        sessions = CaThucHanh.query.order_by(CaThucHanh.ngay.desc()).all()
+        
+        # Add registration count for each session
+        for session in sessions:
+            session.so_nguoi_dang_ky = DangKyCa.query.filter_by(ca_thuc_hanh_ma=session.id).count()
+        
+        # Get user's registrations
+        user_registrations = DangKyCa.query.filter_by(
+            nguoi_dung_ma=current_user.id
+        ).all()
+        registered_session_ids = [reg.ca_thuc_hanh_ma for reg in user_registrations]
+        
+        return render_template("lab/lab_sessions.html", 
+                             sessions=sessions,
+                             registrations=user_registrations,
+                             registered_session_ids=registered_session_ids)
+    except Exception as e:
+        current_app.logger.error(f"Error loading lab sessions: {str(e)}")
+        flash("Có lỗi xảy ra khi tải danh sách ca thực hành.", "danger")
+        return render_template("lab/lab_sessions.html", sessions=[], registered_session_ids=[])
 
 @lab_bp.route('/register/<int:session_id>', methods=['GET', 'POST'])
 @login_required
@@ -58,6 +79,9 @@ def register_lab_session(session_id):
         registration = DangKyCa(nguoi_dung_ma=current_user.id, ca_thuc_hanh_ma=session_id, ghi_chu=form.notes.data)
         db.session.add(registration)
         db.session.commit()
+        
+        # Send notification
+        notify_lab_registration(current_user.id, ca_thuc_hanh.tieu_de)
         
         # Invalidate related caches after lab registration
         invalidate_user_cache(current_user.id)
@@ -149,10 +173,31 @@ def lab_session_active(entry_id):
 
 @lab_bp.route('/my-sessions')
 @login_required
-@cached_route(timeout=120, key_prefix='user_lab_sessions')
 def my_lab_sessions():
-    """Show user's lab sessions with caching - template expects data from API"""
-    return render_template("lab/my_sessions.html")
+    """Show user's lab sessions"""
+    try:
+        # Get user's registrations with session details
+        my_registrations = db.session.query(DangKyCa, CaThucHanh).join(
+            CaThucHanh, DangKyCa.ca_thuc_hanh_ma == CaThucHanh.id
+        ).filter(DangKyCa.nguoi_dung_ma == current_user.id).order_by(
+            CaThucHanh.ngay.desc(), CaThucHanh.gio_bat_dau.desc()
+        ).all()
+        
+        # Get user's attendance records
+        my_attendances = db.session.query(VaoCa, CaThucHanh).join(
+            CaThucHanh, VaoCa.ca_thuc_hanh_ma == CaThucHanh.id
+        ).filter(VaoCa.nguoi_dung_ma == current_user.id).order_by(
+            CaThucHanh.ngay.desc(), CaThucHanh.gio_bat_dau.desc()
+        ).all()
+        
+        return render_template("lab/my_sessions.html",
+                             registrations=my_registrations,
+                             attendances=my_attendances)
+    except Exception as e:
+        current_app.logger.error(f"Error loading user sessions: {str(e)}")
+        flash("Có lỗi xảy ra khi tải ca thực hành của bạn.", "danger")
+        return render_template("lab/my_sessions.html",
+                             registrations=[], attendances=[])
 
 # --- ADMIN LAB ROUTES ---
 from ..decorators import admin_required, admin_manager_required
@@ -161,8 +206,31 @@ from ..decorators import admin_required, admin_manager_required
 @login_required
 @admin_required
 def admin_lab_sessions():
-    """Admin lab sessions list - template expects data from API"""
-    return render_template("admin/admin_lab_sessions.html")
+    """Admin lab sessions list"""
+    try:
+        # Get all sessions with registration counts
+        sessions = CaThucHanh.query.order_by(
+            CaThucHanh.ngay.desc(), 
+            CaThucHanh.gio_bat_dau.desc()
+        ).all()
+        
+        # Add registration and attendance counts directly to session objects
+        for session in sessions:
+            session.so_nguoi_dang_ky = DangKyCa.query.filter_by(ca_thuc_hanh_ma=session.id).count()
+            session.so_nguoi_da_vao = VaoCa.query.filter_by(ca_thuc_hanh_ma=session.id).count()
+        
+        # Get today's date for statistics
+        from datetime import datetime
+        today = datetime.now().date()
+        
+        return render_template("admin/admin_lab_sessions.html",
+                             sessions=sessions,
+                             today=today)
+    except Exception as e:
+        current_app.logger.error(f"Error loading admin lab sessions: {str(e)}")
+        flash("Có lỗi xảy ra khi tải danh sách ca thực hành.", "danger")
+        return render_template("admin/admin_lab_sessions.html",
+                             sessions=[], today=datetime.now().date())
 
 @lab_bp.route('/admin/create', methods=['GET', 'POST'])
 @login_required
@@ -277,7 +345,7 @@ def edit_lab_session(session_id):
 @login_required
 @admin_required
 def lab_session_attendees(session_id):
-    """Admin lab session attendees - template expects data from API"""
+    """Admin lab session attendees"""
     ca_thuc_hanh = CaThucHanhModel.query.get_or_404(session_id)
     return render_template("admin/admin_session_attendees.html", session=ca_thuc_hanh)
 
@@ -285,7 +353,7 @@ def lab_session_attendees(session_id):
 @login_required
 @admin_manager_required
 def schedule_lab_sessions():
-    """Admin schedule lab sessions - template expects data from API"""
+    """Admin schedule lab sessions"""
     return render_template("admin/admin_schedule_sessions.html")
 
 @lab_bp.route('/admin/schedule-rooms', methods=['GET', 'POST'])

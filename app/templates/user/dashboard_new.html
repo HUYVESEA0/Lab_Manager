@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}
+User Dashboard
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .permission-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .user-badge { background: #e3f2fd; color: #1565c0; }
+    .admin-badge { background: #fff3e0; color: #ef6c00; }
+    .system-admin-badge { background: #f3e5f5; color: #7b1fa2; }
+    
+    .permission-info {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Permission Info Banner -->
+    <div class="permission-info">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h4 class="mb-1">
+                    <i class="fas fa-user-circle mr-2"></i>
+                    User Dashboard
+                </h4>
+                <p class="mb-2">Chào mừng {{ current_user.ten_nguoi_dung }} - Quyền hạn: 
+                    <span class="permission-badge user-badge">User</span>
+                </p>
+                <small>Bạn có quyền truy cập các chức năng cơ bản của hệ thống</small>
+            </div>
+            <div class="col-md-4 text-right">
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-warning">
+                    <i class="fas fa-crown mr-1"></i>
+                    Switch to Admin
+                </a>
+                {% endif %}
+                {% if current_user.is_system_admin() %}
+                <a href="{{ url_for('system_admin.system_dashboard') }}" class="btn btn-danger ml-2">
+                    <i class="fas fa-shield-alt mr-1"></i>
+                    Switch to System Admin
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Menu để debug -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-sitemap mr-2"></i>Available Menu Items</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for item in navigation_menu %}
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for(item.url) }}" class="btn btn-outline-primary btn-sm btn-block">
+                                <i class="{{ item.icon }} mr-1"></i>
+                                {{ item.name }}
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div>
+                            <h4>{{ upcoming_sessions|default(0) }}</h4>
+                            <p class="mb-0">Ca thực hành sắp tới</p>
+                        </div>
+                        <div class="ml-auto">
+                            <i class="fas fa-calendar-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div>
+                            <h4>{{ enrolled_courses|default(0) }}</h4>
+                            <p class="mb-0">Khóa học đã đăng ký</p>
+                        </div>
+                        <div class="ml-auto">
+                            <i class="fas fa-book-open fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div>
+                            <h4>{{ completed_labs|default(0) }}</h4>
+                            <p class="mb-0">Lab đã hoàn thành</p>
+                        </div>
+                        <div class="ml-auto">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div>
+                            <h4>{{ user_points|default(0) }}</h4>
+                            <p class="mb-0">Điểm tích lũy</p>
+                        </div>
+                        <div class="ml-auto">
+                            <i class="fas fa-star fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-clock mr-2"></i>Ca thực hành sắp tới</h5>
+                </div>
+                <div class="card-body">
+                    {% if lab_sessions %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Tiêu đề</th>
+                                        <th>Ngày</th>
+                                        <th>Thời gian</th>
+                                        <th>Trạng thái</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for session in lab_sessions %}
+                                    <tr>
+                                        <td>{{ session.tieu_de }}</td>
+                                        <td>{{ session.ngay.strftime('%d/%m/%Y') if session.ngay else 'N/A' }}</td>
+                                        <td>
+                                            {% if session.gio_bat_dau and session.gio_ket_thuc %}
+                                                {{ session.gio_bat_dau.strftime('%H:%M') }} - {{ session.gio_ket_thuc.strftime('%H:%M') }}
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-primary">{{ session.trang_thai or 'Chờ' }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Chưa có ca thực hành nào sắp tới</p>
+                            <a href="{{ url_for('lab.lab_sessions') }}" class="btn btn-primary">
+                                <i class="fas fa-plus mr-1"></i>Đăng ký ca thực hành
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-link mr-2"></i>Liên kết nhanh</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a href="{{ url_for('user.profile') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-user mr-2"></i>Hồ sơ cá nhân
+                        </a>
+                        <a href="{{ url_for('user.settings') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-cog mr-2"></i>Cài đặt tài khoản
+                        </a>
+                        <a href="{{ url_for('lab.my_lab_sessions') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-flask mr-2"></i>Ca thực hành của tôi
+                        </a>
+                        <a href="{{ url_for('search.search') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-search mr-2"></i>Tìm kiếm
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add any user dashboard specific JavaScript here
+    console.log('User Dashboard loaded');
+    console.log('Available navigation items:', {{ navigation_menu|tojson|safe }});
+});
+</script>
+{% endblock %}

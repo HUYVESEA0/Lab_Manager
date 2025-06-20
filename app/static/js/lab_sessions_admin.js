@@ -360,63 +360,25 @@ class LabSessionAdminManager {
         } catch (error) {
             this.showError('Network error during session creation');
         }
-    }
-
-    // Export functionality
+    }    // Export functionality - using server-side export
     async exportData(format) {
         try {
-            const response = await fetch(`/api/v1/lab-sessions/export?format=${format}`);
-            
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `lab_sessions.${format}`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-                
-                this.showSuccess(`Sessions exported as ${format.toUpperCase()}`);
-            } else {
-                this.showError('Failed to export sessions');
-            }
+            // Use server-side export route instead of API
+            const exportUrl = `/admin/lab-sessions/export?format=${format}`;
+            window.open(exportUrl, '_blank');
+            this.showSuccess(`Sessions exported as ${format.toUpperCase()}`);
         } catch (error) {
             this.showError('Network error during export');
         }
-    }
-
-    async exportSelected() {
+    }    async exportSelected() {
         if (this.selectedSessions.size === 0) return;
         
         try {
-            const response = await fetch('/api/v1/lab-sessions/export', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    session_ids: Array.from(this.selectedSessions),
-                    format: 'excel'
-                })
-            });
-            
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'selected_sessions.xlsx';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-                
-                this.showSuccess('Selected sessions exported');
-            } else {
-                this.showError('Failed to export selected sessions');
-            }
+            // Use server-side export with selected session IDs
+            const sessionIds = Array.from(this.selectedSessions).join(',');
+            const exportUrl = `/admin/lab-sessions/export?format=excel&session_ids=${sessionIds}`;
+            window.open(exportUrl, '_blank');
+            this.showSuccess('Selected sessions exported');
         } catch (error) {
             this.showError('Network error during export');
         }
@@ -557,12 +519,9 @@ class LabSessionAdminManager {
             cb.checked = false;
         });
         this.updateBulkActionsUI();
-    }
-
-    refreshSessions() {
-        if (window.labSessionManager) {
-            window.labSessionManager.loadAdminLabSessions();
-        }
+    }    refreshSessions() {
+        // Refresh using server-side reload instead of API
+        window.location.reload();
         this.clearSelection();
     }
 

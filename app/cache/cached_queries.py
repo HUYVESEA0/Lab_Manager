@@ -247,3 +247,24 @@ def invalidate_system_caches():
     ]
     for pattern in patterns:
         invalidate_model_cache(pattern)
+
+def invalidate_all_caches():
+    """Invalidate all cached data - use with caution as this clears all caches"""
+    try:
+        # Invalidate all specific cache categories
+        invalidate_user_caches()
+        invalidate_session_caches()
+        invalidate_activity_caches()
+        invalidate_student_caches()
+        invalidate_system_caches()
+        
+        # Also try to clear all cache using cache manager
+        from app.cache.cache_manager import cache_manager
+        if hasattr(cache_manager, 'clear_all_cache'):
+            cache_manager.clear_all_cache()
+        
+        logger.info("All caches invalidated successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Error invalidating all caches: {str(e)}")
+        return False

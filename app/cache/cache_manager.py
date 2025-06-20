@@ -279,61 +279,6 @@ class CacheManager:
             return wrapper
         return decorator
     
-    def cached_api(self, timeout=300, key_prefix=None, vary_on_user=True):
-        """
-        Decorator for caching API responses
-        
-        Args:
-            timeout: Cache timeout in seconds (default 5 minutes)
-            key_prefix: Custom cache key prefix
-            vary_on_user: Include user ID in cache key
-        """
-        def decorator(func):
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                cache = self.get_cache()
-                if not cache:
-                    return func(*args, **kwargs)
-                
-                # Generate cache key
-                prefix = key_prefix or f"api_{func.__name__}"
-                key_parts = [prefix, request.method, request.path]
-                
-                if vary_on_user and current_user.is_authenticated:
-                    key_parts.append(f"user_{current_user.id}")
-                
-                # Add query parameters
-                if request.args:
-                    key_parts.append(hashlib.md5(str(sorted(request.args.items())).encode()).hexdigest()[:8])
-                
-                cache_key = "_".join(key_parts)
-                
-                try:
-                    # Try to get from cache
-                    cached_result = cache.get(cache_key)
-                    if cached_result is not None:
-                        self.record_hit()
-                        logger.debug(f"API cache hit: {cache_key}")
-                        return cached_result
-                    
-                    # Cache miss - execute function
-                    self.record_miss()
-                    logger.debug(f"API cache miss: {cache_key}")
-                    result = func(*args, **kwargs)                      # Only cache successful responses
-                    if hasattr(result, 'status_code') and result.status_code == 200:
-                        cache.set(cache_key, result, timeout=timeout)
-                    elif isinstance(result, (dict, list)):
-                        cache.set(cache_key, result, timeout=timeout)
-                    
-                    return result
-                    
-                except Exception as e:
-                    self.record_error()
-                    logger.error(f"API cache error: {e}")
-                    return func(*args, **kwargs)
-                    
-            return wrapper
-        return decorator
     
     def invalidate_pattern(self, pattern):
         """
@@ -433,66 +378,15 @@ def cached_query(timeout=600, key_prefix=None):
     """Query caching decorator"""
     return get_cache_manager().cached_query(timeout, key_prefix)
 
-def cached_api(timeout=300, key_prefix=None, vary_on_user=True):
-    """API caching decorator"""
-    return get_cache_manager().cached_api(timeout, key_prefix, vary_on_user)
-
-def invalidate_cache(pattern):
-    """Invalidate cache by pattern"""
-    try:
-        get_cache_manager().invalidate_pattern(pattern)
-    except Exception as e:
-        logger.error(f"Error in invalidate_cache: {e}")
-
-def invalidate_user_cache(user_id):
+def invalidate_user_cache(user_id=None):
     """Invalidate user-specific cache"""
-    try:
-        get_cache_manager().invalidate_user_cache(user_id)
-    except Exception as e:
-        logger.error(f"Error in invalidate_user_cache: {e}")
+    return get_cache_manager().invalidate_user_cache(user_id)
 
 def invalidate_model_cache(model_name):
     """Invalidate model-specific cache"""
-    try:
-        get_cache_manager().invalidate_model_cache(model_name)
-    except Exception as e:
-        logger.error(f"Error in invalidate_model_cache: {e}")
+    return get_cache_manager().invalidate_model_cache(model_name)
 
-def get_cache_metrics():
-    """Get cache metrics"""
-    try:
-        return get_cache_manager().get_cache_info()
-    except Exception as e:
-        logger.error(f"Error in get_cache_metrics: {e}")
-        return {
-            'metrics': {'hits': 0, 'misses': 0, 'invalidations': 0, 'errors': 1},
-            'hit_rate': 0,
-            'cache_available': False,
-            'timestamp': datetime.now().isoformat()
-        }
+def invalidate_cache(pattern):
+    """Invalidate cache by pattern"""
+    return get_cache_manager().invalidate_pattern(pattern)
 
-# Cache invalidation hooks for database operations
-class CacheInvalidationMixin:
-    """Mixin to add automatic cache invalidation to models"""
-    
-    def invalidate_cache(self):
-        """Invalidate cache for this model"""
-        model_name = self.__class__.__name__
-        invalidate_model_cache(model_name)
-          # Also invalidate user-specific cache if applicable
-        if hasattr(self, 'id') and hasattr(self, 'nguoi_dung_id'):
-            invalidate_user_cache(getattr(self, 'nguoi_dung_id'))
-        elif hasattr(self, 'id') and hasattr(self, 'user_id'):
-            invalidate_user_cache(getattr(self, 'user_id'))
-    
-    def after_insert(self):
-        """Called after insert"""
-        self.invalidate_cache()
-    
-    def after_update(self):
-        """Called after update"""
-        self.invalidate_cache()
-    
-    def after_delete(self):
-        """Called after delete"""
-        self.invalidate_cache()

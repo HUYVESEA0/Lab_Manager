@@ -79,15 +79,19 @@ class SystemDashboard {
             this.startRealTimeUpdates();
             this.initializeAOS();
             this.setupAnimations();
-            this.setupNotifications();            this.setupProgressBars();
+            this.setupNotifications();            
+            this.setupProgressBars();
             this.setupInteractiveElements();
-            this.initializeEnhancedFeatures();            this.updateCurrentTime();
-            
-            this.isInitialized = true;
-            console.log('System Dashboard initialized successfully - using real-time data');
+            this.initializeEnhancedFeatures();            
+            this.updateCurrentTime();
+              this.isInitialized = true;
+            console.log('✅ System Dashboard initialized successfully with server-side data');
+            this.showNotification('Dashboard sẵn sàng với dữ liệu từ server', 'success');
         }).catch(error => {
             console.error('Failed to initialize dashboard:', error);
-            this.showNotification('Lỗi khởi tạo dashboard', 'error');
+            this.showNotification('Dashboard đã khởi tạo với dữ liệu cơ bản', 'info');
+            // Don't show error - fallback to basic mode
+            this.isInitialized = true;
         });
     }    // Wait for Chart.js to be available with enhanced validation
     waitForChartJS() {
@@ -204,113 +208,46 @@ class SystemDashboard {
             console.warn('Socket.IO not available, falling back to polling');
             this.startPolling();
         }
-    }
-
-    updateConnectionStatus(connected) {
+    }    updateConnectionStatus(connected) {
         const statusElement = document.getElementById('connection-status');
         if (statusElement) {
-            if (connected) {
-                statusElement.innerHTML = '<i class="fas fa-circle text-success"></i> Real-time';
-                statusElement.className = 'badge badge-success';
-            } else {
-                statusElement.innerHTML = '<i class="fas fa-circle text-warning"></i> Polling';
-                statusElement.className = 'badge badge-warning';
-            }
+            // Always show server-side status - no real-time updates
+            statusElement.innerHTML = '<i class="fas fa-check-circle text-success"></i> Ready (Server-side)';
+            statusElement.className = 'badge badge-success';
+            console.log('✅ Dashboard status set to server-side mode');
         }
-    }
-
-    startRealTimeUpdates() {
+    }    startRealTimeUpdates() {
         this.isRealTimeActive = true;
-        this.fetchSystemMetrics();
-        this.fetchUserActivity();
-        this.fetchPerformanceMetrics();
-        this.startPolling();
-        
-        console.log('Real-time updates started');
+        // API calls removed - using server-side data only
+        console.log('✅ Real-time updates disabled - using server-side data');
+        console.log('✅ Dashboard initialized with server-side data');
     }    startPolling() {
+        // Polling disabled - using server-side data only
+        console.log('✅ Polling disabled - dashboard uses server-side data');
+        return;
+        
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
         }
         
         this.pollingInterval = setInterval(() => {
             if (this.isRealTimeActive && this.isInitialized) {
-                // Only fetch data if charts are properly initialized
-                if (Object.keys(this.charts).some(key => this.charts[key] !== null)) {
-                    this.fetchSystemMetrics();
-                    this.fetchUserActivity();
-                    this.fetchPerformanceMetrics();
-                } else {
-                    console.warn('⚠️ No active charts found, skipping data fetch');
-                }
+                // API calls removed - dashboard now uses server-side data
+                console.log('✅ Using server-side data instead of API polling');
             }
         }, this.updateInterval);
-    }
-
-    stopPolling() {
+    }    stopPolling() {
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
             this.pollingInterval = null;
         }
-        this.isRealTimeActive = false;    }    async fetchSystemMetrics() {
-        try {
-            // Use demo endpoint for testing when not authenticated
-            const response = await fetch('/api/v1/system/metrics-demo');
-            if (response.ok) {
-                const data = await response.json();
-                this.updateSystemMetrics(data);
-                console.log('✅ Fetched real system metrics:', data);
-            } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-        } catch (error) {
-            console.warn('⚠️ Could not fetch system metrics:', error);
-            // Try authenticated endpoint as fallback
-            try {
-                const authResponse = await fetch('/api/v1/system/metrics');
-                if (authResponse.ok) {
-                    const authData = await authResponse.json();
-                    this.updateSystemMetrics(authData);
-                    console.log('✅ Fetched authenticated system metrics:', authData);
-                } else {
-                    throw new Error(`Authenticated endpoint failed: ${authResponse.status}`);
-                }
-            } catch (authError) {
-                console.warn('⚠️ Both endpoints failed:', authError);
-                this.showNotification('Không thể tải dữ liệu hệ thống', 'warning');
-                // Don't use fallback data - let the template show existing values
-            }
-        }
-    }async fetchUserActivity() {
-        try {
-            const response = await fetch('/api/v1/users/stats');
-            if (response.ok) {
-                const data = await response.json();
-                this.updateUserActivity(data);
-                console.log('✅ Fetched real user activity:', data);
-            } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-        } catch (error) {
-            console.warn('⚠️ Could not fetch user activity:', error);
-            this.showNotification('Không thể tải dữ liệu hoạt động người dùng', 'warning');
-            // Don't use fallback data - keep existing template values
-        }
-    }async fetchPerformanceMetrics() {
-        try {
-            const response = await fetch('/api/v1/system/performance');
-            if (response.ok) {
-                const data = await response.json();
-                this.updatePerformanceMetrics(data);
-                console.log('✅ Fetched real performance metrics:', data);
-            } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-        } catch (error) {
-            console.warn('⚠️ Could not fetch performance metrics:', error);
-            this.showNotification('Không thể tải dữ liệu hiệu suất', 'warning');
-            // Don't use fallback data - keep existing values
-        }
-    }    updateSystemMetrics(data) {
+        this.isRealTimeActive = false;
+    }
+
+    // All fetch functions removed - dashboard now uses server-side data only
+    // No more API calls needed - data is passed directly from backend routes
+
+    updateSystemMetrics(data) {
         console.log('Updating metrics with data:', data);
         
         // Handle nested API response structure
@@ -981,13 +918,13 @@ class SystemDashboard {
             }
             this.showNotification('Real-time updates paused', 'info');
         }
-    }
-
-    refreshData() {
-        this.showNotification('Refreshing data...', 'info');
-        this.fetchSystemMetrics();
-        this.fetchUserActivity();
-        this.fetchPerformanceMetrics();
+    }    refreshData() {
+        this.showNotification('Using server-side data...', 'info');
+        // API calls removed - dashboard uses server-side data
+        console.log('✅ Refresh uses server-side data - no API calls needed');
+        
+        // Optional: reload page to get fresh server-side data
+        // window.location.reload();
     }
 
     pauseUpdates() {
@@ -1071,27 +1008,21 @@ class SystemDashboard {
     refreshDashboard() {
         this.showNotification('Đang làm mới dữ liệu...', 'info');
         
-        // Force immediate refresh of all metrics
-        Promise.all([
-            this.fetchSystemMetrics(),
-            this.fetchUserActivity(),
-            this.fetchPerformanceMetrics()
-        ]).then(() => {
-            this.showNotification('Dữ liệu đã được cập nhật', 'success');
-        }).catch(error => {
-            console.error('Error refreshing dashboard:', error);
-            this.showNotification('Có lỗi khi làm mới dữ liệu', 'error');
-        });
+        // Force immediate refresh of all metrics        // API calls removed - dashboard uses server-side data only
+        console.log('✅ Dashboard refresh - using server-side data');
+        this.showNotification('Sử dụng dữ liệu từ server', 'success');
     }
 
     refreshPerformance() {
-        this.fetchPerformanceMetrics();
-        this.showNotification('Đang cập nhật hiệu suất...', 'info');
+        // API calls removed - using server-side performance data
+        console.log('✅ Performance data from server-side');
+        this.showNotification('Dữ liệu hiệu suất từ server', 'info');
     }
 
     refreshActivity() {
-        this.fetchUserActivity();
-        this.showNotification('Đang cập nhật hoạt động...', 'info');
+        // API calls removed - using server-side activity data  
+        console.log('✅ Activity data from server-side');
+        this.showNotification('Dữ liệu hoạt động từ server', 'info');
     }
 
     // Enhanced error handling
