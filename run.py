@@ -1,6 +1,5 @@
 import os
 import sys
-import time
 from dotenv import load_dotenv
 
 # Import app sau khi load environment variables
